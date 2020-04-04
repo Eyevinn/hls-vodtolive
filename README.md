@@ -1,6 +1,6 @@
 # hls-vodtolive
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Coverage Status](https://coveralls.io/repos/github/Eyevinn/hls-vodtolive/badge.svg?branch=master)](https://coveralls.io/github/Eyevinn/hls-vodtolive?branch=master)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Coverage Status](https://coveralls.io/repos/github/Eyevinn/hls-vodtolive/badge.svg?branch=master)](https://coveralls.io/github/Eyevinn/hls-vodtolive?branch=master) [![Slack](http://slack.streamingtech.se/badge.svg)](http://slack.streamingtech.se)
 
 Node library for the conversion of HLS VOD to HLS Live (A continuation and rebranding of vod-to-live.js library that is now deprecated)
 
