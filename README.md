@@ -7,7 +7,7 @@ Node library for the conversion of HLS VOD to HLS Live (A continuation and rebra
 ## Installation
 
 ```
-npm install --save vod-to-live.js
+npm install --save @eyevinn/hls-vodtolive
 ```
 
 ## Usage
