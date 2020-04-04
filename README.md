@@ -1,4 +1,4 @@
-[![NPM version][npm-version-image]][npm-url] [![MIT License][license-image]][license-url] [![Coverage Status](https://coveralls.io/repos/github/Eyevinn/hls-vodtolive/badge.svg?branch=master)](https://coveralls.io/github/Eyevinn/hls-vodtolive?branch=master)
+[![MIT License][license-image]][license-url] [![Coverage Status](https://coveralls.io/repos/github/Eyevinn/hls-vodtolive/badge.svg?branch=master)](https://coveralls.io/github/Eyevinn/hls-vodtolive?branch=master)
 
 Node library for the conversion of HLS VOD to HLS Live
 
