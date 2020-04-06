@@ -138,6 +138,13 @@ class HLSVod {
   }
 
   /**
+   * Retrieve master manifest Uri for this VOD
+   */
+  getVodUri() {
+    return this.masterManifestUri()
+  }
+
+  /**
    * Get all segments (duration, uri) for a specific media sequence
    * 
    * @param {number} seqIdx - media sequence index (first is 0)
