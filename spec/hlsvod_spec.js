@@ -17,7 +17,7 @@ describe("HLSVod standalone", () => {
     };
   });
 
-  fit("return the correct vod URI", done => {
+  it("return the correct vod URI", done => {
     mockVod = new HLSVod('http://mock.com/mock.m3u8');
     mockVod.load(mockMasterManifest, mockMediaManifest)
     .then(() => {
