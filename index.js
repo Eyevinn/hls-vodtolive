@@ -141,7 +141,7 @@ class HLSVod {
    * Retrieve master manifest Uri for this VOD
    */
   getVodUri() {
-    return this.masterManifestUri()
+    return this.masterManifestUri;
   }
 
   /**
