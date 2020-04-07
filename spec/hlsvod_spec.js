@@ -17,6 +17,15 @@ describe("HLSVod standalone", () => {
     };
   });
 
+  it("return the correct vod URI", done => {
+    mockVod = new HLSVod('http://mock.com/mock.m3u8');
+    mockVod.load(mockMasterManifest, mockMediaManifest)
+    .then(() => {
+      expect(mockVod.getVodUri()).toBe('http://mock.com/mock.m3u8');
+      done();
+    });
+  });
+
   it("returns the correct number of media sequences", done => {
     mockVod = new HLSVod('http://mock.com/mock.m3u8');
     mockVod.load(mockMasterManifest, mockMediaManifest)
