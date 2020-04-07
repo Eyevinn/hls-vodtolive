@@ -136,7 +136,7 @@ describe("HLSVod standalone", () => {
     });
   });
 
-  fit("handles un/promisified versions of getLiveMediaSequences() identically", done => {
+  it("handles un/promisified versions of getLiveMediaSequences() identically", done => {
     mockVod1 = new HLSVod('http://mock.com/mock.m3u8');
     mockVod1.load(mockMasterManifest, mockMediaManifest)
     .then(async () => {
@@ -783,7 +783,7 @@ describe("HLSVod with separate audio variants", () => {
     });
   });
   
-  fit("handles un/promisified versions of getLiveMediaAudioSequences() identically", done => {
+  it("handles un/promisified versions of getLiveMediaAudioSequences() identically", done => {
     mockVod1 = new HLSVod('http://mock.com/mock.m3u8');
     mockVod1.load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
     .then(async () => {
