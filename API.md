@@ -7,6 +7,7 @@
     * [new HLSVod(vodManifestUri, splices, timeOffset, startTimeOffset)](#new_HLSVod_new)
     * [.load()](#HLSVod+load)
     * [.loadAfter(previousVod)](#HLSVod+loadAfter)
+    * [.getVodUri()](#HLSVod+getVodUri)
     * [.getLiveMediaSequenceSegments(seqIdx)](#HLSVod+getLiveMediaSequenceSegments)
     * [.getLiveMediaSequenceAudioSegments(audioGroupId, seqIdx)](#HLSVod+getLiveMediaSequenceAudioSegments)
     * [.getBandwidths()](#HLSVod+getBandwidths)
@@ -46,6 +47,12 @@ contains the end sequences of the previous VOD
 | --- | --- | --- |
 | previousVod | [<code>HLSVod</code>](#HLSVod) | the previous VOD to concatenate to |
 
+<a name="HLSVod+getVodUri"></a>
+
+### hlsVod.getVodUri()
+Retrieve master manifest Uri for this VOD
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 <a name="HLSVod+getLiveMediaSequenceSegments"></a>
 
 ### hlsVod.getLiveMediaSequenceSegments(seqIdx)
