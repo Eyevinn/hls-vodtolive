@@ -116,6 +116,10 @@ segB2.ts
 segB3.ts
 ```
 
+# Documentation
+
+- [API Documentation](API.md)
+
 # Authors
 
 This project was started as vod-to-live.js in 2018 by Eyevinn Technology.
