@@ -135,6 +135,17 @@ describe("HLSVod standalone", () => {
       done();
     });
   });
+
+  fit("handles un/promisified versions of getLiveMediaSequences() identically", done => {
+    mockVod1 = new HLSVod('http://mock.com/mock.m3u8');
+    mockVod1.load(mockMasterManifest, mockMediaManifest)
+    .then(async () => {
+      const manifest = mockVod1.getLiveMediaSequences(0, '1497000', 0);
+      const manifestPromise = await mockVod1.getLiveMediaSequencesWithPromise(0, '1497000', 0);
+      expect(manifest).toEqual(manifestPromise);
+      done();
+    })
+  });
 });
 
 describe("HLSVod after another VOD", () => {
@@ -770,6 +781,17 @@ describe("HLSVod with separate audio variants", () => {
       expect(m).not.toBeNull();
       done();
     });
+  });
+  
+  fit("handles un/promisified versions of getLiveMediaAudioSequences() identically", done => {
+    mockVod1 = new HLSVod('http://mock.com/mock.m3u8');
+    mockVod1.load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
+    .then(async () => {
+      const manifest = mockVod1.getLiveMediaAudioSequences(0, 'audio-aacl-96', 0);
+      const manifestPromise = await mockVod1.getLiveMediaAudioSequencesWithPromise(0, 'audio-aacl-96', 0);
+      expect(manifest).toEqual(manifestPromise);
+      done();
+    })
   });
 });
 
