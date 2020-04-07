@@ -242,6 +242,81 @@ class HLSVod {
     return m3u8;
   }
 
+    /**
+   * Get the HLS live media sequence for a specific media sequence and bandwidth, returning a promise
+   * 
+   * @param {number} offset - add this offset to all media sequences in the EXT-X-MEDIA-SEQUENCE tag
+   * @param {string} bandwidth
+   * @param {number} seqIdx 
+   * @param {number} discOffset - add this offset to all discontinuity sequences in the EXT-X-DISCONTINUITY-SEQUENCE tag
+   */
+  getLiveMediaSequencesWithPromise(offset, bandwidth, seqIdx, discOffset) {
+    return new Promise((resolve, reject) => {
+      const bw = this._getNearestBandwidthWithInitiatedSegments(bandwidth);
+      debug(`Get live media sequence [${seqIdx}] for bw=${bw} (requested bw ${bandwidth})`);
+      const targetDuration = this._determineTargetDuration(this.mediaSequences[seqIdx].segments[bw]);
+      let m3u8 = "#EXTM3U\n";
+      m3u8 += "#EXT-X-VERSION:3\n";
+      m3u8 += "#EXT-X-TARGETDURATION:" + targetDuration + "\n";
+      m3u8 += "#EXT-X-MEDIA-SEQUENCE:" + (offset + seqIdx) + "\n";
+      let discInOffset = discOffset;
+      if (discInOffset == null) {
+        discInOffset = 0;
+      }
+      m3u8 += "#EXT-X-DISCONTINUITY-SEQUENCE:" + (discInOffset + this.discontinuities[seqIdx]) + "\n";
+      
+      if (!this.mediaSequences[seqIdx]) {
+        debug('No sequence idx: ' + seqIdx);
+        reject(m3u8);
+      }
+      if (!this.mediaSequences[seqIdx].segments[bw]) {
+        debug('No segments in media sequence idx: ' + seqIdx + ` bw: ` + bw);
+        debug(this.mediaSequences[seqIdx]);
+        reject(m3u8);
+      }
+      
+      let previousSegment = null;
+      for (let i = 0; i < this.mediaSequences[seqIdx].segments[bw].length; i++) {
+        const v = this.mediaSequences[seqIdx].segments[bw][i];
+        if (v) {
+          if (previousSegment != null) {
+            if (previousSegment.discontinuity && v.timelinePosition) {
+              const d = new Date(v.timelinePosition);
+              m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + d.toISOString() + "\n";
+            }
+          }
+          
+          if (!v.discontinuity) {
+            if(v.cue && v.cue.out) {
+              m3u8 += "#EXT-X-CUE-OUT:DURATION=" + v.cue.duration + "\n";
+            }
+            if (v.cue && v.cue.cont) {
+              m3u8 += "#EXT-X-CUE-OUT-CONT:" + v.cue.cont + "/" + v.cue.duration + "\n";
+            }
+            m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
+            m3u8 += v.uri + "\n";
+            if(v.cue && v.cue.in) {
+              m3u8 += "#EXT-X-CUE-IN" + "\n";
+            }
+          } else {
+            if (i != 0){
+              m3u8 += "#EXT-X-DISCONTINUITY\n";
+            }
+          }
+
+          previousSegment = v;
+        }
+      }
+
+      if(m3u8) {
+        resolve(m3u8);
+      } else {
+        debug('No m3u8!');
+        reject(m3u8);
+      }
+    });
+  }
+
   getLiveMediaAudioSequences(offset, audioGroupId, seqIdx, discOffset) {
     debug(`Get live audio media sequence [${seqIdx}] for audioGroupId=${audioGroupId}`);
     const targetDuration = this._determineTargetDuration(this.mediaSequences[seqIdx].audioSegments[audioGroupId]);
@@ -288,6 +363,61 @@ class HLSVod {
     }
 
     return m3u8;
+  }
+
+  getLiveMediaAudioSequencesWithPromise(offset, audioGroupId, seqIdx, discOffset) {
+    return new Promise((resolve, reject) => {
+      debug(`Get live audio media sequence [${seqIdx}] for audioGroupId=${audioGroupId}`);
+      const targetDuration = this._determineTargetDuration(this.mediaSequences[seqIdx].audioSegments[audioGroupId]);
+
+      let m3u8 = "#EXTM3U\n";
+      m3u8 += "#EXT-X-VERSION:3\n";
+      m3u8 += "#EXT-X-TARGETDURATION:" + targetDuration + "\n";
+      m3u8 += "#EXT-X-MEDIA-SEQUENCE:" + (offset + seqIdx) + "\n";
+      let discInOffset = discOffset;
+      if (discInOffset == null) {
+        discInOffset = 0;
+      }
+      m3u8 += "#EXT-X-DISCONTINUITY-SEQUENCE:" + (discInOffset + this.discontinuities[seqIdx]) + "\n";
+
+      let previousSegment = null;
+      for (let i = 0; i < this.mediaSequences[seqIdx].audioSegments[audioGroupId].length; i++) {
+        const v = this.mediaSequences[seqIdx].audioSegments[audioGroupId][i];
+        if (v) {
+          if (previousSegment != null) {
+            if (previousSegment.discontinuity && v.timelinePosition) {
+              const d = new Date(v.timelinePosition);
+              m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + d.toISOString() + "\n";
+            }
+          }
+          if (!v.discontinuity) {
+            if(v.cue && v.cue.out) {
+              m3u8 += "#EXT-X-CUE-OUT:DURATION=" + v.cue.duration + "\n";
+            }
+            if (v.cue && v.cue.cont) {
+              m3u8 += "#EXT-X-CUE-OUT-CONT:" + v.cue.cont + "/" + v.cue.duration + "\n";
+            }
+            m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
+            m3u8 += v.uri + "\n";
+            if(v.cue && v.cue.in) {
+              m3u8 += "#EXT-X-CUE-IN" + "\n";
+            }
+          } else {
+            if (i != 0){
+              m3u8 += "#EXT-X-DISCONTINUITY\n";
+            }
+          }
+          previousSegment = v;
+        }
+      }
+
+      if(m3u8) {
+        resolve(m3u8);
+      } else {
+        debug('No m3u8!');
+        reject(m3u8);
+      }
+    });
   }
 
   /**
