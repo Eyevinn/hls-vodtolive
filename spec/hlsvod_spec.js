@@ -6,6 +6,8 @@ const Readable = require('stream').Readable;
 describe("HLSVod standalone", () => {
   let mockMasterManifest;
   let mockMediaManifest;
+  let mockMasterManifest2;
+  let mockMediaManifest2;
 
   beforeEach(() => {
     mockMasterManifest = function() {
@@ -14,6 +16,14 @@ describe("HLSVod standalone", () => {
     
     mockMediaManifest = function(bandwidth) {
       return fs.createReadStream('testvectors/hls1/' + bandwidth + '.m3u8');
+    };
+
+    mockMasterManifest2 = function() {
+      return fs.createReadStream('testvectors/hls15/master.m3u8');
+    };
+    
+    mockMediaManifest2 = function(bandwidth) {
+      return fs.createReadStream('testvectors/hls15/index_' + bandwidth + '.m3u8');
     };
   });
 
@@ -41,6 +51,16 @@ describe("HLSVod standalone", () => {
     .then(() => {
       expect(mockVod.getBandwidths().length).toBe(4);
       expect(mockVod.getBandwidths()).toEqual(['1497000', '2497000', '3496000', '4497000']);
+      done();
+    });
+  });
+
+  it("can handle VOD without resolution specified in master manifest", done => {
+    mockVod = new HLSVod('http://mock.com/mock.m3u8');
+    mockVod.load(mockMasterManifest2, mockMediaManifest2)
+    .then(() => {
+      expect(mockVod.getBandwidths().length).toBe(1);
+      expect(mockVod.getBandwidths()).toEqual(['1010931']);
       done();
     });
   });
@@ -694,7 +714,7 @@ describe("HLSVod with separate audio variants", () => {
     };
     mockAudioManifest = function(groupId) {
       const fname = {
-        'audio-aacl-96': 'audio-96000.m3u8'
+        "audio-aacl-96": 'audio-96000.m3u8'
       };
       return fs.createReadStream('testvectors/hls4/' + fname[groupId]);
     }

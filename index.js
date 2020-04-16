@@ -66,13 +66,24 @@ class HLSVod {
           const streamItem = m3u.items.StreamItem[i];
           let mediaManifestUrl = url.resolve(baseUrl, streamItem.properties.uri);
           
-          if (streamItem.attributes.attributes['resolution']) {
-            this.usageProfile.push({
-              bw: streamItem.attributes.attributes['bandwidth'],
-              codecs: streamItem.attributes.attributes['codecs'],
-              resolution: streamItem.attributes.attributes['resolution'][0] + 'x' + streamItem.attributes.attributes['resolution'][1]
-            });
-            mediaManifestPromises.push(this._loadMediaManifest(mediaManifestUrl, streamItem.attributes.attributes['bandwidth'], _injectMediaManifest));
+          if (streamItem.get("bandwidth")) {
+            let usageProfile = {
+              bw: streamItem.get("bandwidth")
+            };
+            if (streamItem.get("resolution")) {
+              usageProfile.resolution = streamItem.get("resolution")[0] + "x" + streamItem.get("resolution")[1];
+            }
+            if (streamItem.get("codecs")) {
+              usageProfile.codecs = streamItem.get("codecs");
+            }
+            this.usageProfile.push(usageProfile);
+
+            // Do not add if it is a variant included in an audio group as it will be loaded and parsed seperate
+            if (!m3u.items.MediaItem.find(mediaItem => mediaItem.get("type") === "AUDIO" && mediaItem.get("uri") == streamItem.get("uri"))) {
+              if (streamItem.get("codecs") !== "mp4a.40.2") {
+                mediaManifestPromises.push(this._loadMediaManifest(mediaManifestUrl, streamItem.get("bandwidth"), _injectMediaManifest));
+              }
+            }
           }
           if (streamItem.attributes.attributes['audio']) {
             let audioGroupId = streamItem.attributes.attributes['audio'];
