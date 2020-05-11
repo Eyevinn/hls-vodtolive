@@ -17,7 +17,7 @@ class HLSVod {
     this.segments = {};
     this.audioSegments = {};
     this.mediaSequences = [];
-    this.SEQUENCE_DURATION = 60;
+    this.SEQUENCE_DURATION = process.env.SEQUENCE_DURATION ? process.env.SEQUENCE_DURATION : 60; 
     this.targetDuration = {};
     this.targetAudioDuration = {};
     this.previousVod = null;
