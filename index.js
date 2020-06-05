@@ -206,7 +206,7 @@ class HLSVod {
     const targetDuration = this._determineTargetDuration(this.mediaSequences[seqIdx].segments[bw]);
     let m3u8 = "#EXTM3U\n";
     m3u8 += "#EXT-X-VERSION:6\n";
-	m3u8 += "#EXT-X-KEY:METHOD=NONE\n";
+	m3u8 += "#EXT-X-INDEPENDENT-SEGMENTS\n";
     m3u8 += "#EXT-X-TARGETDURATION:" + targetDuration + "\n";
     m3u8 += "#EXT-X-MEDIA-SEQUENCE:" + (offset + seqIdx) + "\n";
     let discInOffset = discOffset;
