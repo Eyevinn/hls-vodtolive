@@ -17,7 +17,7 @@ class HLSVod {
     this.segments = {};
     this.audioSegments = {};
     this.mediaSequences = [];
-    this.SEQUENCE_DURATION = 60;
+    this.SEQUENCE_DURATION = process.env.SEQUENCE_DURATION ? process.env.SEQUENCE_DURATION : 60; 
     this.targetDuration = {};
     this.targetAudioDuration = {};
     this.previousVod = null;
@@ -205,7 +205,8 @@ class HLSVod {
     debug(`Get live media sequence [${seqIdx}] for bw=${bw} (requested bw ${bandwidth})`);
     const targetDuration = this._determineTargetDuration(this.mediaSequences[seqIdx].segments[bw]);
     let m3u8 = "#EXTM3U\n";
-    m3u8 += "#EXT-X-VERSION:3\n";
+    m3u8 += "#EXT-X-VERSION:6\n";
+	m3u8 += "#EXT-X-KEY:METHOD=NONE\n";
     m3u8 += "#EXT-X-TARGETDURATION:" + targetDuration + "\n";
     m3u8 += "#EXT-X-MEDIA-SEQUENCE:" + (offset + seqIdx) + "\n";
     let discInOffset = discOffset;
