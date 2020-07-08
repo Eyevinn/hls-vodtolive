@@ -206,7 +206,7 @@ class HLSVod {
     const targetDuration = this._determineTargetDuration(this.mediaSequences[seqIdx].segments[bw]);
     let m3u8 = "#EXTM3U\n";
     m3u8 += "#EXT-X-VERSION:6\n";
-	m3u8 += "#EXT-X-INDEPENDENT-SEGMENTS\n";
+    m3u8 += "#EXT-X-INDEPENDENT-SEGMENTS\n";
     m3u8 += "#EXT-X-TARGETDURATION:" + targetDuration + "\n";
     m3u8 += "#EXT-X-MEDIA-SEQUENCE:" + (offset + seqIdx) + "\n";
     let discInOffset = discOffset;
@@ -238,6 +238,9 @@ class HLSVod {
         
         if (!v.discontinuity) {
           if(v.cue && v.cue.out) {
+            if (v.cue.assetData) {
+              m3u8 += '#EXT-X-ASSET:' + v.cue.assetData + "\n";
+            }
             m3u8 += "#EXT-X-CUE-OUT:DURATION=" + v.cue.duration + "\n";
           }
           if (v.cue && v.cue.cont) {
@@ -245,7 +248,8 @@ class HLSVod {
           }
           m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
           m3u8 += v.uri + "\n";
-          if(v.cue && v.cue.in) {
+
+          if (v.cue && v.cue.in) {
             m3u8 += "#EXT-X-CUE-IN" + "\n";
           }
         } else {
@@ -632,6 +636,7 @@ class HLSVod {
               this.segments[bw].pop(); // Remove extra disc
               i--;
             } else {
+              let assetData = playlistItem.get('assetdata');
               let cueOut = playlistItem.get('cueout');
               let cueIn = playlistItem.get('cuein');
               let cueOutCont = playlistItem.get('cont-offset');
@@ -641,11 +646,12 @@ class HLSVod {
               } else if (typeof cueOutCont !== 'undefined') {
                 duration = playlistItem.get('cont-dur');
               }
-              let cue = (cueOut || cueIn || cueOutCont) ? {
+              let cue = (cueOut || cueIn || cueOutCont || assetData) ? {
                 out: (typeof cueOut !== 'undefined'),
                 cont: (typeof cueOutCont !== 'undefined') ? cueOutCont : null,
                 in: cueIn ? true : false,
-                duration: duration
+                duration: duration,
+                assetData: (typeof assetData !== 'undefined') ? assetData: null
               } : null;
               let q = {
                 duration: playlistItem.properties.duration,
