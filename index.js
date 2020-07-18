@@ -17,7 +17,7 @@ class HLSVod {
     this.segments = {};
     this.audioSegments = {};
     this.mediaSequences = [];
-    this.SEQUENCE_DURATION = process.env.SEQUENCE_DURATION ? process.env.SEQUENCE_DURATION : 60; 
+    this.SEQUENCE_DURATION = process.env.SEQUENCE_DURATION ? process.env.SEQUENCE_DURATION : 60;
     this.targetDuration = {};
     this.targetAudioDuration = {};
     this.previousVod = null;
@@ -65,7 +65,7 @@ class HLSVod {
         for (let i = 0; i < m3u.items.StreamItem.length; i++) {
           const streamItem = m3u.items.StreamItem[i];
           let mediaManifestUrl = url.resolve(baseUrl, streamItem.properties.uri);
-          
+
           if (streamItem.get("bandwidth")) {
             let usageProfile = {
               bw: streamItem.get("bandwidth")
@@ -119,7 +119,7 @@ class HLSVod {
       if (!_injectMasterManifest) {
         fetch(this.masterManifestUri)
         .then(res => {
-          res.body.pipe(parser);          
+          res.body.pipe(parser);
         })
         .catch(reject);
       } else {
@@ -131,7 +131,7 @@ class HLSVod {
   /**
    * Load and parse the HLS VOD where the first media sequences
    * contains the end sequences of the previous VOD
-   * 
+   *
    * @param {HLSVod} previousVod - the previous VOD to concatenate to
    */
   loadAfter(previousVod, _injectMasterManifest, _injectMediaManifest, _injectAudioManifest) {
@@ -144,7 +144,7 @@ class HLSVod {
         .catch(reject);
       } catch (exc) {
         reject(exc);
-      }  
+      }
     });
   }
 
@@ -157,7 +157,7 @@ class HLSVod {
 
   /**
    * Get all segments (duration, uri) for a specific media sequence
-   * 
+   *
    * @param {number} seqIdx - media sequence index (first is 0)
    */
   getLiveMediaSequenceSegments(seqIdx) {
@@ -166,7 +166,7 @@ class HLSVod {
 
   /**
    * Get all audio segments (duration, uri) for a specific media sequence
-   * 
+   *
    * @param {string} audioGroupId - audio group Id
    * @param {number} seqIdx - media sequence index (first is 0)
    */
@@ -194,10 +194,10 @@ class HLSVod {
 
   /**
    * Get the HLS live media sequence for a specific media sequence and bandwidth
-   * 
+   *
    * @param {number} offset - add this offset to all media sequences in the EXT-X-MEDIA-SEQUENCE tag
    * @param {string} bandwidth
-   * @param {number} seqIdx 
+   * @param {number} seqIdx
    * @param {number} discOffset - add this offset to all discontinuity sequences in the EXT-X-DISCONTINUITY-SEQUENCE tag
    */
   getLiveMediaSequences(offset, bandwidth, seqIdx, discOffset) {
@@ -214,7 +214,7 @@ class HLSVod {
       discInOffset = 0;
     }
     m3u8 += "#EXT-X-DISCONTINUITY-SEQUENCE:" + (discInOffset + this.discontinuities[seqIdx]) + "\n";
-    
+
     if (!this.mediaSequences[seqIdx]) {
       debug('No sequence idx: ' + seqIdx);
       return m3u8;
@@ -224,7 +224,7 @@ class HLSVod {
       debug(this.mediaSequences[seqIdx]);
       return m3u8;
     }
-    
+
     let previousSegment = null;
     for (let i = 0; i < this.mediaSequences[seqIdx].segments[bw].length; i++) {
       const v = this.mediaSequences[seqIdx].segments[bw][i];
@@ -235,7 +235,7 @@ class HLSVod {
             m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + d.toISOString() + "\n";
           }
         }
-        
+
         if (!v.discontinuity) {
           if(v.cue && v.cue.out) {
             if (v.cue.assetData) {
@@ -336,7 +336,7 @@ class HLSVod {
     for (let i = 0; i < bandwidths.length; i++) {
       const bw = bandwidths[i];
       const lastMediaSequence = this.previousVod.getLiveMediaSequenceSegments(previousVodSeqCount - 1)[bw];
-      if (!lastMediaSequence) {
+      if (!lastMediaSequence || lastMediaSequence === undefined) {
         // should not happen, debug
         console.error(`Failed to get lastMediaSequence: previousVodSeqCount=${previousVodSeqCount}, bw=${bw}`);
         console.error(this.previousVod.getLiveMediaSequenceSegments(previousVodSeqCount - 1));
@@ -344,14 +344,16 @@ class HLSVod {
       if (!this.segments[bw]) {
         this.segments[bw] = [];
       }
-      for(let idx = 1; idx < lastMediaSequence.length; idx++) {
-        let q = lastMediaSequence[idx];
-        if (!q) {
-          // should not happen, debug
-          console.error(`Failed to get segment from lastMediaSequence[${idx}]`);
-          console.error(lastMediaSequence);
+      if (lastMediaSequence) {
+        for (let idx = 1; idx < lastMediaSequence.length; idx++) {
+          let q = lastMediaSequence[idx];
+          if (!q) {
+            // should not happen, debug
+            console.error(`Failed to get segment from lastMediaSequence[${idx}]`);
+            console.error(lastMediaSequence);
+          }
+          this.segments[bw].push(q);
         }
-        this.segments[bw].push(q);
       }
       const lastSeg = this.segments[bw][this.segments[bw].length - 1];
       if (lastSeg && lastSeg.timelinePosition) {
@@ -390,7 +392,7 @@ class HLSVod {
           toRemove.push(bw);
         }
       });
-      toRemove.map(bw => { 
+      toRemove.map(bw => {
         delete this.segments[bw];
       });
       resolve();
@@ -475,7 +477,7 @@ class HLSVod {
           segIdx = segOffset;
         }
       }
-      
+
       if (duration < this.SEQUENCE_DURATION) {
         // We are out of segments but have not reached the full duration of a sequence
         duration = 0;
@@ -539,7 +541,7 @@ class HLSVod {
       } else {
         if (!this.segments[bw]) {
           this.segments[bw] = [];
-        } 
+        }
       }
       let timelinePosition = 0;
 
@@ -548,7 +550,7 @@ class HLSVod {
           let position = 0;
           let nextSplicePosition = null;
           let spliceIdx = 0;
-          
+
           // Remove segments in the beginning if we have a start time offset
           if (this.startTimeOffset != null) {
             let remain = this.startTimeOffset;
@@ -579,7 +581,7 @@ class HLSVod {
             if (m) {
               baseUrl = m[1] + '/';
             }
-            
+
             if (playlistItem.properties.uri.match('^http')) {
               segmentUri = playlistItem.properties.uri;
             } else {
@@ -599,7 +601,7 @@ class HLSVod {
                 debug(`Inserting discontinuity at ${bw}:${position} (${i}/${m3u.items.PlaylistItem.length})`);
                 this.segments[bw].push({
                   discontinuity: true
-                });                
+                });
               }
               if (this.splices[spliceIdx].segments[spliceBw]) {
                 debug(`Inserting ${this.splices[spliceIdx].segments[spliceBw].length} ad segments`);
@@ -618,7 +620,7 @@ class HLSVod {
                 if (i != m3u.items.PlaylistItem.length - 1) {
                   // Only insert discontinuity after ad segments if this break is not at the end
                   // of the segment list
-                  debug(`Inserting discontinuity after ad segments`);                  
+                  debug(`Inserting discontinuity after ad segments`);
                   this.segments[bw].push({
                     discontinuity: true
                   });
@@ -693,7 +695,7 @@ class HLSVod {
 
       parser.on('m3u', m3u => {
         if (this.audioSegments[groupId]) {
-          
+
           for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
             const playlistItem = m3u.items.PlaylistItem[i];
             let segmentUri;
@@ -768,7 +770,7 @@ class HLSVod {
       }
     }
     debug('No match found - using fallback');
-    return availableBandwidths[availableBandwidths.length - 1];    
+    return availableBandwidths[availableBandwidths.length - 1];
   }
 
   _getNearestBandwidthForSplice(splice, bandwidth) {
@@ -790,7 +792,7 @@ class HLSVod {
         return availableBandwidths[i];
       }
     }
-    return availableBandwidths[availableBandwidths.length - 1];    
+    return availableBandwidths[availableBandwidths.length - 1];
   }
 
   _determineTargetDuration(segments) {
