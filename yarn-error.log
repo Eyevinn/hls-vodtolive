@@ -1,0 +1,73 @@
+Arguments:
+  /Users/pcedrowski/.nvm/versions/node/v14.8.0/bin/node /Users/pcedrowski/.nvm/versions/node/v14.8.0/bin/yarn
+
+PATH:
+  /Users/pcedrowski/.nvm/versions/node/v14.8.0/bin:/Users/pcedrowski/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/pcedrowski/Development/inlet/hls-vodtolive/node_modules/.bin
+
+Yarn version:
+  1.22.4
+
+Node version:
+  14.8.0
+
+Platform:
+  darwin x64
+
+Trace:
+  SyntaxError: /Users/pcedrowski/Development/inlet/hls-vodtolive/package.json: Unexpected token ] in JSON at position 703
+      at JSON.parse (<anonymous>)
+      at /Users/pcedrowski/.nvm/versions/node/v14.8.0/lib/node_modules/yarn/lib/cli.js:1625:59
+      at Generator.next (<anonymous>)
+      at step (/Users/pcedrowski/.nvm/versions/node/v14.8.0/lib/node_modules/yarn/lib/cli.js:310:30)
+      at /Users/pcedrowski/.nvm/versions/node/v14.8.0/lib/node_modules/yarn/lib/cli.js:321:13
+
+npm manifest:
+  {
+    "name": "@inlet-media/hls-live",
+    "version": "1.0.0",
+    "description": "NPM library to generate HLS Live from HLS VOD",
+    "main": "index.js",
+    "scripts": {
+      "prebuild": "yarn test",
+      "build": "yarn doc",
+      "version": "yarn build && git add API.md",
+      "test": "NODE_ENV=test jest",
+      "test:cov": "COVERAGE=true NODE_ENV=test jest",
+      "lint": "eslint .",
+      "lint:fix": "eslint . --fix",
+      "codeclimate": "docker run --interactive --tty --rm --env CODECLIMATE_CODE=$(pwd) --volume $(pwd):/code --volume /var/run/docker.sock:/var/run/docker.sock --volume /tmp/cc:/tmp/cc codeclimate/codeclimate analyze"
+    },
+    "author": "Inlet Media",
+    "contributors": [
+      "Patrick Cedrowski",
+    ],
+    "keywords": [
+      "hls",
+      "m3u8",
+      "hls-live"
+    ],
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/inlet-media/hls-live"
+    },
+    "bugs": {
+      "url": "https://github.com/inlet-media/hls-live/issues"
+    },
+    "license": "MIT",
+    "devDependencies": {
+      "jsdoc-to-markdown": "^5.0.3",
+      "minimist": ">=0.2.1"
+    },
+    "dependencies": {
+      "@eyevinn/m3u8": "^0.1.2",
+      "@inlet-media/eslint-config-base": "^0.1.6",
+      "@inlet-media/logger": "^0.1.6",
+      "node-fetch": "^2.6.0"
+    }
+  }
+
+yarn manifest:
+  No manifest
+
+Lockfile:
+  No lockfile

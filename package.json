@@ -1,46 +1,42 @@
 {
-  "name": "@eyevinn/hls-vodtolive",
-  "version": "1.1.2",
+  "name": "@inlet-media/hls-live",
+  "version": "1.0.0",
   "description": "NPM library to generate HLS Live from HLS VOD",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
-    "test": "$(npm bin)/jasmine",
-    "doc": "$(npm bin)/jsdoc2md index.js > API.md",
-    "prebuild": "npm test",
-    "build": "npm run doc",
-    "version": "npm run build && git add API.md",
-    "postversion": "git push && git push --tags",
-    "coverage": "nyc npm test && nyc report",
-    "coveralls": "nyc npm test && nyc report --reporter=text-lcov | coveralls"
+    "prebuild": "yarn test",
+    "build": "yarn doc",
+    "version": "yarn build && git add API.md",
+    "test": "NODE_ENV=test jest",
+    "test:cov": "COVERAGE=true NODE_ENV=test jest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "codeclimate": "docker run --interactive --tty --rm --env CODECLIMATE_CODE=$(pwd) --volume $(pwd):/code --volume /var/run/docker.sock:/var/run/docker.sock --volume /tmp/cc:/tmp/cc codeclimate/codeclimate analyze"
   },
-  "author": "Eyevinn Technology <work@eyevinn.se>",
+  "author": "Inlet Media",
   "contributors": [
-    "Jonas Rydholm Birmé <jonas.birme@eyevinn.se> (Eyevinn Technology AB)",
-    "Alan Allard <alan.allard@eyevinn.se> (Eyevinn Technology AB)"
+    "Patrick Cedrowski"
   ],
   "keywords": [
     "hls",
     "m3u8",
-    "vodtolive"
+    "hls-live"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Eyevinn/hls-vodtolive"
+    "url": "https://github.com/inlet-media/hls-live"
   },
   "bugs": {
-    "url": "https://github.com/Eyevinn/hls-vodtolive/issues"
+    "url": "https://github.com/inlet-media/hls-live/issues"
   },
   "license": "MIT",
   "devDependencies": {
-    "coveralls": "^3.0.11",
-    "jasmine": "^3.5.0",
-    "jsdoc-to-markdown": "^5.0.3",
-    "nyc": "^15.0.1",
     "minimist": ">=0.2.1"
   },
   "dependencies": {
-    "@eyevinn/m3u8": "^0.1.1",
-    "debug": "^4.1.1",
+    "@eyevinn/m3u8": "^0.1.2",
+    "@inlet-media/eslint-config-base": "^0.1.6",
+    "@inlet-media/logger": "^0.1.6",
     "node-fetch": "^2.6.0"
   }
 }

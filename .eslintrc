@@ -1,0 +1,3 @@
+{
+  "extends": "@inlet-media/eslint-config-base"
+}

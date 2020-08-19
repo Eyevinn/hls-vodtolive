@@ -1,5 +1,5 @@
 name: Node CI
-  
+
 on: [push]
 
 jobs:
@@ -9,7 +9,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [10.x, 12.x]
+        node-version: [14.x]
 
     steps:
     - uses: actions/checkout@v1
@@ -17,12 +17,16 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
-    - name: npm install, build, and test
+    - name: Setup ENV
       run: |
-        npm ci
-        npm run build --if-present
-        npm test
-        npm run coveralls
-      env:
-        CI: true
-        COVERALLS_REPO_TOKEN: ${{secrets.COVERALLS_REPO_TOKEN}}
+        echo "registry=https://registry.npmjs.org/" >> .npmrc
+        echo "@inlet-media:registry=https://npm.pkg.github.com/" >> .npmrc
+        echo "//npm.pkg.github.com/:_authToken=${{ secrets.PACKAGES_TOKEN }}" >> .npmrc
+
+        echo "registry=https://registry.npmjs.org/" >> .yarnrc
+        echo "@inlet-media:registry=https://npm.pkg.github.com/" >> .yarnrc
+
+    - name: Build
+      run: |
+        yarn
+        yarn build
