@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/hls-vodtolive.iml" filepath="$PROJECT_DIR$/.idea/hls-vodtolive.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/hls-live.iml" filepath="$PROJECT_DIR$/.idea/hls-live.iml" />
     </modules>
   </component>
 </project>

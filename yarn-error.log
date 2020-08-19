@@ -26,7 +26,7 @@ npm manifest:
     "name": "@inlet-media/hls-live",
     "version": "1.0.0",
     "description": "NPM library to generate HLS Live from HLS VOD",
-    "main": "index.js",
+    "main": "_old_index.js",
     "scripts": {
       "prebuild": "yarn test",
       "build": "yarn doc",

@@ -86,7 +86,7 @@ export default class HLSVod {
             // Do not add if it is a variant included in an audio group as it will be loaded and parsed seperate
             if (!m3u.items.MediaItem.find(mediaItem => mediaItem.get("type") === "AUDIO" && mediaItem.get("uri") == streamItem.get("uri"))) {
               if (streamItem.get("codecs") !== "mp4a.40.2") {
-                mediaManifestPromises.push(this._loadMediaManifest(mediaManifestUrl, streamItem.get("bandwidth"), _injectMediaManifest));
+                mediaManifestPromises.push(this._loadMediaManifest(mediaManifestUrl, streamItem.get("bandwidth")));
               }
             }
           }
@@ -121,15 +121,11 @@ export default class HLSVod {
         reject(err);
       });
 
-      if (!_injectMasterManifest) {
-        fetch(this.masterManifestUri)
-        .then(res => {
-          res.body.pipe(parser);
-        })
-        .catch(reject);
-      } else {
-        _injectMasterManifest().pipe(parser);
-      }
+      fetch(this.masterManifestUri)
+      .then(res => {
+        res.body.pipe(parser);
+      })
+      .catch(reject);
     });
   }
 

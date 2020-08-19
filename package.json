@@ -31,7 +31,17 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "minimist": ">=0.2.1"
+    "@babel/cli": "^7.10.1",
+    "@babel/core": "^7.9.0",
+    "@babel/plugin-proposal-class-properties": "^7.10.1",
+    "@babel/plugin-proposal-object-rest-spread": "^7.9.5",
+    "@babel/plugin-proposal-optional-chaining": "^7.9.0",
+    "@babel/preset-env": "^7.9.5",
+    "@babel/register": "^7.9.0",
+    "babel-jest": "^25.4.0",
+    "husky": "^4.2.5",
+    "jest": "^26.4.0",
+    "supertest": "latest"
   },
   "dependencies": {
     "@eyevinn/m3u8": "^0.1.2",
