@@ -1314,3 +1314,58 @@ describe("HLSVod with mixed target durations", () => {
     });
   });
 });
+
+describe("HLSVod serializing", () => {
+  let mockMasterManifest;
+  let mockMediaManifest;
+
+  beforeEach(() => {
+    mockMasterManifest = function() {
+      return fs.createReadStream('testvectors/hls1/master.m3u8');
+    };
+    
+    mockMediaManifest = function(bandwidth) {
+      return fs.createReadStream('testvectors/hls1/' + bandwidth + '.m3u8');
+    };
+  });
+
+  it("can be serialized", done => {
+    mockVod = new HLSVod('http://mock.com/mock.m3u8');
+    mockVod.load(mockMasterManifest, mockMediaManifest)
+    .then(() => {
+      expect(mockVod.getLiveMediaSequencesCount()).toBe(290);
+      const serialized = mockVod.toJSON();
+      let deserializedVod = new HLSVod();
+      deserializedVod.fromJSON(serialized);
+      expect(deserializedVod.getLiveMediaSequencesCount()).toBe(290);
+      done();
+    });
+  });
+
+  it("can handle a sequence of VODs", done => {
+    mockVod = new HLSVod('http://mock.com/mock.m3u8');
+    mockVod2 = new HLSVod('http://mock.com/mock2.m3u8');
+    mockVod.load(mockMasterManifest, mockMediaManifest)
+    .then(() => {
+      return mockVod2.loadAfter(mockVod, mockMasterManifest, mockMediaManifest);
+    }).then(() => {
+      let seqSegments = mockVod2.getLiveMediaSequenceSegments(0);
+      expect(seqSegments['2497000'][0].uri).toEqual("https://tv4play-i.akamaihd.net/i/mp4root/2018-01-26/pid200032972(3953564_,T3MP445,T3MP435,T3MP425,T3MP415,T3MP48,T3MP43,T3MP4130,).mp4.csmil/segment291_2_av.ts");
+      expect(seqSegments['1497000'][0].uri).toEqual("https://tv4play-i.akamaihd.net/i/mp4root/2018-01-26/pid200032972(3953564_,T3MP445,T3MP435,T3MP425,T3MP415,T3MP48,T3MP43,T3MP4130,).mp4.csmil/segment291_3_av.ts");
+      expect(seqSegments['2497000'][[seqSegments['2497000'].length - 1 - 1]].discontinuity).toBe(true); // Discontinuity
+      expect(seqSegments['2497000'][[seqSegments['2497000'].length - 1]].uri).toEqual("https://tv4play-i.akamaihd.net/i/mp4root/2018-01-26/pid200032972(3953564_,T3MP445,T3MP435,T3MP425,T3MP415,T3MP48,T3MP43,T3MP4130,).mp4.csmil/segment1_2_av.ts");
+
+      const serialized = mockVod2.toJSON();
+      let deserializedVod = new HLSVod();
+      deserializedVod.fromJSON(serialized);
+      seqSegments = deserializedVod.getLiveMediaSequenceSegments(0);
+      expect(seqSegments['2497000'][0].uri).toEqual("https://tv4play-i.akamaihd.net/i/mp4root/2018-01-26/pid200032972(3953564_,T3MP445,T3MP435,T3MP425,T3MP415,T3MP48,T3MP43,T3MP4130,).mp4.csmil/segment291_2_av.ts");
+      expect(seqSegments['1497000'][0].uri).toEqual("https://tv4play-i.akamaihd.net/i/mp4root/2018-01-26/pid200032972(3953564_,T3MP445,T3MP435,T3MP425,T3MP415,T3MP48,T3MP43,T3MP4130,).mp4.csmil/segment291_3_av.ts");
+      expect(seqSegments['2497000'][[seqSegments['2497000'].length - 1 - 1]].discontinuity).toBe(true); // Discontinuity
+      expect(seqSegments['2497000'][[seqSegments['2497000'].length - 1]].uri).toEqual("https://tv4play-i.akamaihd.net/i/mp4root/2018-01-26/pid200032972(3953564_,T3MP445,T3MP435,T3MP425,T3MP415,T3MP48,T3MP43,T3MP4130,).mp4.csmil/segment1_2_av.ts");
+
+      done();
+    });
+
+  });
+});

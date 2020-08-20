@@ -1,6 +1,7 @@
 const m3u8 = require('@eyevinn/m3u8');
 const fetch = require('node-fetch');
 const url = require('url');
+const { deserialize } = require('v8');
 const debug = require('debug')('hls-vodtolive');
 const verbose = require('debug')('hls-vodtolive-verbose');
 
@@ -29,6 +30,52 @@ class HLSVod {
     this.usageProfileMapping = null;
     this.usageProfileMappingRev = null;
     this.discontinuities = {};
+  }
+
+  toJSON() {
+    const serialized = {
+      masterManifestUri: this.masterManifestUri,
+      segments: this.segments,
+      audioSegments: this.audioSegments,
+      mediaSequences: this.mediaSequences,
+      SEQUENCE_DURATION: this.SEQUENCE_DURATION,
+      targetDuration: this.targetDuration,
+      targetAudioDuration: this.targetAudioDuration,
+      previousVod: this.previousVod ? this.previousVod.toJSON() : null,
+      usageProfile: this.usageProfile,
+      segmentsInitiated: this.segmentsInitiated,
+      splices: this.splices,
+      timeOffset: this.timeOffset,
+      startTimeOffset: this.startTimeOffset,
+      usageProfileMapping: this.usageProfileMapping,
+      usageProfileMappingRev: this.usageProfileMappingRev,
+      discontinuities: this.discontinuities
+    };
+    return JSON.stringify(serialized);
+  }
+
+  fromJSON(serialized) {
+    const de = JSON.parse(serialized);
+    this.masterManifestUri = de.masterManifestUri;
+    this.segments = de.segments;
+    this.audioSegments = de.audioSegments;
+    this.mediaSequences = de.mediaSequences;
+    this.SEQUENCE_DURATION = de.SEQUENCE_DURATION;
+    this.targetDuration = de.targetDuration;
+    this.targetAudioDuration = de.targetAudioDuration;
+    const prevVod = new HLSVod();
+    this.previousVod = null;
+    if (de.previousVod) {
+      this.previousVod = prevVod.fromJSON(de.previousVod);
+    }
+    this.usageProfile = de.usageProfile;
+    this.segmentsInitiated = de.segmentsInitiated;
+    this.splices = de.splices;
+    this.timeOffset = de.timeOffset;
+    this.startTimeOffset = de.startTimeOffset;
+    this.usageProfileMapping = de.usageProfileMapping;
+    this.usageProfileMappingRev = de.usageProfileMappingRev;
+    this.discontinuities = de.discontinuities;
   }
 
   /**
