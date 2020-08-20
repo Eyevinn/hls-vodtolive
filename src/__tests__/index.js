@@ -9,23 +9,38 @@ describe("HLSVod standalone", () => {
   let mockMasterManifest2;
   let mockMediaManifest2;
 
+  beforeEach(() => {
+    mockMasterManifest = function() {
+      return fs.createReadStream('testvectors/hls1/master.m3u8');
+    };
 
-  it("return the correct vod URI", done => {
-    const mockVod = new HLSVod('http://mock.com/mock.m3u8');
-    mockVod.load(mockMasterManifest, mockMediaManifest)
-        .then(() => {
-          expect(mockVod.getVodUri()).toBe('http://mock.com/mock.m3u8');
-          done();
-        });
+    mockMediaManifest = function(bandwidth) {
+      return fs.createReadStream('testvectors/hls1/' + bandwidth + '.m3u8');
+    };
+
+    mockMasterManifest2 = function() {
+      return fs.createReadStream('testvectors/hls15/master.m3u8');
+    };
+
+    mockMediaManifest2 = function(bandwidth) {
+      return fs.createReadStream('testvectors/hls15/index_' + bandwidth + '.m3u8');
+    };
   });
 
-  it("return the correct vod URI", done => {
-    const hlsVod = new HLSVod('https://inlet-streams.s3.amazonaws.com/beacon/Bring_You_Back/playlist.m3u8');
-    hlsVod.load()
-        .then(() => {
-          expect(mockVod.getVodUri()).toBe('https://inlet-streams.s3.amazonaws.com/beacon/Bring_You_Back/playlist.m3u8');
-          done();
-        });
+
+  it("load a off-source HLS video correctly", async done => {
+    const mockVod = new HLSVod('https://inlet-streams.s3.amazonaws.com/beacon/Bring_You_Back/playlist.m3u8');
+    await mockVod.load()
+    expect(mockVod.getVodUri()).toBe('https://inlet-streams.s3.amazonaws.com/beacon/Bring_You_Back/playlist.m3u8');
+    done();
+  });
+
+  it("load a off-source HLS video correctly", async done => {
+    const mockVod = new HLSVod('https://inlet-streams.s3.amazonaws.com/beacon/Bring_You_Back/playlist.m3u8');
+    await mockVod.load()
+
+    expect(mockVod.getLiveMediaSequencesCount()).toBe(51);
+    done();
   });
 
 });

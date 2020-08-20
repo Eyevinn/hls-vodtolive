@@ -522,7 +522,7 @@ export default class HLSVod {
     }
   }
 
-  _loadMediaManifest(mediaManifestUri, bandwidth, _injectMediaManifest) {
+  _loadMediaManifest(mediaManifestUri, bandwidth) {
     return new Promise((resolve, reject) => {
       const parser = m3u8.createStream();
       let bw = bandwidth;
@@ -670,15 +670,11 @@ export default class HLSVod {
         resolve();
       });
 
-      if (!_injectMediaManifest) {
-        fetch(mediaManifestUri)
-        .then(res => {
-          res.body.pipe(parser);
-        })
-        .catch(reject);
-      } else {
-        _injectMediaManifest(bandwidth).pipe(parser);
-      }
+      fetch(mediaManifestUri)
+      .then(res => {
+        res.body.pipe(parser);
+      })
+      .catch(reject);
     });
   }
 
