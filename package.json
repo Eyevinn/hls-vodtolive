@@ -39,7 +39,7 @@
     "minimist": ">=0.2.1"
   },
   "dependencies": {
-    "@eyevinn/m3u8": "https://github.com/craigmc-ottera/node-m3u8.git#feature/add_ext_x_asset_support",
+    "@eyevinn/m3u8": "^0.2.0",
     "debug": "^4.1.1",
     "node-fetch": "^2.6.0"
   }
