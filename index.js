@@ -166,7 +166,13 @@ class HLSVod {
       if (!_injectMasterManifest) {
         fetch(this.masterManifestUri)
         .then(res => {
-          res.body.pipe(parser);
+          if (res.status === 200) {
+	          res.body.pipe(parser);
+          }
+          else {
+          	throw new Error(res.status + ':: status code error trying to retrieve master manifest ' + masterManifestUri);
+          }  
+
         })
         .catch(reject);
       } else {
@@ -725,7 +731,12 @@ class HLSVod {
       if (!_injectMediaManifest) {
         fetch(mediaManifestUri)
         .then(res => {
-          res.body.pipe(parser);
+          if (res.status === 200) {
+	          res.body.pipe(parser);
+          }
+          else {
+          	throw new Error(res.status + ':: status code error trying to retrieve media manifest ' + mediaManifestUri);
+          }          
         })
         .catch(reject);
       } else {
@@ -776,6 +787,12 @@ class HLSVod {
       if (!_injectAudioManifest) {
         fetch(audioManifestUri)
         .then(res => {
+	      if (res.status === 200) {
+	          res.body.pipe(parser);
+          }
+          else {
+          	throw new Error(res.status + ':: status code error trying to retrieve audio manifest ' + audioManifestUri);
+          }  
           res.body.pipe(parser);
         })
         .catch(reject);
