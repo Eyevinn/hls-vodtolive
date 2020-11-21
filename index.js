@@ -30,6 +30,7 @@ class HLSVod {
     this.usageProfileMapping = null;
     this.usageProfileMappingRev = null;
     this.discontinuities = {};
+    this.rangeMetadata = null;
   }
 
   toJSON() {
@@ -202,6 +203,19 @@ class HLSVod {
   }
 
   /**
+   * Add metadata timed for this VOD
+   * 
+   * @param {key} key - EXT-X-DATERANGE attribute key
+   * @param {*} value 
+   */
+  addMetadata(key, value) {
+    if (this.rangeMetadata === null) {
+      this.rangeMetadata = {};
+    }
+    this.rangeMetadata[key] = value;
+  }
+
+  /**
    * Retrieve master manifest Uri for this VOD
    */
   getVodUri() {
@@ -290,6 +304,13 @@ class HLSVod {
         }
 
         if (!v.discontinuity) {
+          if (v.daterange) {
+            const dateRangeAttributes = Object.keys(v.daterange).map(key => {
+              return key.toUpperCase() + "=" + `"${v.daterange[key]}"`;
+            }).join(',');
+            m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
+          }
+  
           if(v.cue && v.cue.out) {
             if (v.cue.assetData) {
               m3u8 += '#EXT-X-ASSET:' + v.cue.assetData + "\n";
@@ -309,6 +330,12 @@ class HLSVod {
           if (i != 0){
             m3u8 += "#EXT-X-DISCONTINUITY\n";
           }
+          if (v.daterange) {
+            const dateRangeAttributes = Object.keys(v.daterange).map(key => {
+              return key.toUpperCase() + "=" + `"${v.daterange[key]}"`;
+            }).join(',');
+            m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
+          }  
         }
 
         previousSegment = v;
@@ -342,7 +369,14 @@ class HLSVod {
             m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + d.toISOString() + "\n";
           }
         }
+
         if (!v.discontinuity) {
+          if (v.daterange) {
+            const dateRangeAttributes = Object.keys(v.daterange).map(key => {
+              return key.toUpperCase() + "=" + `"${v.daterange[key]}"`;
+            }).join(',');
+            m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
+          }  
           if(v.cue && v.cue.out) {
             m3u8 += "#EXT-X-CUE-OUT:DURATION=" + v.cue.duration + "\n";
           }
@@ -358,6 +392,12 @@ class HLSVod {
           if (i != 0){
             m3u8 += "#EXT-X-DISCONTINUITY\n";
           }
+          if (v.daterange) {
+            const dateRangeAttributes = Object.keys(v.daterange).map(key => {
+              return key.toUpperCase() + "=" + `"${v.daterange[key]}"`;
+            }).join(',');
+            m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
+          }  
         }
         previousSegment = v;
       }
@@ -413,7 +453,8 @@ class HLSVod {
         this.timeOffset = lastSeg.timelinePosition + lastSeg.duration * 1000;
       }
       this.segments[bw].push({
-        discontinuity: true
+        discontinuity: true,
+        daterange: this.rangeMetadata ? this.rangeMetadata : null,
       });
     }
 
@@ -430,7 +471,8 @@ class HLSVod {
           this.audioSegments[audioGroupId].push(q);
         }
         this.audioSegments[audioGroupId].push({
-          discontinuity: true
+          discontinuity: true,
+          daterange: this.rangeMetadata ? this.rangeMetadata : null,
         });
       }
     }
@@ -713,6 +755,12 @@ class HLSVod {
                 uri: segmentUri,
                 timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                 cue: cue
+              }
+              if (this.segments[bw].length === 0) {
+                // Add daterange metadata if this is the first segment
+                if (this.rangeMetadata) {
+                  q['daterange'] = this.rangeMetadata;                  
+                }
               }
               this.segments[bw].push(q);
               position += q.duration;
