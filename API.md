@@ -7,6 +7,7 @@
     * [new HLSVod(vodManifestUri, splices, timeOffset, startTimeOffset)](#new_HLSVod_new)
     * [.load()](#HLSVod+load)
     * [.loadAfter(previousVod)](#HLSVod+loadAfter)
+    * [.addMetadata(key, value)](#HLSVod+addMetadata)
     * [.getVodUri()](#HLSVod+getVodUri)
     * [.getLiveMediaSequenceSegments(seqIdx)](#HLSVod+getLiveMediaSequenceSegments)
     * [.getLiveMediaSequenceAudioSegments(audioGroupId, seqIdx)](#HLSVod+getLiveMediaSequenceAudioSegments)
@@ -46,6 +47,18 @@ contains the end sequences of the previous VOD
 | Param | Type | Description |
 | --- | --- | --- |
 | previousVod | [<code>HLSVod</code>](#HLSVod) | the previous VOD to concatenate to |
+
+<a name="HLSVod+addMetadata"></a>
+
+### hlsVod.addMetadata(key, value)
+Add metadata timed for this VOD
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| key | <code>key</code> | EXT-X-DATERANGE attribute key |
+| value | <code>\*</code> |  |
 
 <a name="HLSVod+getVodUri"></a>
 
