@@ -1369,3 +1369,40 @@ describe("HLSVod serializing", () => {
 
   });
 });
+
+describe("HLSVod time metadata", () => {
+  let mockMasterManifest;
+  let mockMediaManifest;
+
+  beforeEach(() => {
+    mockMasterManifest = function() {
+      return fs.createReadStream('testvectors/hls1/master.m3u8');
+    };
+    
+    mockMediaManifest = function(bandwidth) {
+      return fs.createReadStream('testvectors/hls1/' + bandwidth + '.m3u8');
+    };
+  });
+
+  it("can handle inserting start-date and end-date for an asset", done => {
+    mockVod = new HLSVod('http://mock.com/mock.m3u8');
+    mockVod2 = new HLSVod('http://mock.com/mock2.m3u8');
+    mockVod.addMetadata('start-date', '2020-11-21T10:00:00.000Z');
+    mockVod.addMetadata('end-date', '2020-11-21T11:00:00.000Z');
+    mockVod2.addMetadata('start-date', '2020-11-21T10:00:00.000Z');
+    mockVod2.addMetadata('x-title', 'Hej hopp');
+    mockVod.load(mockMasterManifest, mockMediaManifest)
+    .then(() => {
+      return mockVod2.loadAfter(mockVod, mockMasterManifest, mockMediaManifest);
+    }).then(() => {
+      let m3u8 = mockVod.getLiveMediaSequences(0, '2497000', 0);
+      let m = m3u8.match('#EXT-X-DATERANGE:START-DATE="2020-11-21T10:00:00.000Z",END-DATE="2020-11-21T11:00:00.000Z"\n#EXTINF:9.000,');
+      expect(m).not.toBeNull();
+
+      m3u8 = mockVod2.getLiveMediaSequences(0, '2497000', 0);
+      m = m3u8.match('#EXT-X-DISCONTINUITY\n#EXT-X-DATERANGE:START-DATE="2020-11-21T10:00:00.000Z",X-TITLE="Hej hopp"');
+      expect(m).not.toBeNull();
+      done();
+    });
+  });
+});
