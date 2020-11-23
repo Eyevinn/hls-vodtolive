@@ -308,6 +308,9 @@ class HLSVod {
             const dateRangeAttributes = Object.keys(v.daterange).map(key => {
               return key.toUpperCase() + "=" + `"${v.daterange[key]}"`;
             }).join(',');
+            if (v.daterange['start-date']) {
+              m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + v.daterange['start-date'] + "\n";
+            }
             m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
           }
   
@@ -334,6 +337,9 @@ class HLSVod {
             const dateRangeAttributes = Object.keys(v.daterange).map(key => {
               return key.toUpperCase() + "=" + `"${v.daterange[key]}"`;
             }).join(',');
+            if (v.daterange['start-date']) {
+              m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + v.daterange['start-date'] + "\n";
+            }
             m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
           }  
         }
