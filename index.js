@@ -849,13 +849,11 @@ class HLSVod {
       if (!_injectAudioManifest) {
         fetch(audioManifestUri)
         .then(res => {
-	      if (res.status === 200) {
+          if (res.status === 200) {
 	          res.body.pipe(parser);
-          }
-          else {
+          } else {
           	throw new Error(res.status + ':: status code error trying to retrieve audio manifest ' + audioManifestUri);
-          }  
-          res.body.pipe(parser);
+          }
         })
         .catch(reject);
       } else {
