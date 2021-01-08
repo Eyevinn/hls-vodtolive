@@ -699,14 +699,33 @@ describe("HLSVod with not equal usage profiles", () => {
   it("can match a VOD with more ladder steps", done => {
     mockVod = new HLSVod('http://mock.com/abr3.m3u8');
     mockVod2 = new HLSVod('http://mock.com/abr4.m3u8');
-    mockVod.load(mockMasterManifest[3], mockMediaManifest[3])
+    // 1497k=768x432, 2497k=1024x576, 3000k=1024x576
+    mockVod.load(mockMasterManifest[3], mockMediaManifest[3]) 
     .then(() => {
-      return mockVod2.loadAfter(mockVod, mockMasterManifest[0], mockMediaManifest[0]);
+      // 1497k=768x432, 2497k=1024x576, 3496k=1280x720, 4497k=1280x720
+      return mockVod2.loadAfter(mockVod, mockMasterManifest[0], mockMediaManifest[0]); 
     }).then(() => {
       const bandwidths = Object.keys(mockVod2.getLiveMediaSequenceSegments(0));
       expect(bandwidths.length).toEqual(4);
+      expect(bandwidths.includes('4497000')).toBeTrue();
       done();
-    })
+    });
+  });
+
+  it("can match a VOD with fewer ladder steps", done => {
+    mockVod = new HLSVod('http://mock.com/abr4.m3u8');
+    mockVod2 = new HLSVod('http://mock.com/abr3.m3u8');
+    // 1497k=768x432, 2497k=1024x576, 3496k=1280x720, 4497k=1280x720
+    mockVod.load(mockMasterManifest[0], mockMediaManifest[0])
+    .then(() => {
+      // 1497k=768x432, 2497k=1024x576, 3000k=1024x576
+      return mockVod2.loadAfter(mockVod, mockMasterManifest[3], mockMediaManifest[3]);
+    }).then(() => {
+      const bandwidths = Object.keys(mockVod2.getLiveMediaSequenceSegments(0));
+      expect(bandwidths.length).toEqual(3);
+      expect(bandwidths.includes('4497000')).toBeFalse();
+      done();
+    });
   });
 });
 
