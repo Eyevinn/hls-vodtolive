@@ -703,8 +703,8 @@ describe("HLSVod with not equal usage profiles", () => {
     .then(() => {
       return mockVod2.loadAfter(mockVod, mockMasterManifest[0], mockMediaManifest[0]);
     }).then(() => {
-      //console.log(mockVod2.getLiveMediaSequenceSegments(0));
-      expect(Object.keys(mockVod2.getLiveMediaSequenceSegments(0)).length).toEqual(4);
+      const bandwidths = Object.keys(mockVod2.getLiveMediaSequenceSegments(0));
+      expect(bandwidths.length).toEqual(4);
       done();
     })
   });
