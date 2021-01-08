@@ -430,40 +430,52 @@ class HLSVod {
   // ----- PRIVATE METHODS BELOW ----
 
   _loadPrevious() {
-    const previousVodSeqCount = this.previousVod.getLiveMediaSequencesCount();
     const bandwidths = this.previousVod.getBandwidths();
     for (let i = 0; i < bandwidths.length; i++) {
       const bw = bandwidths[i];
-      const lastMediaSequence = this.previousVod.getLiveMediaSequenceSegments(previousVodSeqCount - 1)[bw];
-      if (!lastMediaSequence || lastMediaSequence === undefined) {
-        // should not happen, debug
-        console.error(`Failed to get lastMediaSequence: previousVodSeqCount=${previousVodSeqCount}, bw=${bw}`);
-        console.error(this.previousVod.getLiveMediaSequenceSegments(previousVodSeqCount - 1));
-      }
-      if (!this.segments[bw]) {
-        this.segments[bw] = [];
-      }
-      if (lastMediaSequence) {
-        for (let idx = 1; idx < lastMediaSequence.length; idx++) {
-          let q = lastMediaSequence[idx];
-          if (!q) {
-            // should not happen, debug
-            console.error(`Failed to get segment from lastMediaSequence[${idx}]`);
-            console.error(lastMediaSequence);
-          }
-          this.segments[bw].push(q);
-        }
-      }
-      const lastSeg = this.segments[bw][this.segments[bw].length - 1];
-      if (lastSeg && lastSeg.timelinePosition) {
-        this.timeOffset = lastSeg.timelinePosition + lastSeg.duration * 1000;
-      }
-      this.segments[bw].push({
-        discontinuity: true,
-        daterange: this.rangeMetadata ? this.rangeMetadata : null,
-      });
+      this._copyFromPrevious(bw);
     }
+    this._copyAudioGroupsFromPrevious();
+  }
 
+  _copyFromPrevious(destBw, sourceBw) {
+    const previousVodSeqCount = this.previousVod.getLiveMediaSequencesCount();
+    if (!sourceBw) {
+      sourceBw = destBw;
+    }
+    const lastMediaSequence = this.previousVod.getLiveMediaSequenceSegments(previousVodSeqCount - 1)[sourceBw];
+
+    if (!lastMediaSequence || lastMediaSequence === undefined) {
+      // should not happen, debug
+      console.error(`Failed to get lastMediaSequence: previousVodSeqCount=${previousVodSeqCount}, bw=${sourceBw}`);
+      console.error(this.previousVod.getLiveMediaSequenceSegments(previousVodSeqCount - 1));
+    }
+    if (!this.segments[destBw]) {
+      this.segments[destBw] = [];
+    }
+    if (lastMediaSequence) {
+      for (let idx = 1; idx < lastMediaSequence.length; idx++) {
+        let q = lastMediaSequence[idx];
+        if (!q) {
+          // should not happen, debug
+          console.error(`Failed to get segment from lastMediaSequence[${idx}]`);
+          console.error(lastMediaSequence);
+        }
+        this.segments[destBw].push(q);
+      }
+    }
+    const lastSeg = this.segments[sourceBw][this.segments[sourceBw].length - 1];
+    if (lastSeg && lastSeg.timelinePosition) {
+      this.timeOffset = lastSeg.timelinePosition + lastSeg.duration * 1000;
+    }
+    this.segments[destBw].push({
+      discontinuity: true,
+      daterange: this.rangeMetadata ? this.rangeMetadata : null,
+    });
+  }
+
+  _copyAudioGroupsFromPrevious() {
+    const previousVodSeqCount = this.previousVod.getLiveMediaSequencesCount();
     const audioGroups = this.previousVod.getAudioGroups();
     if (audioGroups.length > 0) {
       for (let i = 0; i < audioGroups.length; i++) {
@@ -636,8 +648,15 @@ class HLSVod {
       debug(`Loading media manifest for bandwidth=${bw}`);
 
       if (this.previousVod) {
-        debug(`We have a previous VOD and need to match ${bw} with ${Object.keys(this.segments)}`);
-        bw = this._getNearestBandwidth(bw);
+        debug(`We have a previous VOD and need to match ${bandwidth} with ${Object.keys(this.segments)}`);
+        bw = this._getNearestBandwidth(bandwidth);
+        if (bw === null) {
+          const sourceBw = Number(Object.keys(this.segments).sort((a, b) => b - a)[0]);
+          debug(`Was not able to match ${bandwidth}, will create and copy from previous ${sourceBw}`);
+          this._copyFromPrevious(bandwidth, sourceBw);
+          this._copyAudioGroupsFromPrevious();
+          bw = bandwidth;
+        }
         debug(`Selected ${bw} to use`);
       } else {
         if (!this.segments[bw]) {
@@ -875,7 +894,8 @@ class HLSVod {
         return availableBandwidths[i];
       }
     }
-    return availableBandwidths[availableBandwidths.length - 1];
+    return null;
+    //return availableBandwidths[availableBandwidths.length - 1];
   }
 
   _getNearestBandwidthWithInitiatedSegments(bandwidthToMatch) {
