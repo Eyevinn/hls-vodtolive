@@ -649,7 +649,7 @@ class HLSVod {
 
       if (this.previousVod) {
         debug(`We have a previous VOD and need to match ${bandwidth} with ${Object.keys(this.segments)}`);
-        bw = this._getNearestBandwidth(bandwidth);
+        bw = this._getTrueNearestBandwidth(bandwidth);
         if (bw === null) {
           const sourceBw = Number(Object.keys(this.segments).sort((a, b) => b - a)[0]);
           debug(`Was not able to match ${bandwidth}, will create and copy from previous ${sourceBw}`);
@@ -896,6 +896,25 @@ class HLSVod {
     }
     return null;
     //return availableBandwidths[availableBandwidths.length - 1];
+  }
+
+  _getTrueNearestBandwidth(bandwidth) {
+    if (this.usageProfileMappingRev != null) {
+      return this.usageProfileMappingRev[bandwidth];
+    }
+
+    const filteredBandwidths = Object.keys(this.segments).filter(bw => this.segments[bw].length > 0);
+    const availableBandwidths = filteredBandwidths.sort((a,b) => b - a);
+    if (bandwidth > availableBandwidths[0]) {
+      // Our bandwidth (needle) is larger than the highest available.
+      // Will add this instead of matching
+      debug(`Needle ${bandwidth} is higher than any of the available ones, will not try to match`);
+      return null;
+    }
+    const closestBandwidth = filteredBandwidths.reduce((a, b) => {
+      return Math.abs(b - bandwidth) < Math.abs(a - bandwidth) ? b : a;
+    });
+    return closestBandwidth;
   }
 
   _getNearestBandwidthWithInitiatedSegments(bandwidthToMatch) {
