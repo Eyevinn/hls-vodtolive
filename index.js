@@ -914,6 +914,7 @@ class HLSVod {
     const closestBandwidth = filteredBandwidths.reduce((a, b) => {
       return Math.abs(b - bandwidth) < Math.abs(a - bandwidth) ? b : a;
     });
+    debug(`True nearest bandwidth ${closestBandwidth} of ${Object.keys(filteredBandwidths)}`)
     return closestBandwidth;
   }
 
