@@ -734,7 +734,7 @@ describe("HLSVod with not equal usage profiles", () => {
     });
   });
 
-  it("can avoid matching two ladder steps into the same one", done => {
+  fit("can avoid matching two ladder steps into the same one", done => {
     // VOD A:
     // 1497k, 2497k, 3496k, 4497k
     // VOD B:
@@ -752,6 +752,7 @@ describe("HLSVod with not equal usage profiles", () => {
       const bandwidths = Object.keys(mockVod2.getLiveMediaSequenceSegments(0));
       expect(bandwidths.length).not.toEqual(2);
       expect(bandwidths.length).toEqual(3);
+      expect(bandwidths).toEqual([ '1497000', '3220000', '3496000' ]);
       done();
     });
   });
