@@ -439,6 +439,12 @@ class HLSVod {
     this._copyAudioGroupsFromPrevious();
   }
 
+  _hasMediaSequences(bandwidth) {
+    const previousVodSeqCount = this.previousVod.getLiveMediaSequencesCount();
+    const lastMediaSequence = this.previousVod.getLiveMediaSequenceSegments(previousVodSeqCount - 1)[bandwidth];
+    return (lastMediaSequence && lastMediaSequence !== undefined);
+  }
+
   _copyFromPrevious(destBw, sourceBw) {
     const previousVodSeqCount = this.previousVod.getLiveMediaSequencesCount();
     if (!sourceBw) {
@@ -652,7 +658,9 @@ class HLSVod {
         debug(`We have a previous VOD and need to match ${bandwidth} with ${Object.keys(this.segments)}`);
         bw = this._getTrueNearestBandwidth(bandwidth);
         if (bw === null) {
-          const sourceBw = Number(Object.keys(this.segments).sort((a, b) => b - a)[0]);
+          const bandwidthsWithSequences = Object.keys(this.segments).filter(a => this._hasMediaSequences(a));
+          debug(`Bandwidths with sequences: ${bandwidthsWithSequences}`);
+          const sourceBw = Number(bandwidthsWithSequences.sort((a, b) => b - a)[0]);
           debug(`Was not able to match ${bandwidth}, will create and copy from previous ${sourceBw}`);
           this._copyFromPrevious(bandwidth, sourceBw);
           this._copyAudioGroupsFromPrevious();
@@ -904,7 +912,7 @@ class HLSVod {
       return this.usageProfileMappingRev[bandwidth];
     }
 
-    const filteredBandwidths = Object.keys(this.segments).filter(bw => this.segments[bw].length > 0);
+    const filteredBandwidths = Object.keys(this.segments).filter(bw => this.segments[bw].length > 0).filter(a => this._hasMediaSequences(a));
     const availableBandwidths = filteredBandwidths.sort((a,b) => b - a);
     if (bandwidth > availableBandwidths[0]) {
       // Our bandwidth (needle) is larger than the highest available.
