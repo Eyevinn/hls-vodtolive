@@ -592,6 +592,9 @@ describe("HLSVod with not equal usage profiles", () => {
     mockMasterManifest.push(function() {
       return fs.createReadStream('testvectors/hls16/master.m3u8');
     });
+    mockMasterManifest.push(function() {
+      return fs.createReadStream('testvectors/hls_abr5/master.m3u8');
+    });
     mockMediaManifest.push(function(bandwidth) {
       return fs.createReadStream('testvectors/hls1/' + bandwidth + '.m3u8');
     });
@@ -606,6 +609,9 @@ describe("HLSVod with not equal usage profiles", () => {
     });
     mockMediaManifest.push(function(bandwidth) {
       return fs.createReadStream('testvectors/hls16/' + bandwidth + '.m3u8');
+    });
+    mockMediaManifest.push(function(bandwidth) {
+      return fs.createReadStream('testvectors/hls_abr5/' + bandwidth + '.m3u8');
     });
   });
 
@@ -774,6 +780,23 @@ describe("HLSVod with not equal usage profiles", () => {
       expect(sorted[0]).toEqual('4497000');
       done();
     });
+  });
+
+  it("can handle when more than one new higher ladder step is to be added", done => {
+    // VOD A:
+    // 1497k, 3220k, 3496k
+    // VOD B:
+    // 1497k, 2497k, 3496k, 4497k, 5800k
+    mockVod = new HLSVod('http://mock.com/voda.m3u8');
+    mockVod2 = new HLSVod('http://mock.com/vodb.m3u8');
+    mockVod.load(mockMasterManifest[4], mockMediaManifest[4])
+    .then(() => {
+      return mockVod2.loadAfter(mockVod, mockMasterManifest[5], mockMediaManifest[5]);
+    }).then(() => {
+      const bandwidths = Object.keys(mockVod2.getLiveMediaSequenceSegments(0));
+      expect(bandwidths.length).toEqual(5);
+      done();  
+    })
   });
 });
 
