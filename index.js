@@ -31,6 +31,7 @@ class HLSVod {
     this.usageProfileMappingRev = null;
     this.discontinuities = {};
     this.rangeMetadata = null;
+    this.matchedBandwidths = {};
   }
 
   toJSON() {
@@ -914,7 +915,12 @@ class HLSVod {
     const closestBandwidth = filteredBandwidths.reduce((a, b) => {
       return Math.abs(b - bandwidth) < Math.abs(a - bandwidth) ? b : a;
     });
-    debug(`True nearest bandwidth ${closestBandwidth} of ${Object.keys(filteredBandwidths)}`)
+    debug(`True nearest bandwidth ${closestBandwidth} of ${filteredBandwidths}`);
+    if (this.matchedBandwidths[closestBandwidth]) {
+      debug(`Chosen bandwidth ${closestBandwidth} already matched`);
+      return null;
+    }
+    this.matchedBandwidths[closestBandwidth] = true;
     return closestBandwidth;
   }
 
