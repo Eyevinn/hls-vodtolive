@@ -756,6 +756,25 @@ describe("HLSVod with not equal usage profiles", () => {
       done();
     });
   });
+
+  it("can handle when needle is higher than available ones", done => {
+    // VOD A:
+    // 1497k, 3220k, 3496k
+    // VOD B:
+    // 1497k, 2497k, 3496k, 4497k
+    mockVod = new HLSVod('http://mock.com/voda.m3u8');
+    mockVod2 = new HLSVod('http://mock.com/vodb.m3u8');
+    mockVod.load(mockMasterManifest[4], mockMediaManifest[4])
+    .then(() => {
+      return mockVod2.loadAfter(mockVod, mockMasterManifest[0], mockMediaManifest[0]);
+    }).then(() => {
+      const bandwidths = Object.keys(mockVod2.getLiveMediaSequenceSegments(0));
+      expect(bandwidths.length).toEqual(4);
+      const sorted = bandwidths.sort((a, b) => b - a);
+      expect(sorted[0]).toEqual('4497000');
+      done();
+    });
+  });
 });
 
 describe("HLSVod with separate audio variants", () => {
