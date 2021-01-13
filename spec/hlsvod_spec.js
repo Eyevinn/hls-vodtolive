@@ -734,7 +734,7 @@ describe("HLSVod with not equal usage profiles", () => {
     });
   });
 
-  fit("can avoid matching two ladder steps into the same one", done => {
+  it("can avoid matching two ladder steps into the same one", done => {
     // VOD A:
     // 1497k, 2497k, 3496k, 4497k
     // VOD B:
