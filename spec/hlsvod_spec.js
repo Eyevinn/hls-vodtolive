@@ -1515,3 +1515,37 @@ describe("HLSVod time metadata", () => {
     });
   });
 });
+
+describe("HLSVod delta time", () => {
+  let mockMasterManifest;
+  let mockMediaManifest;
+
+  beforeEach(() => {
+    mockMasterManifest = function() {
+      return fs.createReadStream('testvectors/hls1/master.m3u8');
+    };
+    
+    mockMediaManifest = function(bandwidth) {
+      return fs.createReadStream('testvectors/hls1/' + bandwidth + '.m3u8');
+    };
+  });
+
+  it("is calculated and available for each media sequence", done => {
+    mockVod = new HLSVod('http://mock.com/mock.m3u8');
+    mockVod2 = new HLSVod('http://mock.com/mock2.m3u8');
+    mockVod.load(mockMasterManifest, mockMediaManifest)
+    .then(() => {
+      return mockVod2.loadAfter(mockVod, mockMasterManifest, mockMediaManifest);
+    }).then(() => {
+      let mockVod2Durations = [];
+      for (let i = 0; i < mockVod2.getLiveMediaSequencesCount(); i++) {
+        mockVod2Durations.push(mockVod2.getLiveMediaSequenceSegments(i)['1497000']
+          .map(o => o.duration ? o.duration : 0).reduce((acc, dur) => acc + dur, 0));
+      }
+      const deltas2 = mockVod2.getDeltaTimes();
+      expect(mockVod2Durations.slice(0, 9)).toEqual([ 51.266, 51.266, 51.266, 51.266, 51.266, 54, 54, 54, 54 ]);
+      expect(deltas2.slice(0, 9)).toEqual([ 0, 0, 0, 0, 0, 2.7340000000000018, 0, 0, 0 ]);
+      done();
+    })
+  });
+});
