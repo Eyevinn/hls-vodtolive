@@ -32,6 +32,7 @@ class HLSVod {
     this.discontinuities = {};
     this.rangeMetadata = null;
     this.matchedBandwidths = {};
+    this.deltaTimes = [];
   }
 
   toJSON() {
@@ -51,7 +52,8 @@ class HLSVod {
       startTimeOffset: this.startTimeOffset,
       usageProfileMapping: this.usageProfileMapping,
       usageProfileMappingRev: this.usageProfileMappingRev,
-      discontinuities: this.discontinuities
+      discontinuities: this.discontinuities,
+      deltaTimes: this.deltaTimes,
     };
     return JSON.stringify(serialized);
   }
@@ -78,6 +80,7 @@ class HLSVod {
     this.usageProfileMapping = de.usageProfileMapping;
     this.usageProfileMappingRev = de.usageProfileMappingRev;
     this.discontinuities = de.discontinuities;
+    this.deltaTimes = de.deltaTimes;
   }
 
   /**
@@ -427,6 +430,16 @@ class HLSVod {
     return this.discontinuities[this.mediaSequences.length - 1];
   }
 
+  /**
+   * Get the delta times for each media sequence. 
+   * Returns the sum of the segments' duration for each media sequence and the diff to the previous
+   * media sequence. E.g. [ 0, 2, 2, -2, ... ] means that the second media sequence is 2 second longer
+   * than the first one. The fourth one is 2 seconds shorter than the previous media sequence
+   * 
+   */
+  getDeltaTimes() {
+    return this.deltaTimes.map(o => o.interval);
+  }
 
   // ----- PRIVATE METHODS BELOW ----
 
@@ -613,6 +626,10 @@ class HLSVod {
         reject('Failed to init media sequences');
       } else {
         let discSeqNo = 0;
+        this.deltaTimes.push({
+          interval: 0,
+        });
+        let lastMseqSum = 0;
         for (let seqNo = 0; seqNo < this.mediaSequences.length; seqNo++) {
           const mseq = this.mediaSequences[seqNo];
           const bwIdx = Object.keys(mseq.segments)[0];
@@ -622,6 +639,14 @@ class HLSVod {
             debug(`Increasing discont sequence ${discSeqNo}`);
           }
           this.discontinuities[seqNo] = discSeqNo;
+          const mseqSum = mseq.segments[bwIdx] ? mseq.segments[bwIdx].map(o => o.duration ? o.duration : 0).reduce((acc, curr) => acc + curr, 0) : 0;
+          if (seqNo > 0) {
+            const interval = mseqSum - lastMseqSum;
+            this.deltaTimes.push({
+              interval: interval,
+            });
+          }
+          lastMseqSum = mseqSum;
         }
         resolve();
       }
