@@ -16,6 +16,7 @@
     * [.getLiveMediaSequences(offset, bandwidth, seqIdx, discOffset)](#HLSVod+getLiveMediaSequences)
     * [.getUsageProfiles()](#HLSVod+getUsageProfiles)
     * [.getLastDiscontinuity()](#HLSVod+getLastDiscontinuity)
+    * [.getDeltaTimes()](#HLSVod+getDeltaTimes)
 
 <a name="new_HLSVod_new"></a>
 
@@ -125,5 +126,14 @@ Get the usage profile for this VOD
 
 ### hlsVod.getLastDiscontinuity()
 Get the last discontinuity sequence number
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+getDeltaTimes"></a>
+
+### hlsVod.getDeltaTimes()
+Get the delta times for each media sequence. 
+Returns the sum of the segments' duration for each media sequence and the diff to the previous
+media sequence. E.g. [ 0, 2, 2, -2, ... ] means that the second media sequence is 2 second longer
+than the first one. The fourth one is 2 seconds shorter than the previous media sequence
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
