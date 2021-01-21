@@ -441,6 +441,13 @@ class HLSVod {
     return this.deltaTimes.map(o => o.interval);
   }
 
+  /**
+   * Returns the playhead position for each media sequence
+   */
+  getPlayheadPositions() {
+    return this.deltaTimes.map(o => o.position);
+  }
+
   // ----- PRIVATE METHODS BELOW ----
 
   _loadPrevious() {
@@ -628,8 +635,10 @@ class HLSVod {
         let discSeqNo = 0;
         this.deltaTimes.push({
           interval: 0,
+          position: 0,
         });
         let lastMseqSum = 0;
+        let lastPosition = 0;
         for (let seqNo = 0; seqNo < this.mediaSequences.length; seqNo++) {
           const mseq = this.mediaSequences[seqNo];
           const bwIdx = Object.keys(mseq.segments)[0];
@@ -642,9 +651,14 @@ class HLSVod {
           const mseqSum = mseq.segments[bwIdx] ? mseq.segments[bwIdx].map(o => o.duration ? o.duration : 0).reduce((acc, curr) => acc + curr, 0) : 0;
           if (seqNo > 0) {
             const interval = mseqSum - lastMseqSum;
+            const positionIncrement = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].duration;
             this.deltaTimes.push({
               interval: interval,
+              position: positionIncrement ? lastPosition + positionIncrement : lastPosition,
             });
+            if (positionIncrement) {
+              lastPosition += positionIncrement;
+            }
           }
           lastMseqSum = mseqSum;
         }
