@@ -1549,3 +1549,31 @@ describe("HLSVod delta time", () => {
     })
   });
 });
+
+describe("HLSVod playhead positions", () => {
+  let mockMasterManifest;
+  let mockMediaManifest;
+
+  beforeEach(() => {
+    mockMasterManifest = function() {
+      return fs.createReadStream('testvectors/hls1/master.m3u8');
+    };
+    
+    mockMediaManifest = function(bandwidth) {
+      return fs.createReadStream('testvectors/hls1/' + bandwidth + '.m3u8');
+    };
+  });
+
+  it("is available for each media sequence", done => {
+    mockVod = new HLSVod('http://mock.com/mock.m3u8');
+    mockVod2 = new HLSVod('http://mock.com/mock2.m3u8');
+    mockVod.load(mockMasterManifest, mockMediaManifest)
+    .then(() => {
+      return mockVod2.loadAfter(mockVod, mockMasterManifest, mockMediaManifest);
+    }).then(() => {
+      const positions2 = mockVod2.getPlayheadPositions();
+      expect(positions2.slice(0, 9)).toEqual([0, 9, 18, 27, 36, 45, 54, 63, 72]);
+      done();
+    })
+  });
+});
