@@ -1571,7 +1571,9 @@ describe("HLSVod playhead positions", () => {
     .then(() => {
       return mockVod2.loadAfter(mockVod, mockMasterManifest, mockMediaManifest);
     }).then(() => {
+      const positions = mockVod.getPlayheadPositions();
       const positions2 = mockVod2.getPlayheadPositions();
+      expect(positions.slice(0, 9)).toEqual([0, 9, 18, 27, 36, 45, 54, 63, 72]);
       expect(positions2.slice(0, 9)).toEqual([0, 9, 18, 27, 36, 45, 54, 63, 72]);
       done();
     })
