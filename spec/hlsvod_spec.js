@@ -1553,6 +1553,8 @@ describe("HLSVod delta time", () => {
 describe("HLSVod playhead positions", () => {
   let mockMasterManifest;
   let mockMediaManifest;
+  let mockMasterRepeat;
+  let mockMediaRepeat;
 
   beforeEach(() => {
     mockMasterManifest = function() {
@@ -1561,6 +1563,14 @@ describe("HLSVod playhead positions", () => {
     
     mockMediaManifest = function(bandwidth) {
       return fs.createReadStream('testvectors/hls1/' + bandwidth + '.m3u8');
+    };
+
+    mockMasterRepeat = function() {
+      return fs.createReadStream('testvectors/hls_repeat/master.m3u8');
+    };
+    
+    mockMediaRepeat = function(bandwidth) {
+      return fs.createReadStream('testvectors/hls_repeat/index_' + bandwidth + '.m3u8');
     };
   });
 
@@ -1577,5 +1587,15 @@ describe("HLSVod playhead positions", () => {
       expect(positions2.slice(0, 9)).toEqual([0, 9, 18, 27, 36, 45, 54, 63, 72]);
       done();
     })
+  });
+
+  it("is handling repeat VODs", done => {
+    mockVod = new HLSVod('http://mock.com/mock.m3u8');
+    mockVod.load(mockMasterRepeat, mockMediaRepeat)
+    .then(() => {
+      const positions = mockVod.getPlayheadPositions();
+      expect(positions).toEqual([0]);
+      done();
+    });
   });
 });
