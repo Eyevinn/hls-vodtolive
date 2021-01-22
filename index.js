@@ -651,7 +651,10 @@ class HLSVod {
           const mseqSum = mseq.segments[bwIdx] ? mseq.segments[bwIdx].map(o => o.duration ? o.duration : 0).reduce((acc, curr) => acc + curr, 0) : 0;
           if (seqNo > 0) {
             const interval = mseqSum - lastMseqSum;
-            const positionIncrement = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].duration;
+            const positionIncrement =
+              mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].discontinuity ?
+              mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2].duration :
+              mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].duration;
             this.deltaTimes.push({
               interval: interval,
               position: positionIncrement ? lastPosition + positionIncrement : lastPosition,
