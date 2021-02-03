@@ -585,6 +585,7 @@ class HLSVod {
               console.error("Initiated bandwidths: ", this.segmentsInitiated);
               console.error(Object.keys(this.segments).map(b => { return { bw: b, len: this.segments[b].length}; }));
               reject("Internal datastructure error");
+              return;
             }
             sequence[bwIdx].push(this.segments[bwIdx][segIdx]);
           }
