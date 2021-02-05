@@ -1600,7 +1600,7 @@ describe("HLSVod playhead positions", () => {
   });
 });
 
-fdescribe("HLSVod error handling", () => {
+describe("HLSVod error handling", () => {
   let mockMasterManifest;
   let mockMediaManifest;
   let mockMediaBrokenManifest;
