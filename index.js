@@ -161,7 +161,11 @@ class HLSVod {
         .then(this._cleanupUnused.bind(this))
         .then(this._createMediaSequences.bind(this))
         .then(resolve)
-        .catch(reject);
+        .catch(err => {
+          debug("Error loading VOD: Need to cleanup");
+          this._cleanupOnFailure();
+          reject(err);
+        });
       });
 
       parser.on('error', err => {
@@ -181,7 +185,9 @@ class HLSVod {
         })
         .catch(reject);
       } else {
-        _injectMasterManifest().pipe(parser);
+        const stream = _injectMasterManifest();
+        stream.pipe(parser);
+        stream.on('error', err => reject(err));
       }
     });
   }
@@ -671,6 +677,24 @@ class HLSVod {
     });
   }
 
+  _cleanupOnFailure() {
+    this.previousVod = null;
+    this.segments = {};
+    this.audioSegments = {};
+    this.mediaSequences = [];
+    this.mediaSequences = [];
+    this.targetDuration = {};
+    this.targetAudioDuration = {};
+    this.usageProfile = [];
+    this.segmentsInitiated = {};
+    this.usageProfileMapping = null;
+    this.usageProfileMappingRev = null;
+    this.discontinuities = {};
+    this.rangeMetadata = null;
+    this.matchedBandwidths = {};
+    this.deltaTimes = [];    
+  }
+
   _getFirstBwWithSegments() {
     const bandwidths = Object.keys(this.segments).filter(bw => this.segmentsInitiated[bw]);
     if (bandwidths.length > 0) {
@@ -869,7 +893,9 @@ class HLSVod {
         })
         .catch(reject);
       } else {
-        _injectMediaManifest(bandwidth).pipe(parser);
+        const stream = _injectMediaManifest(bandwidth);
+        stream.pipe(parser);
+        stream.on('error', err => reject(err));
       }
     });
   }
@@ -928,7 +954,9 @@ class HLSVod {
         })
         .catch(reject);
       } else {
-        _injectAudioManifest(groupId).pipe(parser);
+        const stream = _injectAudioManifest(groupId);
+        stream.pipe(parser);
+        stream.on('error', err => reject(err));
       }
     });
   }
@@ -1025,6 +1053,10 @@ class HLSVod {
       }
     }
     return Math.round(targetDuration);
+  }
+
+  _inspect() {
+    return this;
   }
 }
 
