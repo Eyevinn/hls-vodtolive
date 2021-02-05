@@ -1599,3 +1599,84 @@ describe("HLSVod playhead positions", () => {
     });
   });
 });
+
+fdescribe("HLSVod error handling", () => {
+  let mockMasterManifest;
+  let mockMediaManifest;
+  let mockMediaBrokenManifest;
+
+  beforeEach(() => {
+    mockMasterManifest = function() {
+      return fs.createReadStream('testvectors/hls1/master.m3u8');
+    };
+
+    mockMediaManifest = function(bandwidth) {
+      return fs.createReadStream('testvectors/hls1/' + bandwidth + '.m3u8');
+    };
+    
+    mockMediaBrokenManifest = function(bandwidth) {
+      if (bandwidth === 3496000) {
+        return fs.createReadStream('testvectors/hls1/ERROR.m3u8');
+      } else {
+        return fs.createReadStream('testvectors/hls1/' + bandwidth + '.m3u8');
+      }
+    };
+  });
+
+  it("can handle when one of the media manifests fails to load", done => {
+    mockVod = new HLSVod('http://mock.com/mock.m3u8');
+    spyOn(mockVod, '_cleanupOnFailure');
+    mockVod.load(mockMasterManifest, mockMediaBrokenManifest)
+    .then(() => {
+      fail("Should have rejected");
+      done();
+    }).catch(err => {
+      expect(mockVod._cleanupOnFailure).toHaveBeenCalled();
+      done();
+    });
+  });
+
+  it("can handle when one of the media manifests in next VOD fails to load", done => {
+    mockVod = new HLSVod('http://mock.com/mock.m3u8');
+    mockVod2 = new HLSVod('http://mock.com/mock2.m3u8');
+    const cleanUpOnFailure = spyOn(mockVod2, '_cleanupOnFailure').and.callThrough();
+    mockVod.load(mockMasterManifest, mockMediaManifest)
+    .then(() => {
+      return mockVod2.loadAfter(mockVod, mockMasterManifest, mockMediaBrokenManifest);
+    }).then(() => {
+      fail("Should have rejected");
+      done();
+    }).catch(err => {
+      expect(cleanUpOnFailure).toHaveBeenCalled();
+      expect(mockVod2._inspect().previousVod).toBeNull();
+      expect(mockVod2._inspect().segmentsInitiated).toEqual({});
+      expect(mockVod2._inspect().segments).toEqual({});
+      expect(mockVod2._inspect().discontinuities).toEqual({});
+      done();
+    })
+  });
+
+  it("can handle when a VOD fails to load and a slate is loaded instead", done => {
+    mockVod = new HLSVod('http://mock.com/mock.m3u8');
+    mockVod2 = new HLSVod('http://mock.com/mock2.m3u8');
+
+    mockVod.load(mockMasterManifest, mockMediaManifest)
+    .then(() => {
+      return mockVod2.load(mockMasterManifest, mockMediaBrokenManifest)
+    }).then(() => {
+      fail("Should have rejected");
+      done();
+    }).catch(err => {
+      const mockVodSlate = new HLSVod('http://mock.com/slate.m3u8');
+      mockVodSlate.loadAfter(mockVod, mockMasterManifest, mockMediaManifest)
+      .then(() => {
+        expect(mockVodSlate.getLiveMediaSequenceSegments(0)['2497000'].length).toEqual(7);
+        expect(mockVod2._inspect().previousVod).toBeNull();
+        expect(mockVod2._inspect().segmentsInitiated).toEqual({});
+        expect(mockVod2._inspect().segments).toEqual({});
+        expect(mockVod2._inspect().discontinuities).toEqual({});
+        done();
+      })
+    });
+  });
+});
