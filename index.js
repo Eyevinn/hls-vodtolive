@@ -340,7 +340,7 @@ class HLSVod {
             m3u8 += "#EXT-X-CUE-IN" + "\n";
           }
         } else {
-          if (i != 0){
+          if (i != 0 && i != this.mediaSequences[seqIdx].segments[bw].length - 1){
             m3u8 += "#EXT-X-DISCONTINUITY\n";
           }
           if (v.daterange) {
@@ -405,7 +405,7 @@ class HLSVod {
             m3u8 += "#EXT-X-CUE-IN" + "\n";
           }
         } else {
-          if (i != 0){
+          if (i != 0 && i != this.mediaSequences[seqIdx].audioSegments[audioGroupId].length - 1) {
             m3u8 += "#EXT-X-DISCONTINUITY\n";
           }
           if (v.daterange) {
