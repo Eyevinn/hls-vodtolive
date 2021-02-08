@@ -8,6 +8,8 @@ describe("HLSVod standalone", () => {
   let mockMediaManifest;
   let mockMasterManifest2;
   let mockMediaManifest2;
+  let mockMasterNoAudioOnly;
+  let mockMediaNoAudioOnly;
 
   beforeEach(() => {
     mockMasterManifest = function() {
@@ -25,6 +27,14 @@ describe("HLSVod standalone", () => {
     mockMediaManifest2 = function(bandwidth) {
       return fs.createReadStream('testvectors/hls15/index_' + bandwidth + '.m3u8');
     };
+
+    mockMasterNoAudioOnly = function() {
+      return fs.createReadStream('testvectors/hls_noaudioonly/master.m3u8');
+    };
+    
+    mockMediaNoAudioOnly = function(bandwidth) {
+      return fs.createReadStream('testvectors/hls_noaudioonly/index_' + bandwidth + '.m3u8');
+    };    
   });
 
   it("return the correct vod URI", done => {
@@ -61,6 +71,16 @@ describe("HLSVod standalone", () => {
     .then(() => {
       expect(mockVod.getBandwidths().length).toBe(1);
       expect(mockVod.getBandwidths()).toEqual(['1010931']);
+      done();
+    });
+  });
+
+  it("can handle VOD without audio-only", done => {
+    mockVod = new HLSVod('http://mock.com/mock.m3u8');
+    mockVod.load(mockMasterNoAudioOnly, mockMediaNoAudioOnly)
+    .then(() => {
+      expect(mockVod.getBandwidths().length).toBe(5);
+      expect(mockVod.getBandwidths()).toEqual(['404000', '884000', '1626000', '2620000', '3578000']);
       done();
     });
   });
@@ -169,6 +189,8 @@ describe("HLSVod standalone", () => {
 describe("HLSVod after another VOD", () => {
   let mockMasterManifest;
   let mockMediaManifest;
+  let mockMasterNoAudioOnly;
+  let mockMediaNoAudioOnly;
 
   beforeEach(() => {
     mockMasterManifest = function() {
@@ -177,6 +199,12 @@ describe("HLSVod after another VOD", () => {
     mockMediaManifest = function(bandwidth) {
       return fs.createReadStream('testvectors/hls1/' + bandwidth + '.m3u8');
     };
+    mockMasterNoAudioOnly = function() {
+      return fs.createReadStream('testvectors/hls_noaudioonly/master.m3u8');
+    };    
+    mockMediaNoAudioOnly = function(bandwidth) {
+      return fs.createReadStream('testvectors/hls_noaudioonly/index_' + bandwidth + '.m3u8');
+    };        
   });
 
   it("has the first segments from the previous VOD", done => {
@@ -237,6 +265,21 @@ describe("HLSVod after another VOD", () => {
       done();
     });
   });
+
+  it("can handle next VOD without audio-only", done => {
+    mockVod = new HLSVod('http://mock.com/mock.m3u8');
+    mockVod2 = new HLSVod('http://mock.com/mocknoaudioonly.m3u8');
+
+    mockVod.load(mockMasterManifest, mockMediaManifest)
+    .then(() => {
+      return mockVod2.loadAfter(mockVod, mockMasterNoAudioOnly, mockMediaNoAudioOnly)
+    }).then(() => {
+      expect(mockVod2.getBandwidths().length).toBe(5);
+      expect(mockVod2.getBandwidths()).toEqual(['884000', '1497000', '1626000', '2497000', '3496000']);
+      done();
+    });
+  });
+
 });
 
 describe("HLSVod with ad splicing", () => {

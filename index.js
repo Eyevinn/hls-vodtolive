@@ -114,6 +114,8 @@ class HLSVod {
           }
         }
 
+        let audioGroups = {};
+
         for (let i = 0; i < m3u.items.StreamItem.length; i++) {
           const streamItem = m3u.items.StreamItem[i];
           let mediaManifestUrl = url.resolve(baseUrl, streamItem.properties.uri);
@@ -151,10 +153,21 @@ class HLSVod {
               let audioVariant = m3u.items.StreamItem.find(item => {
                 return (!item.attributes.attributes.resolution && item.attributes.attributes['audio'] === audioGroupId);
               });
-              audioUri = audioVariant.properties.uri;
+              if (audioVariant) {
+                audioUri = audioVariant.properties.uri;
+              }
             }
-            let audioManifestUrl = url.resolve(baseUrl, audioUri);
-            audioManifestPromises.push(this._loadAudioManifest(audioManifestUrl, audioGroupId, _injectAudioManifest));
+            if (audioUri) {
+              let audioManifestUrl = url.resolve(baseUrl, audioUri);
+              if (!audioGroups[audioGroupId]) {
+                audioGroups[audioGroupId] = true;
+                audioManifestPromises.push(this._loadAudioManifest(audioManifestUrl, audioGroupId, _injectAudioManifest));
+              } else {
+                debug(`Audio manifesst for '${audioGroupId}' already loaded, skipping`);
+              }
+            } else {
+              debug(`No media item for '${audioGroupId}' was found, skipping`);
+            }
           }
         }
         Promise.all(mediaManifestPromises.concat(audioManifestPromises))
