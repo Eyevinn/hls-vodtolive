@@ -1,6 +1,6 @@
 {
   "name": "@eyevinn/hls-vodtolive",
-  "version": "1.7.4",
+  "version": "1.7.5",
   "description": "NPM library to generate HLS Live from HLS VOD",
   "main": "index.js",
   "scripts": {
