@@ -530,9 +530,11 @@ class HLSVod {
         if (!this.audioSegments[audioGroupId]) {
           this.audioSegments[audioGroupId] = [];
         }
-        for (let idx = 1; idx < lastMediaAudioSequence.length; idx++) {
-          let q = lastMediaAudioSequence[idx];
-          this.audioSegments[audioGroupId].push(q);
+        if (lastMediaAudioSequence) {
+          for (let idx = 1; idx < lastMediaAudioSequence.length; idx++) {
+            let q = lastMediaAudioSequence[idx];
+            this.audioSegments[audioGroupId].push(q);
+          }
         }
         this.audioSegments[audioGroupId].push({
           discontinuity: true,
