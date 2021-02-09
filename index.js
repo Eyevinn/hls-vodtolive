@@ -217,8 +217,14 @@ class HLSVod {
       try {
         this._loadPrevious();
         this.load(_injectMasterManifest, _injectMediaManifest, _injectAudioManifest)
-        .then(resolve)
-        .catch(reject);
+        .then(() => {
+          previousVod.releasePreviousVod();
+          resolve();
+        })
+        .catch(err => {
+          previousVod.releasePreviousVod();
+          reject(err);
+        });
       } catch (exc) {
         reject(exc);
       }
@@ -481,6 +487,13 @@ class HLSVod {
     return this.deltaTimes.map(o => o.position);
   }
 
+  /**
+   * Remove pointers to previous VOD and release to garbage collector
+   */
+  releasePreviousVod() {
+    this.previousVod = null;
+  }
+
   // ----- PRIVATE METHODS BELOW ----
 
   _loadPrevious() {
@@ -707,6 +720,9 @@ class HLSVod {
   }
 
   _cleanupOnFailure() {
+    if (this.previousVod) {
+      this.previousVod.releasePreviousVod();
+    }
     this.previousVod = null;
     this.segments = {};
     this.audioSegments = {};

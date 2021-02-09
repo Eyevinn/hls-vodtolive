@@ -280,6 +280,17 @@ describe("HLSVod after another VOD", () => {
     });
   });
 
+  it("does not leave dangling pointers to previous VOD", done => {
+    mockVod = new HLSVod('http://mock.com/mock.m3u8');
+    mockVod2 = new HLSVod('http://mock.com/mock2.m3u8');
+    mockVod.load(mockMasterManifest, mockMediaManifest)
+    .then(() => {
+      return mockVod2.loadAfter(mockVod, mockMasterNoAudioOnly, mockMediaNoAudioOnly)
+    }).then(() => {
+      expect(mockVod._inspect().previousVod).toBeNull();
+      done();
+    });
+  });
 });
 
 describe("HLSVod with ad splicing", () => {
