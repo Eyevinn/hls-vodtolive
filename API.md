@@ -18,6 +18,7 @@
     * [.getLastDiscontinuity()](#HLSVod+getLastDiscontinuity)
     * [.getDeltaTimes()](#HLSVod+getDeltaTimes)
     * [.getPlayheadPositions()](#HLSVod+getPlayheadPositions)
+    * [.releasePreviousVod()](#HLSVod+releasePreviousVod)
 
 <a name="new_HLSVod_new"></a>
 
@@ -142,5 +143,11 @@ than the first one. The fourth one is 2 seconds shorter than the previous media 
 
 ### hlsVod.getPlayheadPositions()
 Returns the playhead position for each media sequence
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+releasePreviousVod"></a>
+
+### hlsVod.releasePreviousVod()
+Remove pointers to previous VOD and release to garbage collector
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
