@@ -163,7 +163,7 @@ class HLSVod {
                 audioGroups[audioGroupId] = true;
                 audioManifestPromises.push(this._loadAudioManifest(audioManifestUrl, audioGroupId, _injectAudioManifest));
               } else {
-                debug(`Audio manifesst for '${audioGroupId}' already loaded, skipping`);
+                debug(`Audio manifest for '${audioGroupId}' already loaded, skipping`);
               }
             } else {
               debug(`No media item for '${audioGroupId}' was found, skipping`);
