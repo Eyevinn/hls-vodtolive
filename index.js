@@ -770,6 +770,10 @@ class HLSVod {
         debug(`We have a previous VOD and need to match ${bandwidth} with ${Object.keys(this.segments)}`);
         bw = this._getTrueNearestBandwidth(bandwidth);
         if (bw === null) {
+          if (this.matchedBandwidths[bandwidth]) {
+            debug(`Already initiated due to previous match with ${bandwidth}, reset`);
+            this.segments[bandwidth] = [];
+          }
           const bandwidthsWithSequences = Object.keys(this.segments).filter(a => this._hasMediaSequences(a));
           debug(`Bandwidths with sequences: ${bandwidthsWithSequences}`);
           const sourceBw = Number(bandwidthsWithSequences.sort((a, b) => b - a)[0]);

@@ -649,6 +649,9 @@ describe("HLSVod with not equal usage profiles", () => {
     mockMasterManifest.push(function() {
       return fs.createReadStream('testvectors/hls_abr5/master.m3u8');
     });
+    mockMasterManifest.push(function() {
+      return fs.createReadStream('testvectors/hls_abr4/master.m3u8');
+    });
     mockMediaManifest.push(function(bandwidth) {
       return fs.createReadStream('testvectors/hls1/' + bandwidth + '.m3u8');
     });
@@ -666,6 +669,9 @@ describe("HLSVod with not equal usage profiles", () => {
     });
     mockMediaManifest.push(function(bandwidth) {
       return fs.createReadStream('testvectors/hls_abr5/' + bandwidth + '.m3u8');
+    });
+    mockMediaManifest.push(function(bandwidth) {
+      return fs.createReadStream('testvectors/hls_abr4/' + bandwidth + '.m3u8');
     });
   });
 
@@ -850,6 +856,26 @@ describe("HLSVod with not equal usage profiles", () => {
       const bandwidths = Object.keys(mockVod2.getLiveMediaSequenceSegments(0));
       expect(bandwidths.length).toEqual(5);
       done();  
+    })
+  });
+
+  it("does not incorrectly copy previous bandwidth", done => {
+    // VOD A:
+    // 1497k, 3220k, 3496k
+    // VOD B:
+    // 1000k, 1497k, 3220k, 3496k
+    // Expected:
+    // 1000k, 3220k, 3496k
+    // Not expected: internal datastructure error exception
+    mockVod = new HLSVod('http://mock.com/voda.m3u8');
+    mockVod2 = new HLSVod('http://mock.com/vodb.m3u8');
+    mockVod.load(mockMasterManifest[4], mockMediaManifest[4])
+    .then(() => {
+      return mockVod2.loadAfter(mockVod, mockMasterManifest[6], mockMediaManifest[6]);
+    }).then(() => {
+      const bandwidths = Object.keys(mockVod2.getLiveMediaSequenceSegments(0));
+      expect(bandwidths.length).toEqual(3);
+      done();
     })
   });
 });
