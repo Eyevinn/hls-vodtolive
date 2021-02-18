@@ -369,7 +369,7 @@ class HLSVod {
           if (i != 0 && i != this.mediaSequences[seqIdx].segments[bw].length - 1){
             m3u8 += "#EXT-X-DISCONTINUITY\n";
           }
-          if (v.daterange) {
+          if (v.daterange && i != this.mediaSequences[seqIdx].segments[bw].length - 1) {
             const dateRangeAttributes = Object.keys(v.daterange).map(key => {
               return key.toUpperCase() + "=" + `"${v.daterange[key]}"`;
             }).join(',');
@@ -441,7 +441,7 @@ class HLSVod {
           if (i != 0 && i != this.mediaSequences[seqIdx].audioSegments[audioGroupId].length - 1) {
             m3u8 += "#EXT-X-DISCONTINUITY\n";
           }
-          if (v.daterange) {
+          if (v.daterange && i != this.mediaSequences[seqIdx].audioSegments[audioGroupId].length - 1) {
             const dateRangeAttributes = Object.keys(v.daterange).map(key => {
               return key.toUpperCase() + "=" + `"${v.daterange[key]}"`;
             }).join(',');
