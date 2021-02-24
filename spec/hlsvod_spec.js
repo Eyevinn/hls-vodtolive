@@ -467,11 +467,17 @@ describe("HLSVod with timeline", () => {
 
   beforeEach(() => {
     mockMasterManifest = function() {
-      return fs.createReadStream('testvectors/hls1/master.m3u8');
+      return fs.createReadStream('testvectors/hls4/master.m3u8');
     };
     mockMediaManifest = function(bandwidth) {
-      return fs.createReadStream('testvectors/hls1/' + bandwidth + '.m3u8');
+      return fs.createReadStream('testvectors/hls4/' + bandwidth + '.m3u8');
     };
+    mockAudioManifest = function(groupId) {
+      const fname = {
+        "audio-aacl-96": 'audio-96000.m3u8'
+      };
+      return fs.createReadStream('testvectors/hls4/' + fname[groupId]);
+    }
   });
 
   it("can be initiated with a non-zero timeoffset", done => {
@@ -625,6 +631,58 @@ describe("HLSVod with timeline", () => {
     });
   });
 });
+
+describe("Date-range tests", () => {
+  let mockMasterManifest;
+  let mockMediaManifest;
+  let mockAudioManifest;
+
+  beforeEach(() => {
+    mockMasterManifest = function() {
+      return fs.createReadStream('testvectors/hls4/master.m3u8');
+    };
+    mockMediaManifest = function(bandwidth) {
+      const fname = {
+        '354000': 'video-241929.m3u8',
+        '819000': 'video-680761.m3u8',
+        '1538000': 'video-1358751.m3u8',
+        '2485000': 'video-2252188.m3u8',
+        '3396000': 'video-3112126.m3u8'
+      };
+      return fs.createReadStream('testvectors/hls4/' + fname[bandwidth]);
+    };
+    mockAudioManifest = function(groupId) {
+      const fname = {
+        "audio-aacl-96": 'audio-96000.m3u8'
+      };
+      return fs.createReadStream('testvectors/hls4/' + fname[groupId]);
+    }
+  });
+
+  fit("should not insert date-range tag at end of playlist", done => {
+    mockVod = new HLSVod('http://mock.com/mock.m3u8');
+    mockVod2 = new HLSVod('http://mock.com/mock2.m3u8');
+    mockVod2.addMetadata('start-date', '2020-11-21T10:00:00.000Z');
+    mockVod2.addMetadata('x-title', 'Date test');
+
+    mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
+    .then(() => {
+      return mockVod2.loadAfter(mockVod, mockMasterManifest, mockMediaManifest, mockAudioManifest);
+    })
+    .then(() => {
+      let m3u8 = mockVod.getLiveMediaSequences(0, '354000', mockVod.getLiveMediaSequencesCount() - 1);
+      let m = m3u8.match('#EXT-X-PROGRAM-DATE-TIME'); 
+      expect(m).toBeNull();
+      m3u8 = mockVod2.getLiveMediaSequences(0, '354000', 5);
+      m = m3u8.match('#EXT-X-PROGRAM-DATE-TIME'); 
+      expect(m).not.toBeNull();
+      let m3u8Audio = mockVod.getLiveMediaAudioSequences(0, 'audio-aacl-96', mockVod.getLiveMediaSequencesCount() - 1);
+      let mAudio = m3u8Audio.match('#EXT-X-PROGRAM-DATE-TIME');
+      expect(mAudio).toBeNull();
+      done();
+    });
+  });
+})
 
 describe("HLSVod with not equal usage profiles", () => {
   let mockMasterManifest = [];
@@ -1534,6 +1592,7 @@ describe("HLSVod serializing", () => {
   it("can handle a sequence of VODs", done => {
     mockVod = new HLSVod('http://mock.com/mock.m3u8');
     mockVod2 = new HLSVod('http://mock.com/mock2.m3u8');
+    
     mockVod.load(mockMasterManifest, mockMediaManifest)
     .then(() => {
       return mockVod2.loadAfter(mockVod, mockMasterManifest, mockMediaManifest);
@@ -1555,7 +1614,6 @@ describe("HLSVod serializing", () => {
 
       done();
     });
-
   });
 });
 
@@ -1593,7 +1651,7 @@ describe("HLSVod time metadata", () => {
       expect(m).not.toBeNull();
       done();
     });
-  });
+  }); 
 });
 
 describe("HLSVod delta time", () => {
