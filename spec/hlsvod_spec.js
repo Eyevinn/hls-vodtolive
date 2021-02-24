@@ -659,7 +659,7 @@ describe("Date-range tests", () => {
     }
   });
 
-  fit("should not insert date-range tag at end of playlist", done => {
+  it("should not insert date-range tag at end of playlist (includes audio)", done => {
     mockVod = new HLSVod('http://mock.com/mock.m3u8');
     mockVod2 = new HLSVod('http://mock.com/mock2.m3u8');
     mockVod2.addMetadata('start-date', '2020-11-21T10:00:00.000Z');
@@ -673,15 +673,34 @@ describe("Date-range tests", () => {
       let m3u8 = mockVod.getLiveMediaSequences(0, '354000', mockVod.getLiveMediaSequencesCount() - 1);
       let m = m3u8.match('#EXT-X-PROGRAM-DATE-TIME'); 
       expect(m).toBeNull();
-      m3u8 = mockVod2.getLiveMediaSequences(0, '354000', 5);
-      m = m3u8.match('#EXT-X-PROGRAM-DATE-TIME'); 
-      expect(m).not.toBeNull();
       let m3u8Audio = mockVod.getLiveMediaAudioSequences(0, 'audio-aacl-96', mockVod.getLiveMediaSequencesCount() - 1);
       let mAudio = m3u8Audio.match('#EXT-X-PROGRAM-DATE-TIME');
       expect(mAudio).toBeNull();
       done();
     });
   });
+
+  it("should insert datetime when a start date is included (includes audio)", done => {
+    mockVod = new HLSVod('http://mock.com/mock.m3u8');
+    mockVod2 = new HLSVod('http://mock.com/mock2.m3u8');
+    mockVod2.addMetadata('start-date', '2020-11-21T10:00:00.000Z');
+    mockVod2.addMetadata('x-title', 'Date test');
+
+    mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
+    .then(() => {
+      return mockVod2.loadAfter(mockVod, mockMasterManifest, mockMediaManifest, mockAudioManifest);
+    })
+    .then(() => {
+      let m3u8 = mockVod2.getLiveMediaSequences(0, '354000', 5);
+      let m = m3u8.match('#EXT-X-PROGRAM-DATE-TIME'); 
+      expect(m).not.toBeNull();
+      let m3u8Audio = mockVod2.getLiveMediaAudioSequences(0, 'audio-aacl-96', 5);
+      let mAudio = m3u8Audio.match('#EXT-X-PROGRAM-DATE-TIME');
+      expect(mAudio).not.toBeNull();
+      done();
+    });
+  });
+
 })
 
 describe("HLSVod with not equal usage profiles", () => {
