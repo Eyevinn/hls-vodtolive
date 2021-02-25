@@ -1617,14 +1617,10 @@ describe("HLSVod delta time", () => {
     .then(() => {
       return mockVod2.loadAfter(mockVod, mockMasterManifest, mockMediaManifest);
     }).then(() => {
-      let mockVod2Durations = [];
-      for (let i = 0; i < mockVod2.getLiveMediaSequencesCount(); i++) {
-        mockVod2Durations.push(mockVod2.getLiveMediaSequenceSegments(i)['1497000']
-          .map(o => o.duration ? o.duration : 0).reduce((acc, dur) => acc + dur, 0));
-      }
+      let mockVod2Positions = mockVod2.getPlayheadPositions();
       const deltas2 = mockVod2.getDeltaTimes();
-      expect(mockVod2Durations.slice(0, 9)).toEqual([ 51.266, 51.266, 51.266, 51.266, 51.266, 54, 54, 54, 54 ]);
-      expect(deltas2.slice(0, 9)).toEqual([ 0, 0, 0, 0, 0, 2.7340000000000018, 0, 0, 0 ]);
+      expect(mockVod2Positions.slice(-9)).toEqual([ 2574, 2583, 2592, 2601, 2610, 2619, 2628, 2637, 2643.266 ]);
+      expect(deltas2.slice(-9)).toEqual([ 0, 0, 0, 0, 0, 0, 0, 0, -2.734 ]);
       done();
     })
   });

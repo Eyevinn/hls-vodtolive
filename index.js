@@ -471,10 +471,6 @@ class HLSVod {
 
   /**
    * Get the delta times for each media sequence. 
-   * Returns the sum of the segments' duration for each media sequence and the diff to the previous
-   * media sequence. E.g. [ 0, 2, 2, -2, ... ] means that the second media sequence is 2 second longer
-   * than the first one. The fourth one is 2 seconds shorter than the previous media sequence
-   * 
    */
   getDeltaTimes() {
     return this.deltaTimes.map(o => o.interval);
@@ -686,8 +682,8 @@ class HLSVod {
           interval: 0,
           position: 0,
         });
-        let lastMseqSum = 0;
         let lastPosition = 0;
+        let lastPositionIncrement = 0;
         for (let seqNo = 0; seqNo < this.mediaSequences.length; seqNo++) {
           const mseq = this.mediaSequences[seqNo];
           const bwIdx = Object.keys(mseq.segments)[0];
@@ -697,22 +693,27 @@ class HLSVod {
             debug(`Increasing discont sequence ${discSeqNo}`);
           }
           this.discontinuities[seqNo] = discSeqNo;
-          const mseqSum = mseq.segments[bwIdx] ? mseq.segments[bwIdx].map(o => o.duration ? o.duration : 0).reduce((acc, curr) => acc + curr, 0) : 0;
           if (seqNo > 0) {
-            const interval = mseqSum - lastMseqSum;
             const positionIncrement =
               mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].discontinuity ?
               mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2].duration :
               mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].duration;
+            const interval = positionIncrement - lastPositionIncrement;
             this.deltaTimes.push({
               interval: interval,
               position: positionIncrement ? lastPosition + positionIncrement : lastPosition,
             });
             if (positionIncrement) {
               lastPosition += positionIncrement;
+              lastPositionIncrement = positionIncrement;
+            }
+          } else {
+            if (mseq.segments[bwIdx]) {
+              lastPositionIncrement = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].discontinuity ?
+                mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2].duration :
+                mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].duration;
             }
           }
-          lastMseqSum = mseqSum;
         }
         resolve();
       }
