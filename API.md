@@ -133,10 +133,7 @@ Get the last discontinuity sequence number
 <a name="HLSVod+getDeltaTimes"></a>
 
 ### hlsVod.getDeltaTimes()
-Get the delta times for each media sequence. 
-Returns the sum of the segments' duration for each media sequence and the diff to the previous
-media sequence. E.g. [ 0, 2, 2, -2, ... ] means that the second media sequence is 2 second longer
-than the first one. The fourth one is 2 seconds shorter than the previous media sequence
+Get the delta times for each media sequence.
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 <a name="HLSVod+getPlayheadPositions"></a>
