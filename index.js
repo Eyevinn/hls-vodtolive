@@ -7,7 +7,7 @@ const verbose = require('debug')('hls-vodtolive-verbose');
 
 const daterangeAttribute = (key, attr) => {
   if (key === "planned-duration" || key === "duration") {
-    return key.toUpperCase() + "=" + `${attr}`;
+    return key.toUpperCase() + "=" + `${attr.toFixed(3)}`;
   } else {
     return key.toUpperCase() + "=" + `"${attr}"`;
   }

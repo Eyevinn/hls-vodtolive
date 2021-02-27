@@ -1586,7 +1586,7 @@ describe("HLSVod time metadata", () => {
       return mockVod2.loadAfter(mockVod, mockMasterManifest, mockMediaManifest);
     }).then(() => {
       let m3u8 = mockVod.getLiveMediaSequences(0, '2497000', 0);
-      let m = m3u8.match('#EXT-X-PROGRAM-DATE-TIME:2020-11-21T10:00:00.000Z\n#EXT-X-DATERANGE:START-DATE="2020-11-21T10:00:00.000Z",END-DATE="2020-11-21T11:00:00.000Z",DURATION=3600\n#EXTINF:9.000,');
+      let m = m3u8.match('#EXT-X-PROGRAM-DATE-TIME:2020-11-21T10:00:00.000Z\n#EXT-X-DATERANGE:START-DATE="2020-11-21T10:00:00.000Z",END-DATE="2020-11-21T11:00:00.000Z",DURATION=3600.000\n#EXTINF:9.000,');
       expect(m).not.toBeNull();
 
       m3u8 = mockVod2.getLiveMediaSequences(0, '2497000', 0);
