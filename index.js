@@ -5,6 +5,14 @@ const { deserialize } = require('v8');
 const debug = require('debug')('hls-vodtolive');
 const verbose = require('debug')('hls-vodtolive-verbose');
 
+const daterangeAttribute = (key, attr) => {
+  if (key === "planned-duration" || key === "duration") {
+    return key.toUpperCase() + "=" + `${attr}`;
+  } else {
+    return key.toUpperCase() + "=" + `"${attr}"`;
+  }
+};
+
 class HLSVod {
   /**
    * Create an HLS VOD instance
@@ -341,9 +349,7 @@ class HLSVod {
 
         if (!v.discontinuity) {
           if (v.daterange) {
-            const dateRangeAttributes = Object.keys(v.daterange).map(key => {
-              return key.toUpperCase() + "=" + `"${v.daterange[key]}"`;
-            }).join(',');
+            const dateRangeAttributes = Object.keys(v.daterange).map(key => daterangeAttribute(key, v.daterange[key])).join(',');
             if (v.daterange['start-date']) {
               m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + v.daterange['start-date'] + "\n";
             }
@@ -377,9 +383,7 @@ class HLSVod {
             m3u8 += "#EXT-X-DISCONTINUITY\n";
           }
           if (v.daterange && i != this.mediaSequences[seqIdx].segments[bw].length - 1) {
-            const dateRangeAttributes = Object.keys(v.daterange).map(key => {
-              return key.toUpperCase() + "=" + `"${v.daterange[key]}"`;
-            }).join(',');
+            const dateRangeAttributes = Object.keys(v.daterange).map(key => daterangeAttribute(key, v.daterange[key])).join(',');
             if (v.daterange['start-date']) {
               m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + v.daterange['start-date'] + "\n";
             }
@@ -424,9 +428,7 @@ class HLSVod {
 
         if (!v.discontinuity) {
           if (v.daterange) {
-            const dateRangeAttributes = Object.keys(v.daterange).map(key => {
-              return key.toUpperCase() + "=" + `"${v.daterange[key]}"`;
-            }).join(',');
+            const dateRangeAttributes = Object.keys(v.daterange).map(key => daterangeAttribute(key, v.daterange[key])).join(',');
             m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
           }  
           if(v.cue && v.cue.out) {
@@ -452,9 +454,7 @@ class HLSVod {
             m3u8 += "#EXT-X-DISCONTINUITY\n";
           }
           if (v.daterange && i != this.mediaSequences[seqIdx].audioSegments[audioGroupId].length - 1) {
-            const dateRangeAttributes = Object.keys(v.daterange).map(key => {
-              return key.toUpperCase() + "=" + `"${v.daterange[key]}"`;
-            }).join(',');
+            const dateRangeAttributes = Object.keys(v.daterange).map(key => daterangeAttribute(key, v.daterange[key])).join(',');
             m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
           }  
         }
