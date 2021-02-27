@@ -302,7 +302,7 @@ class HLSVod {
     const targetDuration = this._determineTargetDuration(this.mediaSequences[seqIdx].segments[bw]);
     let m3u8 = "#EXTM3U\n";
     m3u8 += "#EXT-X-VERSION:6\n";
-	m3u8 += "#EXT-X-INDEPENDENT-SEGMENTS\n";
+	  m3u8 += "#EXT-X-INDEPENDENT-SEGMENTS\n";
     m3u8 += "#EXT-X-TARGETDURATION:" + targetDuration + "\n";
     m3u8 += "#EXT-X-MEDIA-SEQUENCE:" + (offset + seqIdx) + "\n";
     let discInOffset = discOffset;
@@ -369,6 +369,7 @@ class HLSVod {
           if (i != 0 && i != this.mediaSequences[seqIdx].segments[bw].length - 1){
             m3u8 += "#EXT-X-DISCONTINUITY\n";
           }
+          
           if (v.daterange && i != this.mediaSequences[seqIdx].segments[bw].length - 1) {
             const dateRangeAttributes = Object.keys(v.daterange).map(key => {
               return key.toUpperCase() + "=" + `"${v.daterange[key]}"`;
@@ -417,6 +418,9 @@ class HLSVod {
             const dateRangeAttributes = Object.keys(v.daterange).map(key => {
               return key.toUpperCase() + "=" + `"${v.daterange[key]}"`;
             }).join(',');
+            if (v.daterange['start-date']) {
+              m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + v.daterange['start-date'] + "\n";
+            }
             m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
           }  
           if(v.cue && v.cue.out) {
@@ -441,10 +445,14 @@ class HLSVod {
           if (i != 0 && i != this.mediaSequences[seqIdx].audioSegments[audioGroupId].length - 1) {
             m3u8 += "#EXT-X-DISCONTINUITY\n";
           }
+          
           if (v.daterange && i != this.mediaSequences[seqIdx].audioSegments[audioGroupId].length - 1) {
             const dateRangeAttributes = Object.keys(v.daterange).map(key => {
               return key.toUpperCase() + "=" + `"${v.daterange[key]}"`;
             }).join(',');
+            if (v.daterange['start-date']) {
+              m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + v.daterange['start-date'] + "\n";
+            }
             m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
           }  
         }
