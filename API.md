@@ -4,7 +4,7 @@
 **Kind**: global class  
 
 * [HLSVod](#HLSVod)
-    * [new HLSVod(vodManifestUri, splices, timeOffset, startTimeOffset)](#new_HLSVod_new)
+    * [new HLSVod(vodManifestUri, splices, timeOffset, startTimeOffset, header)](#new_HLSVod_new)
     * [.load()](#HLSVod+load)
     * [.loadAfter(previousVod)](#HLSVod+loadAfter)
     * [.addMetadata(key, value)](#HLSVod+addMetadata)
@@ -22,7 +22,7 @@
 
 <a name="new_HLSVod_new"></a>
 
-### new HLSVod(vodManifestUri, splices, timeOffset, startTimeOffset)
+### new HLSVod(vodManifestUri, splices, timeOffset, startTimeOffset, header)
 Create an HLS VOD instance
 
 
@@ -32,6 +32,7 @@ Create an HLS VOD instance
 | splices | <code>Object</code> | an array of ad splice objects |
 | timeOffset | <code>number</code> | time offset as unix timestamp ms |
 | startTimeOffset | <code>number</code> | start time offset in N ms from start |
+| header | <code>string</code> | prepend the m3u8 playlist with this text |
 
 <a name="HLSVod+load"></a>
 
