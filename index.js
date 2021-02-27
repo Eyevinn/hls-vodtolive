@@ -12,8 +12,9 @@ class HLSVod {
    * @param {Object} splices - an array of ad splice objects
    * @param {number} timeOffset - time offset as unix timestamp ms
    * @param {number} startTimeOffset - start time offset in N ms from start
+   * @param {string} header - prepend the m3u8 playlist with this text
    */
-  constructor(vodManifestUri, splices, timeOffset, startTimeOffset) {
+  constructor(vodManifestUri, splices, timeOffset, startTimeOffset, header) {
     this.masterManifestUri = vodManifestUri;
     this.segments = {};
     this.audioSegments = {};
@@ -33,6 +34,7 @@ class HLSVod {
     this.rangeMetadata = null;
     this.matchedBandwidths = {};
     this.deltaTimes = [];
+    this.header = header;
   }
 
   toJSON() {
@@ -54,6 +56,7 @@ class HLSVod {
       usageProfileMappingRev: this.usageProfileMappingRev,
       discontinuities: this.discontinuities,
       deltaTimes: this.deltaTimes,
+      header: this.header,
     };
     return JSON.stringify(serialized);
   }
@@ -81,6 +84,7 @@ class HLSVod {
     this.usageProfileMappingRev = de.usageProfileMappingRev;
     this.discontinuities = de.discontinuities;
     this.deltaTimes = de.deltaTimes;
+    this.header = de.header;
   }
 
   /**
@@ -302,7 +306,10 @@ class HLSVod {
     const targetDuration = this._determineTargetDuration(this.mediaSequences[seqIdx].segments[bw]);
     let m3u8 = "#EXTM3U\n";
     m3u8 += "#EXT-X-VERSION:6\n";
-	m3u8 += "#EXT-X-INDEPENDENT-SEGMENTS\n";
+    if (this.header) {
+      m3u8 += this.header;
+    }
+	  m3u8 += "#EXT-X-INDEPENDENT-SEGMENTS\n";
     m3u8 += "#EXT-X-TARGETDURATION:" + targetDuration + "\n";
     m3u8 += "#EXT-X-MEDIA-SEQUENCE:" + (offset + seqIdx) + "\n";
     let discInOffset = discOffset;
@@ -393,6 +400,9 @@ class HLSVod {
 
     let m3u8 = "#EXTM3U\n";
     m3u8 += "#EXT-X-VERSION:3\n";
+    if (this.header) {
+      m3u8 += this.header;
+    }
     m3u8 += "#EXT-X-TARGETDURATION:" + targetDuration + "\n";
     m3u8 += "#EXT-X-MEDIA-SEQUENCE:" + (offset + seqIdx) + "\n";
     let discInOffset = discOffset;
