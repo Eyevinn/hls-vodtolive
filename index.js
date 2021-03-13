@@ -357,13 +357,21 @@ class HLSVod {
           }
   
           if(v.cue && v.cue.out) {
+            if (v.cue.scteData) {
+              m3u8 += '#EXT-OATCLS-SCTE35:' + v.cue.scteData + "\n";
+            }
             if (v.cue.assetData) {
               m3u8 += '#EXT-X-ASSET:' + v.cue.assetData + "\n";
             }
             m3u8 += "#EXT-X-CUE-OUT:DURATION=" + v.cue.duration + "\n";
           }
           if (v.cue && v.cue.cont) {
-            m3u8 += "#EXT-X-CUE-OUT-CONT:" + v.cue.cont + "/" + v.cue.duration + "\n";
+            if (v.cue.scteData) {
+              m3u8 += '#EXT-X-CUE-OUT-CONT:ElapsedTime=' + v.cue.cont + ',Duration=' + v.cue.duration + ',SCTE35=' + v.cue.scteData + "\n";
+            }
+            else {
+              m3u8 += "#EXT-X-CUE-OUT-CONT:" + v.cue.cont + "/" + v.cue.duration + "\n";
+            }
           }
           m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
           m3u8 += v.uri + "\n";
@@ -900,6 +908,7 @@ class HLSVod {
                 let cueIn = playlistItem.get('cuein');
                 let cueOutCont = playlistItem.get('cont-offset');
                 let duration = 0;
+                let scteData = playlistItem.get('sctedata');
                 if (typeof cueOut !== 'undefined') {
                   duration = cueOut;
                 } else if (typeof cueOutCont !== 'undefined') {
@@ -908,6 +917,7 @@ class HLSVod {
                 let cue = (cueOut || cueIn || cueOutCont || assetData) ? {
                   out: (typeof cueOut !== 'undefined'),
                   cont: (typeof cueOutCont !== 'undefined') ? cueOutCont : null,
+                  scteData: (typeof scteData !== 'undefined') ? scteData : null,
                   in: cueIn ? true : false,
                   duration: duration,
                   assetData: (typeof assetData !== 'undefined') ? assetData: null
