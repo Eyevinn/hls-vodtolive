@@ -1,12 +1,12 @@
-const m3u8 = require('@eyevinn/m3u8');
-const fetch = require('node-fetch');
-const url = require('url');
-const { deserialize } = require('v8');
-const debug = require('debug')('hls-vodtolive');
-const verbose = require('debug')('hls-vodtolive-verbose');
+const m3u8 = require("@eyevinn/m3u8");
+const fetch = require("node-fetch");
+const url = require("url");
+const { deserialize } = require("v8");
+const debug = require("debug")("hls-vodtolive");
+const verbose = require("debug")("hls-vodtolive-verbose");
 
 const daterangeAttribute = (key, attr) => {
-  if (key === "planned-duration" || key === "duration") {
+  if (key === "planned-duration" || key === "duration") {
     return key.toUpperCase() + "=" + `${attr.toFixed(3)}`;
   } else {
     return key.toUpperCase() + "=" + `"${attr}"`;
@@ -27,7 +27,9 @@ class HLSVod {
     this.segments = {};
     this.audioSegments = {};
     this.mediaSequences = [];
-    this.SEQUENCE_DURATION = process.env.SEQUENCE_DURATION ? process.env.SEQUENCE_DURATION : 60;
+    this.SEQUENCE_DURATION = process.env.SEQUENCE_DURATION
+      ? process.env.SEQUENCE_DURATION
+      : 60;
     this.targetDuration = {};
     this.targetAudioDuration = {};
     this.previousVod = null;
@@ -35,7 +37,7 @@ class HLSVod {
     this.segmentsInitiated = {};
     this.splices = splices || [];
     this.timeOffset = timeOffset || null;
-    this.startTimeOffset = startTimeOffset || null;
+    this.startTimeOffset = startTimeOffset || null;
     this.usageProfileMapping = null;
     this.usageProfileMappingRev = null;
     this.discontinuities = {};
@@ -102,26 +104,38 @@ class HLSVod {
     return new Promise((resolve, reject) => {
       const parser = m3u8.createStream();
 
-      parser.on('m3u', m3u => {
+      parser.on("m3u", (m3u) => {
         let mediaManifestPromises = [];
         let audioManifestPromises = [];
         let baseUrl;
-        const m = this.masterManifestUri.match('^(.*)/.*?$');
+        const m = this.masterManifestUri.match("^(.*)/.*?$");
         if (m) {
-          baseUrl = m[1] + '/';
+          baseUrl = m[1] + "/";
         }
 
-        if (this.previousVod && this.previousVod.getBandwidths().length === m3u.items.StreamItem.length) {
-          debug(`Previous VOD bandwidths matches amount of current. A mapping is possible`);
-          const previousBandwidths = this.previousVod.getBandwidths().sort((a, b) => a - b);
+        if (
+          this.previousVod &&
+          this.previousVod.getBandwidths().length ===
+            m3u.items.StreamItem.length
+        ) {
+          debug(
+            `Previous VOD bandwidths matches amount of current. A mapping is possible`
+          );
+          const previousBandwidths = this.previousVod
+            .getBandwidths()
+            .sort((a, b) => a - b);
           this.usageProfileMapping = {};
           this.usageProfileMappingRev = {};
           const bandwidths = m3u.items.StreamItem.sort((a, b) => {
-            return a.attributes.attributes['bandwidth'] - b.attributes.attributes['bandwidth'];
-          }).map(v => v.attributes.attributes['bandwidth']);
-          debug(`${previousBandwidths} : ${bandwidths}`)
+            return (
+              a.attributes.attributes["bandwidth"] -
+              b.attributes.attributes["bandwidth"]
+            );
+          }).map((v) => v.attributes.attributes["bandwidth"]);
+          debug(`${previousBandwidths} : ${bandwidths}`);
           for (let i = 0; i < previousBandwidths.length; i++) {
-            this.usageProfileMapping[previousBandwidths[i]] = bandwidths[i] + '';
+            this.usageProfileMapping[previousBandwidths[i]] =
+              bandwidths[i] + "";
             this.usageProfileMappingRev[bandwidths[i]] = previousBandwidths[i];
           }
         }
@@ -130,14 +144,20 @@ class HLSVod {
 
         for (let i = 0; i < m3u.items.StreamItem.length; i++) {
           const streamItem = m3u.items.StreamItem[i];
-          let mediaManifestUrl = url.resolve(baseUrl, streamItem.properties.uri);
+          let mediaManifestUrl = url.resolve(
+            baseUrl,
+            streamItem.properties.uri
+          );
 
           if (streamItem.get("bandwidth")) {
             let usageProfile = {
-              bw: streamItem.get("bandwidth")
+              bw: streamItem.get("bandwidth"),
             };
             if (streamItem.get("resolution")) {
-              usageProfile.resolution = streamItem.get("resolution")[0] + "x" + streamItem.get("resolution")[1];
+              usageProfile.resolution =
+                streamItem.get("resolution")[0] +
+                "x" +
+                streamItem.get("resolution")[1];
             }
             if (streamItem.get("codecs")) {
               usageProfile.codecs = streamItem.get("codecs");
@@ -145,25 +165,50 @@ class HLSVod {
             this.usageProfile.push(usageProfile);
 
             // Do not add if it is a variant included in an audio group as it will be loaded and parsed seperate
-            if (!m3u.items.MediaItem.find(mediaItem => mediaItem.get("type") === "AUDIO" && mediaItem.get("uri") == streamItem.get("uri"))) {
+            if (
+              !m3u.items.MediaItem.find(
+                (mediaItem) =>
+                  mediaItem.get("type") === "AUDIO" &&
+                  mediaItem.get("uri") == streamItem.get("uri")
+              )
+            ) {
               if (streamItem.get("codecs") !== "mp4a.40.2") {
-                mediaManifestPromises.push(this._loadMediaManifest(mediaManifestUrl, streamItem.get("bandwidth"), _injectMediaManifest));
+                mediaManifestPromises.push(
+                  this._loadMediaManifest(
+                    mediaManifestUrl,
+                    streamItem.get("bandwidth"),
+                    _injectMediaManifest
+                  )
+                );
               }
             }
           }
-          if (streamItem.attributes.attributes['audio']) {
-            let audioGroupId = streamItem.attributes.attributes['audio'];
+          if (streamItem.attributes.attributes["audio"]) {// <-------------------------------------------------------------------------- I'VE BEEN HERE
+            let audioGroupId = streamItem.attributes.attributes["audio"];
             if (!this.audioSegments[audioGroupId]) {
               this.audioSegments[audioGroupId] = [];
             }
             debug(`Lookup media item for '${audioGroupId}'`);
-            let audioGroupItem = m3u.items.MediaItem.find(item => {
-              return (item.attributes.attributes.type === 'AUDIO' && item.attributes.attributes['group-id'] === audioGroupId);
+            // .find() gets the first media-item that satisfies condition. It will always find the top audio uri?
+            let audioGroupItem = m3u.items.MediaItem.find((item) => {
+              return (item.attributes.attributes.type === "AUDIO" && item.attributes.attributes["group-id"] === audioGroupId && item.attributes.attributes["language"] === "sp");
+               //return (item.attributes.attributes.type === 'AUDIO' && item.attributes.attributes['group-id'] === audioGroupId);
             });
+            /*
+              if(!audioGroupItem){
+                audioGroupItem = m3u.items.MediaItem.find((item) => {
+                  return (item.attributes.attributes.type === 'AUDIO' && item.attributes.attributes['group-id'] === audioGroupId);
+            });
+              }
+             */
+
             let audioUri = audioGroupItem.attributes.attributes.uri;
             if (!audioUri) {
-              let audioVariant = m3u.items.StreamItem.find(item => {
-                return (!item.attributes.attributes.resolution && item.attributes.attributes['audio'] === audioGroupId);
+              let audioVariant = m3u.items.StreamItem.find((item) => {
+                return (
+                  !item.attributes.attributes.resolution &&
+                  item.attributes.attributes["audio"] === audioGroupId
+                );
               });
               if (audioVariant) {
                 audioUri = audioVariant.properties.uri;
@@ -173,9 +218,17 @@ class HLSVod {
               let audioManifestUrl = url.resolve(baseUrl, audioUri);
               if (!audioGroups[audioGroupId]) {
                 audioGroups[audioGroupId] = true;
-                audioManifestPromises.push(this._loadAudioManifest(audioManifestUrl, audioGroupId, _injectAudioManifest));
+                audioManifestPromises.push(
+                  this._loadAudioManifest(
+                    audioManifestUrl,
+                    audioGroupId,
+                    _injectAudioManifest
+                  )
+                );
               } else {
-                debug(`Audio manifest for '${audioGroupId}' already loaded, skipping`);
+                debug(
+                  `Audio manifest for '${audioGroupId}' already loaded, skipping`
+                );
               }
             } else {
               debug(`No media item for '${audioGroupId}' was found, skipping`);
@@ -183,36 +236,39 @@ class HLSVod {
           }
         }
         Promise.all(mediaManifestPromises.concat(audioManifestPromises))
-        .then(this._cleanupUnused.bind(this))
-        .then(this._createMediaSequences.bind(this))
-        .then(resolve)
-        .catch(err => {
-          debug("Error loading VOD: Need to cleanup");
-          this._cleanupOnFailure();
-          reject(err);
-        });
+          .then(this._cleanupUnused.bind(this))
+          .then(this._createMediaSequences.bind(this))
+          .then(resolve)
+          .catch((err) => {
+            debug("Error loading VOD: Need to cleanup");
+            this._cleanupOnFailure();
+            reject(err);
+          });
       });
+      
 
-      parser.on('error', err => {
+      parser.on("error", (err) => {
         reject(err);
       });
 
       if (!_injectMasterManifest) {
         fetch(this.masterManifestUri)
-        .then(res => {
-          if (res.status === 200) {
-	          res.body.pipe(parser);
-          }
-          else {
-          	throw new Error(res.status + ':: status code error trying to retrieve master manifest ' + masterManifestUri);
-          }  
-
-        })
-        .catch(reject);
+          .then((res) => {
+            if (res.status === 200) {
+              res.body.pipe(parser);
+            } else {
+              throw new Error(
+                res.status +
+                  ":: status code error trying to retrieve master manifest " +
+                  masterManifestUri
+              );
+            }
+          })
+          .catch(reject);
       } else {
         const stream = _injectMasterManifest();
         stream.pipe(parser);
-        stream.on('error', err => reject(err));
+        stream.on("error", (err) => reject(err));
       }
     });
   }
@@ -223,20 +279,29 @@ class HLSVod {
    *
    * @param {HLSVod} previousVod - the previous VOD to concatenate to
    */
-  loadAfter(previousVod, _injectMasterManifest, _injectMediaManifest, _injectAudioManifest) {
+  loadAfter(
+    previousVod,
+    _injectMasterManifest,
+    _injectMediaManifest,
+    _injectAudioManifest
+  ) {
     return new Promise((resolve, reject) => {
       this.previousVod = previousVod;
       try {
         this._loadPrevious();
-        this.load(_injectMasterManifest, _injectMediaManifest, _injectAudioManifest)
-        .then(() => {
-          previousVod.releasePreviousVod();
-          resolve();
-        })
-        .catch(err => {
-          previousVod.releasePreviousVod();
-          reject(err);
-        });
+        this.load(
+          _injectMasterManifest,
+          _injectMediaManifest,
+          _injectAudioManifest
+        )
+          .then(() => {
+            previousVod.releasePreviousVod();
+            resolve();
+          })
+          .catch((err) => {
+            previousVod.releasePreviousVod();
+            reject(err);
+          });
       } catch (exc) {
         reject(exc);
       }
@@ -245,9 +310,9 @@ class HLSVod {
 
   /**
    * Add metadata timed for this VOD
-   * 
+   *
    * @param {key} key - EXT-X-DATERANGE attribute key
-   * @param {*} value 
+   * @param {*} value
    */
   addMetadata(key, value) {
     if (this.rangeMetadata === null) {
@@ -289,8 +354,12 @@ class HLSVod {
     return Object.keys(this.segments);
   }
 
-  getAudioGroups() {
-    return Object.keys(this.audioSegments);
+  getAudioGroups() { // <-------------------------------------------------------------------------- I'VE BEEN HERE
+    let temp = {
+      keys: Object.keys(this.audioSegments),
+      vals: Object.values(this.audioSegments),
+    };
+    return temp.keys;
   }
 
   /**
@@ -310,28 +379,35 @@ class HLSVod {
    */
   getLiveMediaSequences(offset, bandwidth, seqIdx, discOffset) {
     const bw = this._getNearestBandwidthWithInitiatedSegments(bandwidth);
-    debug(`Get live media sequence [${seqIdx}] for bw=${bw} (requested bw ${bandwidth})`);
-    const targetDuration = this._determineTargetDuration(this.mediaSequences[seqIdx].segments[bw]);
+    debug(
+      `Get live media sequence [${seqIdx}] for bw=${bw} (requested bw ${bandwidth})`
+    );
+    const targetDuration = this._determineTargetDuration(
+      this.mediaSequences[seqIdx].segments[bw]
+    );
     let m3u8 = "#EXTM3U\n";
     m3u8 += "#EXT-X-VERSION:6\n";
     if (this.header) {
       m3u8 += this.header;
     }
-	  m3u8 += "#EXT-X-INDEPENDENT-SEGMENTS\n";
+    m3u8 += "#EXT-X-INDEPENDENT-SEGMENTS\n";
     m3u8 += "#EXT-X-TARGETDURATION:" + targetDuration + "\n";
     m3u8 += "#EXT-X-MEDIA-SEQUENCE:" + (offset + seqIdx) + "\n";
     let discInOffset = discOffset;
     if (discInOffset == null) {
       discInOffset = 0;
     }
-    m3u8 += "#EXT-X-DISCONTINUITY-SEQUENCE:" + (discInOffset + this.discontinuities[seqIdx]) + "\n";
+    m3u8 +=
+      "#EXT-X-DISCONTINUITY-SEQUENCE:" +
+      (discInOffset + this.discontinuities[seqIdx]) +
+      "\n";
 
     if (!this.mediaSequences[seqIdx]) {
-      debug('No sequence idx: ' + seqIdx);
+      debug("No sequence idx: " + seqIdx);
       return m3u8;
     }
     if (!this.mediaSequences[seqIdx].segments[bw]) {
-      debug('No segments in media sequence idx: ' + seqIdx + ` bw: ` + bw);
+      debug("No segments in media sequence idx: " + seqIdx + ` bw: ` + bw);
       debug(this.mediaSequences[seqIdx]);
       return m3u8;
     }
@@ -349,54 +425,78 @@ class HLSVod {
 
         if (!v.discontinuity) {
           if (v.daterange) {
-            const dateRangeAttributes = Object.keys(v.daterange).map(key => daterangeAttribute(key, v.daterange[key])).join(',');
-            if (v.daterange['start-date']) {
-              m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + v.daterange['start-date'] + "\n";
+            const dateRangeAttributes = Object.keys(v.daterange)
+              .map((key) => daterangeAttribute(key, v.daterange[key]))
+              .join(",");
+            if (v.daterange["start-date"]) {
+              m3u8 +=
+                "#EXT-X-PROGRAM-DATE-TIME:" + v.daterange["start-date"] + "\n";
             }
             m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
           }
-  
-          if(v.cue && v.cue.out) {
+
+          if (v.cue && v.cue.out) {
             if (v.cue.scteData) {
-              m3u8 += '#EXT-OATCLS-SCTE35:' + v.cue.scteData + "\n";
+              m3u8 += "#EXT-OATCLS-SCTE35:" + v.cue.scteData + "\n";
             }
             if (v.cue.assetData) {
-              m3u8 += '#EXT-X-ASSET:' + v.cue.assetData + "\n";
+              m3u8 += "#EXT-X-ASSET:" + v.cue.assetData + "\n";
             }
             m3u8 += "#EXT-X-CUE-OUT:DURATION=" + v.cue.duration + "\n";
           }
           if (v.cue && v.cue.cont) {
             if (v.cue.scteData) {
-              m3u8 += '#EXT-X-CUE-OUT-CONT:ElapsedTime=' + v.cue.cont + ',Duration=' + v.cue.duration + ',SCTE35=' + v.cue.scteData + "\n";
-            }
-            else {
-              m3u8 += "#EXT-X-CUE-OUT-CONT:" + v.cue.cont + "/" + v.cue.duration + "\n";
+              m3u8 +=
+                "#EXT-X-CUE-OUT-CONT:ElapsedTime=" +
+                v.cue.cont +
+                ",Duration=" +
+                v.cue.duration +
+                ",SCTE35=" +
+                v.cue.scteData +
+                "\n";
+            } else {
+              m3u8 +=
+                "#EXT-X-CUE-OUT-CONT:" +
+                v.cue.cont +
+                "/" +
+                v.cue.duration +
+                "\n";
             }
           }
           m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
           m3u8 += v.uri + "\n";
 
           if (v.cue && v.cue.in) {
-            if (this.mediaSequences[seqIdx].segments[bw][i+1] && 
-              this.mediaSequences[seqIdx].segments[bw][i+1].discontinuity && 
-              i+1 == this.mediaSequences[seqIdx].segments[bw].length-1)
-            {
+            if (
+              this.mediaSequences[seqIdx].segments[bw][i + 1] &&
+              this.mediaSequences[seqIdx].segments[bw][i + 1].discontinuity &&
+              i + 1 == this.mediaSequences[seqIdx].segments[bw].length - 1
+            ) {
               // Do not add a closing cue-in if next is not a segment and last one in the list
             } else {
               m3u8 += "#EXT-X-CUE-IN" + "\n";
             }
           }
         } else {
-          if (i != 0 && i != this.mediaSequences[seqIdx].segments[bw].length - 1){
+          if (
+            i != 0 &&
+            i != this.mediaSequences[seqIdx].segments[bw].length - 1
+          ) {
             m3u8 += "#EXT-X-DISCONTINUITY\n";
           }
-          if (v.daterange && i != this.mediaSequences[seqIdx].segments[bw].length - 1) {
-            const dateRangeAttributes = Object.keys(v.daterange).map(key => daterangeAttribute(key, v.daterange[key])).join(',');
-            if (v.daterange['start-date']) {
-              m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + v.daterange['start-date'] + "\n";
+          if (
+            v.daterange &&
+            i != this.mediaSequences[seqIdx].segments[bw].length - 1
+          ) {
+            const dateRangeAttributes = Object.keys(v.daterange)
+              .map((key) => daterangeAttribute(key, v.daterange[key]))
+              .join(",");
+            if (v.daterange["start-date"]) {
+              m3u8 +=
+                "#EXT-X-PROGRAM-DATE-TIME:" + v.daterange["start-date"] + "\n";
             }
             m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
-          }  
+          }
         }
 
         previousSegment = v;
@@ -405,10 +505,17 @@ class HLSVod {
 
     return m3u8;
   }
-
+  /**
+   * Gets a hls/ Makes m3u8-file with all of the correct Audio-segments
+   *  belonging to a given groupID for a particular sequence
+   */
   getLiveMediaAudioSequences(offset, audioGroupId, seqIdx, discOffset) {
-    debug(`Get live audio media sequence [${seqIdx}] for audioGroupId=${audioGroupId}`);
-    const targetDuration = this._determineTargetDuration(this.mediaSequences[seqIdx].audioSegments[audioGroupId]);
+    debug(
+      `Get live audio media sequence [${seqIdx}] for audioGroupId=${audioGroupId}`
+    );
+    const targetDuration = this._determineTargetDuration(
+      this.mediaSequences[seqIdx].audioSegments[audioGroupId]
+    );
 
     let m3u8 = "#EXTM3U\n";
     m3u8 += "#EXT-X-VERSION:3\n";
@@ -421,10 +528,17 @@ class HLSVod {
     if (discInOffset == null) {
       discInOffset = 0;
     }
-    m3u8 += "#EXT-X-DISCONTINUITY-SEQUENCE:" + (discInOffset + this.discontinuities[seqIdx]) + "\n";
+    m3u8 +=
+      "#EXT-X-DISCONTINUITY-SEQUENCE:" +
+      (discInOffset + this.discontinuities[seqIdx]) +
+      "\n";
 
     let previousSegment = null;
-    for (let i = 0; i < this.mediaSequences[seqIdx].audioSegments[audioGroupId].length; i++) {
+    for (
+      let i = 0;
+      i < this.mediaSequences[seqIdx].audioSegments[audioGroupId].length;
+      i++
+    ) {
       const v = this.mediaSequences[seqIdx].audioSegments[audioGroupId][i];
       if (v) {
         if (previousSegment != null) {
@@ -436,35 +550,49 @@ class HLSVod {
 
         if (!v.discontinuity) {
           if (v.daterange) {
-            const dateRangeAttributes = Object.keys(v.daterange).map(key => daterangeAttribute(key, v.daterange[key])).join(',');
+            const dateRangeAttributes = Object.keys(v.daterange)
+              .map((key) => daterangeAttribute(key, v.daterange[key]))
+              .join(",");
             m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
-          }  
-          if(v.cue && v.cue.out) {
+          }
+          if (v.cue && v.cue.out) {
             m3u8 += "#EXT-X-CUE-OUT:DURATION=" + v.cue.duration + "\n";
           }
           if (v.cue && v.cue.cont) {
-            m3u8 += "#EXT-X-CUE-OUT-CONT:" + v.cue.cont + "/" + v.cue.duration + "\n";
+            m3u8 +=
+              "#EXT-X-CUE-OUT-CONT:" + v.cue.cont + "/" + v.cue.duration + "\n";
           }
           m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
           m3u8 += v.uri + "\n";
-          if(v.cue && v.cue.in) {
-            if (this.mediaSequences[seqIdx].segments[bw][i+1] && 
-              this.mediaSequences[seqIdx].segments[bw][i+1].discontinuity && 
-              i+1 == this.mediaSequences[seqIdx].segments[bw].length-1)
-            {
+          if (v.cue && v.cue.in) {
+            if (
+              this.mediaSequences[seqIdx].segments[bw][i + 1] &&
+              this.mediaSequences[seqIdx].segments[bw][i + 1].discontinuity &&
+              i + 1 == this.mediaSequences[seqIdx].segments[bw].length - 1
+            ) {
               // Do not add a closing cue-in if next is not a segment and last one in the list
             } else {
               m3u8 += "#EXT-X-CUE-IN" + "\n";
             }
           }
         } else {
-          if (i != 0 && i != this.mediaSequences[seqIdx].audioSegments[audioGroupId].length - 1) {
+          if (
+            i != 0 &&
+            i !=
+              this.mediaSequences[seqIdx].audioSegments[audioGroupId].length - 1
+          ) {
             m3u8 += "#EXT-X-DISCONTINUITY\n";
           }
-          if (v.daterange && i != this.mediaSequences[seqIdx].audioSegments[audioGroupId].length - 1) {
-            const dateRangeAttributes = Object.keys(v.daterange).map(key => daterangeAttribute(key, v.daterange[key])).join(',');
+          if (
+            v.daterange &&
+            i !=
+              this.mediaSequences[seqIdx].audioSegments[audioGroupId].length - 1
+          ) {
+            const dateRangeAttributes = Object.keys(v.daterange)
+              .map((key) => daterangeAttribute(key, v.daterange[key]))
+              .join(",");
             m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
-          }  
+          }
         }
         previousSegment = v;
       }
@@ -488,17 +616,17 @@ class HLSVod {
   }
 
   /**
-   * Get the delta times for each media sequence. 
+   * Get the delta times for each media sequence.
    */
   getDeltaTimes() {
-    return this.deltaTimes.map(o => o.interval);
+    return this.deltaTimes.map((o) => o.interval);
   }
 
   /**
    * Returns the playhead position for each media sequence
    */
   getPlayheadPositions() {
-    return this.deltaTimes.map(o => o.position);
+    return this.deltaTimes.map((o) => o.position);
   }
 
   /**
@@ -521,8 +649,10 @@ class HLSVod {
 
   _hasMediaSequences(bandwidth) {
     const previousVodSeqCount = this.previousVod.getLiveMediaSequencesCount();
-    const lastMediaSequence = this.previousVod.getLiveMediaSequenceSegments(previousVodSeqCount - 1)[bandwidth];
-    return (lastMediaSequence && lastMediaSequence !== undefined);
+    const lastMediaSequence = this.previousVod.getLiveMediaSequenceSegments(
+      previousVodSeqCount - 1
+    )[bandwidth];
+    return lastMediaSequence && lastMediaSequence !== undefined;
   }
 
   _copyFromPrevious(destBw, sourceBw) {
@@ -530,12 +660,18 @@ class HLSVod {
     if (!sourceBw) {
       sourceBw = destBw;
     }
-    const lastMediaSequence = this.previousVod.getLiveMediaSequenceSegments(previousVodSeqCount - 1)[sourceBw];
+    const lastMediaSequence = this.previousVod.getLiveMediaSequenceSegments(
+      previousVodSeqCount - 1
+    )[sourceBw];
 
     if (!lastMediaSequence || lastMediaSequence === undefined) {
       // should not happen, debug
-      console.error(`Failed to get lastMediaSequence: previousVodSeqCount=${previousVodSeqCount}, bw=${sourceBw}`);
-      console.error(this.previousVod.getLiveMediaSequenceSegments(previousVodSeqCount - 1));
+      console.error(
+        `Failed to get lastMediaSequence: previousVodSeqCount=${previousVodSeqCount}, bw=${sourceBw}`
+      );
+      console.error(
+        this.previousVod.getLiveMediaSequenceSegments(previousVodSeqCount - 1)
+      );
     }
     if (!this.segments[destBw]) {
       this.segments[destBw] = [];
@@ -567,7 +703,11 @@ class HLSVod {
     if (audioGroups.length > 0) {
       for (let i = 0; i < audioGroups.length; i++) {
         const audioGroupId = audioGroups[i];
-        const lastMediaAudioSequence = this.previousVod.getLiveMediaSequenceAudioSegments(audioGroupId, previousVodSeqCount - 1);
+        const lastMediaAudioSequence =
+          this.previousVod.getLiveMediaSequenceAudioSegments(
+            audioGroupId,
+            previousVodSeqCount - 1
+          );
         if (!this.audioSegments[audioGroupId]) {
           this.audioSegments[audioGroupId] = [];
         }
@@ -589,12 +729,12 @@ class HLSVod {
     return new Promise((resolve, reject) => {
       // Remove all bandwidths that are remaining from previous VOD and has not been initiated
       let toRemove = [];
-      Object.keys(this.segments).map(bw => {
+      Object.keys(this.segments).map((bw) => {
         if (!this.segmentsInitiated[bw]) {
           toRemove.push(bw);
         }
       });
-      toRemove.map(bw => {
+      toRemove.map((bw) => {
         delete this.segments[bw];
       });
       resolve();
@@ -606,7 +746,7 @@ class HLSVod {
       let segOffset = 0;
       let segIdx = 0;
       let duration = 0;
-      const bw = this._getFirstBwWithSegments()
+      const bw = this._getFirstBwWithSegments();
       let sequence = {};
 
       const audioGroupId = this._getFirstAudioGroupWithSegments();
@@ -632,7 +772,7 @@ class HLSVod {
         if (!this.segments[bw][segIdx].discontinuity) {
           duration += this.segments[bw][segIdx].duration;
         }
-//        console.log(segIdx, this.segments[bw][segIdx], duration, this.segments[bw].length);
+        //        console.log(segIdx, this.segments[bw][segIdx], duration, this.segments[bw].length);
         if (duration < this.SEQUENCE_DURATION) {
           const bandwidths = Object.keys(this.segments);
           for (let i = 0; i < bandwidths.length; i++) {
@@ -643,9 +783,15 @@ class HLSVod {
 
             if (!this.segments[bwIdx][segIdx]) {
               // Should not happen, debug
-              console.error(`The this.segments[bwIdx=${bwIdx}][segIdx=${segIdx}] is undefined`);
+              console.error(
+                `The this.segments[bwIdx=${bwIdx}][segIdx=${segIdx}] is undefined`
+              );
               console.error("Initiated bandwidths: ", this.segmentsInitiated);
-              console.error(Object.keys(this.segments).map(b => { return { bw: b, len: this.segments[b].length}; }));
+              console.error(
+                Object.keys(this.segments).map((b) => {
+                  return { bw: b, len: this.segments[b].length };
+                })
+              );
               reject("Internal datastructure error");
               return;
             }
@@ -658,7 +804,9 @@ class HLSVod {
               if (!audioSequence[audioGroupId]) {
                 audioSequence[audioGroupId] = [];
               }
-              audioSequence[audioGroupId].push(this.audioSegments[audioGroupId][segIdx]);
+              audioSequence[audioGroupId].push(
+                this.audioSegments[audioGroupId][segIdx]
+              );
             }
           }
           segIdx++;
@@ -672,7 +820,7 @@ class HLSVod {
           duration = 0;
           this.mediaSequences.push({
             segments: sequence,
-            audioSegments: audioSequence
+            audioSegments: audioSequence,
           });
           sequence = {};
           audioSequence = {};
@@ -686,14 +834,14 @@ class HLSVod {
         duration = 0;
         this.mediaSequences.push({
           segments: sequence,
-          audioSegments: audioSequence
+          audioSegments: audioSequence,
         });
         sequence = {};
         audioSequence = {};
       }
 
       if (!this.mediaSequences) {
-        reject('Failed to init media sequences');
+        reject("Failed to init media sequences");
       } else {
         let discSeqNo = 0;
         this.deltaTimes.push({
@@ -705,21 +853,28 @@ class HLSVod {
         for (let seqNo = 0; seqNo < this.mediaSequences.length; seqNo++) {
           const mseq = this.mediaSequences[seqNo];
           const bwIdx = Object.keys(mseq.segments)[0];
-          if (mseq.segments[bwIdx] && mseq.segments[bwIdx][0] && mseq.segments[bwIdx][0].discontinuity) {
+          if (
+            mseq.segments[bwIdx] &&
+            mseq.segments[bwIdx][0] &&
+            mseq.segments[bwIdx][0].discontinuity
+          ) {
             debug(`Discontinuity in first segment of media seq ${seqNo}`);
             discSeqNo++;
             debug(`Increasing discont sequence ${discSeqNo}`);
           }
           this.discontinuities[seqNo] = discSeqNo;
           if (seqNo > 0) {
-            const positionIncrement =
-              mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].discontinuity ?
-              mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2].duration :
-              mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].duration;
+            const positionIncrement = mseq.segments[bwIdx][
+              mseq.segments[bwIdx].length - 1
+            ].discontinuity
+              ? mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2].duration
+              : mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].duration;
             const interval = positionIncrement - lastPositionIncrement;
             this.deltaTimes.push({
               interval: interval,
-              position: positionIncrement ? lastPosition + positionIncrement : lastPosition,
+              position: positionIncrement
+                ? lastPosition + positionIncrement
+                : lastPosition,
             });
             if (positionIncrement) {
               lastPosition += positionIncrement;
@@ -727,9 +882,12 @@ class HLSVod {
             }
           } else {
             if (mseq.segments[bwIdx]) {
-              lastPositionIncrement = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].discontinuity ?
-                mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2].duration :
-                mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].duration;
+              lastPositionIncrement = mseq.segments[bwIdx][
+                mseq.segments[bwIdx].length - 1
+              ].discontinuity
+                ? mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2].duration
+                : mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1]
+                    .duration;
             }
           }
         }
@@ -756,21 +914,25 @@ class HLSVod {
     this.discontinuities = {};
     this.rangeMetadata = null;
     this.matchedBandwidths = {};
-    this.deltaTimes = [];    
+    this.deltaTimes = [];
   }
 
   _getFirstBwWithSegments() {
-    const bandwidths = Object.keys(this.segments).filter(bw => this.segmentsInitiated[bw]);
+    const bandwidths = Object.keys(this.segments).filter(
+      (bw) => this.segmentsInitiated[bw]
+    );
     if (bandwidths.length > 0) {
       return bandwidths[0];
     } else {
-      console.log('ERROR: could not find any bw with segments');
+      console.log("ERROR: could not find any bw with segments");
       return null;
     }
   }
 
   _getFirstAudioGroupWithSegments() {
-    const audioGroupIds = Object.keys(this.audioSegments).filter(id => this.audioSegments[id].length > 0);
+    const audioGroupIds = Object.keys(this.audioSegments).filter(
+      (id) => this.audioSegments[id].length > 0
+    );
     if (audioGroupIds.length > 0) {
       return audioGroupIds[0];
     } else {
@@ -786,17 +948,29 @@ class HLSVod {
       debug(`Loading media manifest for bandwidth=${bw}`);
 
       if (this.previousVod) {
-        debug(`We have a previous VOD and need to match ${bandwidth} with ${Object.keys(this.segments)}`);
+        debug(
+          `We have a previous VOD and need to match ${bandwidth} with ${Object.keys(
+            this.segments
+          )}`
+        );
         bw = this._getTrueNearestBandwidth(bandwidth);
         if (bw === null) {
           if (this.matchedBandwidths[bandwidth]) {
-            debug(`Already initiated due to previous match with ${bandwidth}, reset`);
+            debug(
+              `Already initiated due to previous match with ${bandwidth}, reset`
+            );
             this.segments[bandwidth] = [];
           }
-          const bandwidthsWithSequences = Object.keys(this.segments).filter(a => this._hasMediaSequences(a));
+          const bandwidthsWithSequences = Object.keys(this.segments).filter(
+            (a) => this._hasMediaSequences(a)
+          );
           debug(`Bandwidths with sequences: ${bandwidthsWithSequences}`);
-          const sourceBw = Number(bandwidthsWithSequences.sort((a, b) => b - a)[0]);
-          debug(`Was not able to match ${bandwidth}, will create and copy from previous ${sourceBw}`);
+          const sourceBw = Number(
+            bandwidthsWithSequences.sort((a, b) => b - a)[0]
+          );
+          debug(
+            `Was not able to match ${bandwidth}, will create and copy from previous ${sourceBw}`
+          );
           this._copyFromPrevious(bandwidth, sourceBw);
           this._copyAudioGroupsFromPrevious();
           bw = bandwidth;
@@ -809,7 +983,7 @@ class HLSVod {
       }
       let timelinePosition = 0;
 
-      parser.on('m3u', m3u => {
+      parser.on("m3u", (m3u) => {
         try {
           if (!this.segmentsInitiated[bw]) {
             let position = 0;
@@ -819,7 +993,7 @@ class HLSVod {
             // Remove segments in the beginning if we have a start time offset
             if (this.startTimeOffset != null) {
               let remain = this.startTimeOffset;
-              while(remain > 0) {
+              while (remain > 0) {
                 const removed = m3u.items.PlaylistItem.shift();
                 if (!removed) {
                   remain = 0;
@@ -830,10 +1004,12 @@ class HLSVod {
             }
 
             for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
-
               if (this.splices[spliceIdx]) {
                 nextSplicePosition = this.splices[spliceIdx].position;
-                spliceBw = this._getNearestBandwidthForSplice(this.splices[spliceIdx], bw);
+                spliceBw = this._getNearestBandwidthForSplice(
+                  this.splices[spliceIdx],
+                  bw
+                );
               } else {
                 nextSplicePosition = null;
               }
@@ -842,52 +1018,65 @@ class HLSVod {
               let segmentUri;
               let baseUrl;
 
-              const m = mediaManifestUri.match('^(.*)/.*?$');
+              const m = mediaManifestUri.match("^(.*)/.*?$");
               if (m) {
-                baseUrl = m[1] + '/';
+                baseUrl = m[1] + "/";
               }
 
-              if (playlistItem.properties.uri.match('^http')) {
+              if (playlistItem.properties.uri.match("^http")) {
                 segmentUri = playlistItem.properties.uri;
               } else {
                 segmentUri = url.resolve(baseUrl, playlistItem.properties.uri);
               }
               if (playlistItem.properties.discontinuity) {
                 this.segments[bw].push({
-                  discontinuity: true
+                  discontinuity: true,
                 });
               }
               let diff = 0;
-              if (nextSplicePosition != null && position + playlistItem.properties.duration > nextSplicePosition) {
+              if (
+                nextSplicePosition != null &&
+                position + playlistItem.properties.duration > nextSplicePosition
+              ) {
                 debug(`Inserting splice at ${bw}:${position} (${i})`);
                 diff = position - nextSplicePosition;
-                if (this.segments[bw].length > 0 && !this.segments[bw][this.segments[bw].length - 1].discontinuity) {
+                if (
+                  this.segments[bw].length > 0 &&
+                  !this.segments[bw][this.segments[bw].length - 1].discontinuity
+                ) {
                   // Only insert discontinuity if this is not the first segment
-                  debug(`Inserting discontinuity at ${bw}:${position} (${i}/${m3u.items.PlaylistItem.length})`);
+                  debug(
+                    `Inserting discontinuity at ${bw}:${position} (${i}/${m3u.items.PlaylistItem.length})`
+                  );
                   this.segments[bw].push({
-                    discontinuity: true
+                    discontinuity: true,
                   });
                 }
                 if (this.splices[spliceIdx].segments[spliceBw]) {
-                  debug(`Inserting ${this.splices[spliceIdx].segments[spliceBw].length} ad segments`);
-                  this.splices[spliceIdx].segments[spliceBw].forEach(v => {
+                  debug(
+                    `Inserting ${this.splices[spliceIdx].segments[spliceBw].length} ad segments`
+                  );
+                  this.splices[spliceIdx].segments[spliceBw].forEach((v) => {
                     let q = {
                       duration: v[0],
                       uri: v[1],
-                      timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
-                      discontinuity: false
-                    }
+                      timelinePosition:
+                        this.timeOffset != null
+                          ? this.timeOffset + timelinePosition
+                          : null,
+                      discontinuity: false,
+                    };
 
                     this.segments[bw].push(q);
                     position += q.duration;
-                    timelinePosition += (q.duration * 1000);
+                    timelinePosition += q.duration * 1000;
                   });
                   if (i != m3u.items.PlaylistItem.length - 1) {
                     // Only insert discontinuity after ad segments if this break is not at the end
                     // of the segment list
                     debug(`Inserting discontinuity after ad segments`);
                     this.segments[bw].push({
-                      discontinuity: true
+                      discontinuity: true,
                     });
                   }
                 }
@@ -895,43 +1084,57 @@ class HLSVod {
               }
               // Next splice is back-to-back?
               if (this.splices[spliceIdx]) {
-                verbose(`Next splice ${this.splices[spliceIdx].position} <= ${position}`);
+                verbose(
+                  `Next splice ${this.splices[spliceIdx].position} <= ${position}`
+                );
               }
-              if (this.splices[spliceIdx] && (this.splices[spliceIdx].position + diff) <= position) {
+              if (
+                this.splices[spliceIdx] &&
+                this.splices[spliceIdx].position + diff <= position
+              ) {
                 debug(`Next splice is back-to-back, not inserting new segment`);
                 this.splices[spliceIdx].position += diff;
                 this.segments[bw].pop(); // Remove extra disc
                 i--;
               } else {
-                let assetData = playlistItem.get('assetdata');
-                let cueOut = playlistItem.get('cueout');
-                let cueIn = playlistItem.get('cuein');
-                let cueOutCont = playlistItem.get('cont-offset');
+                let assetData = playlistItem.get("assetdata");
+                let cueOut = playlistItem.get("cueout");
+                let cueIn = playlistItem.get("cuein");
+                let cueOutCont = playlistItem.get("cont-offset");
                 let duration = 0;
-                let scteData = playlistItem.get('sctedata');
-                if (typeof cueOut !== 'undefined') {
+                let scteData = playlistItem.get("sctedata");
+                if (typeof cueOut !== "undefined") {
                   duration = cueOut;
-                } else if (typeof cueOutCont !== 'undefined') {
-                  duration = playlistItem.get('cont-dur');
+                } else if (typeof cueOutCont !== "undefined") {
+                  duration = playlistItem.get("cont-dur");
                 }
-                let cue = (cueOut || cueIn || cueOutCont || assetData) ? {
-                  out: (typeof cueOut !== 'undefined'),
-                  cont: (typeof cueOutCont !== 'undefined') ? cueOutCont : null,
-                  scteData: (typeof scteData !== 'undefined') ? scteData : null,
-                  in: cueIn ? true : false,
-                  duration: duration,
-                  assetData: (typeof assetData !== 'undefined') ? assetData: null
-                } : null;
+                let cue =
+                  cueOut || cueIn || cueOutCont || assetData
+                    ? {
+                        out: typeof cueOut !== "undefined",
+                        cont:
+                          typeof cueOutCont !== "undefined" ? cueOutCont : null,
+                        scteData:
+                          typeof scteData !== "undefined" ? scteData : null,
+                        in: cueIn ? true : false,
+                        duration: duration,
+                        assetData:
+                          typeof assetData !== "undefined" ? assetData : null,
+                      }
+                    : null;
                 let q = {
                   duration: playlistItem.properties.duration,
                   uri: segmentUri,
-                  timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
-                  cue: cue
-                }
+                  timelinePosition:
+                    this.timeOffset != null
+                      ? this.timeOffset + timelinePosition
+                      : null,
+                  cue: cue,
+                };
                 if (this.segments[bw].length === 0) {
                   // Add daterange metadata if this is the first segment
                   if (this.rangeMetadata) {
-                    q['daterange'] = this.rangeMetadata;                  
+                    q["daterange"] = this.rangeMetadata;
                   }
                 }
                 this.segments[bw].push(q);
@@ -940,7 +1143,11 @@ class HLSVod {
               }
             }
 
-            this.targetDuration[bw] = Math.ceil(this.segments[bw].map(el => el && el.duration ? el.duration : 0).reduce((max, cur) => Math.max(max, cur), -Infinity));
+            this.targetDuration[bw] = Math.ceil(
+              this.segments[bw]
+                .map((el) => (el && el.duration ? el.duration : 0))
+                .reduce((max, cur) => Math.max(max, cur), -Infinity)
+            );
             this.segmentsInitiated[bw] = true;
           } else {
             debug(`Segments for ${bw} already initiated, skipping`);
@@ -953,19 +1160,22 @@ class HLSVod {
 
       if (!_injectMediaManifest) {
         fetch(mediaManifestUri)
-        .then(res => {
-          if (res.status === 200) {
-	          res.body.pipe(parser);
-          }
-          else {
-          	throw new Error(res.status + ':: status code error trying to retrieve media manifest ' + mediaManifestUri);
-          }          
-        })
-        .catch(reject);
+          .then((res) => {
+            if (res.status === 200) {
+              res.body.pipe(parser);
+            } else {
+              throw new Error(
+                res.status +
+                  ":: status code error trying to retrieve media manifest " +
+                  mediaManifestUri
+              );
+            }
+          })
+          .catch(reject);
       } else {
         const stream = _injectMediaManifest(bandwidth);
         stream.pipe(parser);
-        stream.on('error', err => reject(err));
+        stream.on("error", (err) => reject(err));
       }
     });
   }
@@ -976,57 +1186,64 @@ class HLSVod {
       debug(`Loading audio manifest for group=${groupId}`);
       debug(`Audio manifest URI: ${audioManifestUri}`);
 
-      parser.on('m3u', m3u => {
+      parser.on("m3u", (m3u) => {
         try {
           if (this.audioSegments[groupId]) {
-
             for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
               const playlistItem = m3u.items.PlaylistItem[i];
               let segmentUri;
               let baseUrl;
 
-              const m = audioManifestUri.match('^(.*)/.*?$');
+              const m = audioManifestUri.match("^(.*)/.*?$");
               if (m) {
-                baseUrl = m[1] + '/';
+                baseUrl = m[1] + "/";
               }
-              if (playlistItem.properties.uri.match('^http')) {
+              if (playlistItem.properties.uri.match("^http")) {
                 segmentUri = playlistItem.properties.uri;
               } else {
                 segmentUri = url.resolve(baseUrl, playlistItem.properties.uri);
               }
               if (playlistItem.properties.discontinuity) {
                 this.audioSegments[groupId].push({
-                  discontinuity: true
+                  discontinuity: true,
                 });
               }
               let q = {
                 duration: playlistItem.properties.duration,
-                uri: segmentUri
+                uri: segmentUri,
               };
               this.audioSegments[groupId].push(q);
             }
-            this.targetAudioDuration[groupId] = Math.ceil(this.audioSegments[groupId].map(el => el ? el.duration : 0).reduce((max, cur) => Math.max(max, cur), -Infinity));
+            this.targetAudioDuration[groupId] = Math.ceil(
+              this.audioSegments[groupId]
+                .map((el) => (el ? el.duration : 0))
+                .reduce((max, cur) => Math.max(max, cur), -Infinity)
+            );
           }
           resolve();
-        } catch(exc) {
+        } catch (exc) {
           reject(exc);
         }
       });
 
       if (!_injectAudioManifest) {
         fetch(audioManifestUri)
-        .then(res => {
-          if (res.status === 200) {
-	          res.body.pipe(parser);
-          } else {
-          	throw new Error(res.status + ':: status code error trying to retrieve audio manifest ' + audioManifestUri);
-          }
-        })
-        .catch(reject);
+          .then((res) => {
+            if (res.status === 200) {
+              res.body.pipe(parser);
+            } else {
+              throw new Error(
+                res.status +
+                  ":: status code error trying to retrieve audio manifest " +
+                  audioManifestUri
+              );
+            }
+          })
+          .catch(reject);
       } else {
         const stream = _injectAudioManifest(groupId);
         stream.pipe(parser);
-        stream.on('error', err => reject(err));
+        stream.on("error", (err) => reject(err));
       }
     });
   }
@@ -1035,8 +1252,10 @@ class HLSVod {
     if (this.usageProfileMappingRev != null) {
       return this.usageProfileMappingRev[bandwidth];
     }
-    const filteredBandwidths = Object.keys(this.segments).filter(bw => this.segments[bw].length > 0);
-    const availableBandwidths = filteredBandwidths.sort((a,b) => a - b);
+    const filteredBandwidths = Object.keys(this.segments).filter(
+      (bw) => this.segments[bw].length > 0
+    );
+    const availableBandwidths = filteredBandwidths.sort((a, b) => a - b);
 
     debug(`Find ${bandwidth} in ${availableBandwidths}`);
     for (let i = 0; i < availableBandwidths.length; i++) {
@@ -1053,18 +1272,24 @@ class HLSVod {
       return this.usageProfileMappingRev[bandwidth];
     }
 
-    const filteredBandwidths = Object.keys(this.segments).filter(bw => this.segments[bw].length > 0).filter(a => this._hasMediaSequences(a));
-    const availableBandwidths = filteredBandwidths.sort((a,b) => b - a);
+    const filteredBandwidths = Object.keys(this.segments)
+      .filter((bw) => this.segments[bw].length > 0)
+      .filter((a) => this._hasMediaSequences(a));
+    const availableBandwidths = filteredBandwidths.sort((a, b) => b - a);
     if (bandwidth > availableBandwidths[0]) {
       // Our bandwidth (needle) is larger than the highest available.
       // Will add this instead of matching
-      debug(`Needle ${bandwidth} is higher than any of the available ones, will not try to match`);
+      debug(
+        `Needle ${bandwidth} is higher than any of the available ones, will not try to match`
+      );
       return null;
     }
     const closestBandwidth = filteredBandwidths.reduce((a, b) => {
       return Math.abs(b - bandwidth) < Math.abs(a - bandwidth) ? b : a;
     });
-    debug(`True nearest bandwidth ${closestBandwidth} of ${filteredBandwidths}`);
+    debug(
+      `True nearest bandwidth ${closestBandwidth} of ${filteredBandwidths}`
+    );
     if (this.matchedBandwidths[closestBandwidth]) {
       debug(`Chosen bandwidth ${closestBandwidth} already matched`);
       return null;
@@ -1075,11 +1300,13 @@ class HLSVod {
 
   _getNearestBandwidthWithInitiatedSegments(bandwidthToMatch) {
     let bandwidth = bandwidthToMatch;
-    const filteredBandwidths = Object.keys(this.segments).filter(bw => this.segmentsInitiated[bw]);
-    const availableBandwidths = filteredBandwidths.sort((a,b) => a - b);
+    const filteredBandwidths = Object.keys(this.segments).filter(
+      (bw) => this.segmentsInitiated[bw]
+    );
+    const availableBandwidths = filteredBandwidths.sort((a, b) => a - b);
 
     debug(`Find ${bandwidth} in ${availableBandwidths}`);
-    const exactMatch = availableBandwidths.find(a => a == bandwidth);
+    const exactMatch = availableBandwidths.find((a) => a == bandwidth);
     if (exactMatch) {
       return exactMatch;
     }
@@ -1088,20 +1315,30 @@ class HLSVod {
         return availableBandwidths[i];
       }
     }
-    debug('No match found - using fallback');
+    debug("No match found - using fallback");
     return availableBandwidths[availableBandwidths.length - 1];
   }
 
   _getNearestBandwidthForSplice(splice, bandwidth) {
     const availableBandwidths = Object.keys(splice.segments);
-    if (this.usageProfileMapping != null && availableBandwidths.length === Object.keys(this.usageProfileMapping).length) {
+    if (
+      this.usageProfileMapping != null &&
+      availableBandwidths.length ===
+        Object.keys(this.usageProfileMapping).length
+    ) {
       let mapping = {};
-      const sortedAvailable = availableBandwidths.sort((a, b) => a -b );
-      const sortedUsageProfile = Object.keys(this.usageProfileMapping).sort((a, b) => a-b);
+      const sortedAvailable = availableBandwidths.sort((a, b) => a - b);
+      const sortedUsageProfile = Object.keys(this.usageProfileMapping).sort(
+        (a, b) => a - b
+      );
       for (let i = 0; i < sortedAvailable.length; i++) {
         mapping[sortedUsageProfile[i]] = sortedAvailable[i];
       }
-      verbose(`We have a splice mapping. Trying to match ${bandwidth} with ${Object.keys(mapping)}`);
+      verbose(
+        `We have a splice mapping. Trying to match ${bandwidth} with ${Object.keys(
+          mapping
+        )}`
+      );
       return mapping[bandwidth];
     }
 
@@ -1131,4 +1368,3 @@ class HLSVod {
 }
 
 module.exports = HLSVod;
-
