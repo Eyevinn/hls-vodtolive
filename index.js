@@ -183,7 +183,8 @@ class HLSVod {
               }
             }
           }
-          if (streamItem.attributes.attributes["audio"]) {// <-------------------------------------------------------------------------- I'VE BEEN HERE
+          if (streamItem.attributes.attributes["audio"]) {
+            // <-------------------------------------------------------------------------- I'VE BEEN HERE
             let audioGroupId = streamItem.attributes.attributes["audio"];
             if (!this.audioSegments[audioGroupId]) {
               this.audioSegments[audioGroupId] = [];
@@ -191,8 +192,11 @@ class HLSVod {
             debug(`Lookup media item for '${audioGroupId}'`);
             // .find() gets the first media-item that satisfies condition. It will always find the top audio uri?
             let audioGroupItem = m3u.items.MediaItem.find((item) => {
-              return (item.attributes.attributes.type === "AUDIO" && item.attributes.attributes["group-id"] === audioGroupId && item.attributes.attributes["language"] === "sp");
-               //return (item.attributes.attributes.type === 'AUDIO' && item.attributes.attributes['group-id'] === audioGroupId);
+              //return (item.attributes.attributes.type === "AUDIO" && item.attributes.attributes["group-id"] === audioGroupId && item.attributes.attributes["language"] === "sp");
+              return (
+                item.attributes.attributes.type === "AUDIO" &&
+                item.attributes.attributes["group-id"] === audioGroupId
+              );
             });
             /*
               if(!audioGroupItem){
@@ -245,7 +249,6 @@ class HLSVod {
             reject(err);
           });
       });
-      
 
       parser.on("error", (err) => {
         reject(err);
@@ -354,7 +357,8 @@ class HLSVod {
     return Object.keys(this.segments);
   }
 
-  getAudioGroups() { // <-------------------------------------------------------------------------- I'VE BEEN HERE
+  getAudioGroups() {
+    // <-------------------------------------------------------------------------- I'VE BEEN HERE
     let temp = {
       keys: Object.keys(this.audioSegments),
       vals: Object.values(this.audioSegments),
@@ -1182,6 +1186,7 @@ class HLSVod {
 
   _loadAudioManifest(audioManifestUri, groupId, _injectAudioManifest) {
     return new Promise((resolve, reject) => {
+      
       const parser = m3u8.createStream();
       debug(`Loading audio manifest for group=${groupId}`);
       debug(`Audio manifest URI: ${audioManifestUri}`);
@@ -1241,7 +1246,7 @@ class HLSVod {
           })
           .catch(reject);
       } else {
-        const stream = _injectAudioManifest(groupId);
+        const stream = _injectAudioManifest(groupId, _LANG);
         stream.pipe(parser);
         stream.on("error", (err) => reject(err));
       }

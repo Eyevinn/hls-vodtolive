@@ -1310,18 +1310,13 @@ describe("HLSVod with separate audio variants", () => {
         "testvectors/hls_multiaudiotracks/" + fname[bandwidth]
       );
     };
-    mockAudioManifest = function (groupId) {
+    mockAudioManifest = function (groupId, lang) {
       // <-------------------------------------------------------------------------- I'VE BEEN HERE
       const fname = {
-        "audio-aacl-96": "audio-96000.m3u8",
-        "audio-aacl-97": "audio-96000-zxx.m3u8",
-        "audio-aacl-98": "audio-96000-pl.m3u8",
-        "audio-aacl-99": "audio-96000-de.m3u8",
-        "audio-aacl-95": "audio-96000-es.m3u8",
-        "audio-aacl-94": "audio-96000-fr.m3u8",
+        "audio-aacl-96": "audio-96000",
       };
       return fs.createReadStream(
-        "testvectors/hls_multiaudiotracks/" + fname[groupId]
+        "testvectors/hls_multiaudiotracks/" + fname[groupId] + "-" + lang +".m3u8"
       );
     };
   });
@@ -1359,20 +1354,14 @@ describe("HLSVod with separate audio variants", () => {
     mockVod
       .load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
       .then(() => {
-        expect(mockVod.getAudioGroups().length).toBe(5);
-        expect(mockVod.getAudioGroups()).toEqual([
-          "audio-aacl-94",
-          "audio-aacl-95",
-          "audio-aacl-96",
-          "audio-aacl-97",
-          "audio-aacl-98",
-        ]);
+        expect(mockVod.getAudioGroups().length).toBe(1);
+        expect(mockVod.getAudioGroups()).toEqual(["audio-aacl-96"]);
         const seqAudioSegments = mockVod.getLiveMediaSequenceAudioSegments(
           "audio-aacl-96",
           0
         );
         expect(seqAudioSegments[4].uri).toEqual(
-          "http://mock.com/1woxvooiidb(11186147_ISMUSP)-audio=96000-5.aac"
+          "http://mock.com/1woxvooiidb(11186147_ISMUSP)-audio=96000_en-5.aac"
         );
         done();
       });
@@ -1436,13 +1425,13 @@ describe("HLSVod with separate audio variants", () => {
           0
         );
         expect(seqAudioSegments1[0].uri).toEqual(
-          "http://mock.com/1woxvooiidb(11186147_ISMUSP)-audio=96000-1.aac"
+          "http://mock.com/1woxvooiidb(11186147_ISMUSP)-audio=96000_en-1.aac"
         );
         expect(
           seqAudioSegments2[[seqAudioSegments2.length - 1 - 1]].discontinuity
         ).toBe(true);
         expect(seqAudioSegments2[[seqAudioSegments2.length - 1]].uri).toEqual(
-          "http://mock.com/1woxvooiidb(11186147_ISMUSP)-audio=96000-1.aac"
+          "http://mock.com/1woxvooiidb(11186147_ISMUSP)-audio=96000_en-1.aac"
         );
         done();
       });
