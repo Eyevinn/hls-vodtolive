@@ -210,6 +210,7 @@ class HLSVod {
               );
             });
             // # find all langs amoungst the mediaitems that have this group id.
+            // # It extracts each mediaItems language attribute value.
             // # ALSO init a lang property whos value is an array [{seg}, {seg}, ...].
             let n_LANGS = audioGroupItems.map((item) => {
               let itemLang;
@@ -218,7 +219,7 @@ class HLSVod {
               } else {
                 itemLang = item.attributes.attributes["language"];
               }
-
+              // INIT lang in new group.
               if (!this.audioSegments[audioGroupId][itemLang]) {
                 this.audioSegments[audioGroupId][itemLang] = [];
               }
@@ -426,17 +427,28 @@ class HLSVod {
   getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx) {
     // <-------------------------------------------------------------------------- I'VE BEEN HERE
     // case: no lang found? Just use the first one (usually the default)
-    console.log(`\n 1-I try get: ${audioLanguage}\n`)
+    console.log(`\n 1-I try get-> ${audioGroupId}::${audioLanguage}`);
     if (
       !this.mediaSequences[seqIdx].audioSegments[audioGroupId][audioLanguage]
     ) {
-      console.log(`\n A-The group does not have a: ${audioLanguage}\n`);
+      console.log(`[A]-The group does not have a: ${audioLanguage}`);
       let objLangs = this.mediaSequences[seqIdx].audioSegments[audioGroupId];
       return this.mediaSequences[seqIdx].audioSegments[audioGroupId][
         Object.keys(objLangs)[0]
       ];
     } else {
-      console.log(`\n B-The group thinks it has a: ${audioLanguage}\n`);
+      let all_gids = Object.keys(this.mediaSequences[seqIdx].audioSegments);
+      let all_langs = Object.keys(
+        this.mediaSequences[seqIdx].audioSegments[audioGroupId]
+      );
+      console.log(`[B]-The group thinks it has a: ${audioLanguage}`);
+      console.log("this.audioSegments hold->", all_gids, ":", all_langs);
+      if (audioGroupId === "aac") {
+        console.log(
+          "segments from ['aac']\n",
+          this.mediaSequences[seqIdx].audioSegments[audioGroupId]
+        );
+      }
       return this.mediaSequences[seqIdx].audioSegments[audioGroupId][
         audioLanguage
       ];
@@ -1363,6 +1375,7 @@ class HLSVod {
 
       parser.on("m3u", (m3u) => {
         try {
+          console.log("########---_loadAudioManifest(", this.audioSegments[groupId][n_LANG] ? true: false, ") ->", groupId, n_LANG );
           if (this.audioSegments[groupId][n_LANG]) {
             for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
               const playlistItem = m3u.items.PlaylistItem[i];
