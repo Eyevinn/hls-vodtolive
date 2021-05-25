@@ -1284,7 +1284,10 @@ describe("HLSVod with not equal usage profiles", () => {
   });
 });
 /**
- *  Changes: vod.getLiveMediaSequenceAudioSegments()
+ *  Changes: 
+ *  - Read from new mock manifests and
+ *    update input arguments for vod.getLiveMediaSequenceAudioSegments(id, *new*->lang, seqIdx)
+ *  - Added 3 more unittests for different VOD after VOD cases.
  */
 describe("HLSVod with separate audio variants", () => {
   beforeEach(() => {
@@ -1484,7 +1487,7 @@ describe("HLSVod with separate audio variants", () => {
 
   it("can handle vod after another vod, loading same groupId but missing a language and gives default language instead", (done) => {
     const now = Date.now();
-    // # Two demuxed vods with different languages.
+    // # Two demuxed vods with some different languages.
     mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
     mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", []);
     mockVod
@@ -1572,14 +1575,12 @@ describe("HLSVod with separate audio variants", () => {
           "pl",
           0
         );
-        console.log(`\n ##GROUPID unITTEST##\n`)
         const seqAudioSegments2 = mockVod2.getLiveMediaSequenceAudioSegments(
           // <-----------------------------------------------------------------------------------------------------------------BEEN HERE
           "aac",
           "sv",
           0
         );
-        console.log("seg 2:", seqAudioSegments2.length - 1, "\n", seqAudioSegments2[seqAudioSegments2.length - 1]);
         expect(seqAudioSegments1[0].uri).toEqual(
           "http://mock.com/1woxvooiidb(11186147_ISMUSP)-audio=96000_pl-1.aac"
         );
