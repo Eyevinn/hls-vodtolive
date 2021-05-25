@@ -194,7 +194,6 @@ class HLSVod {
 
             // # .find() gets the first media-item that satisfies condition. It will always find the top audio uri?
             // let audioGroupItem = m3u.items.MediaItem.find((item) => {
-            //   //return (item.attributes.attributes.type === "AUDIO" && item.attributes.attributes["group-id"] === audioGroupId && item.attributes.attributes["language"] === "sp");
             //   return (
             //     item.attributes.attributes.type === "AUDIO" &&
             //     item.attributes.attributes["group-id"] === audioGroupId
@@ -295,7 +294,8 @@ class HLSVod {
                   audioGroups[audioGroupId] = {};
                 }
                 if (!audioGroups[audioGroupId][audioLang]) {
-                  audioGroups[audioGroupId][audioLang] = true;
+                  audioGroups[audioGroupId][audioLang] = true; //<------- Prevents 'loading' an audio track with same GID and LANG
+                  //------------------------------- otherwise it just would've loaded OVER the latest occurens of the LANG in GID.
                   audioManifestPromises.push(
                     this._loadAudioManifest(
                       audioManifestUrl,
@@ -427,7 +427,7 @@ class HLSVod {
   getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx) {
     // <-------------------------------------------------------------------------- I'VE BEEN HERE
     // case: no lang found? Just use the first one (usually the default)
-    console.log(`\n 1-I try get-> ${audioGroupId}::${audioLanguage}`);
+    console.log(`\n HSLVod trying to get-> ${audioGroupId}::${audioLanguage}`);
     if (
       !this.mediaSequences[seqIdx].audioSegments[audioGroupId][audioLanguage]
     ) {
@@ -437,18 +437,7 @@ class HLSVod {
         Object.keys(objLangs)[0]
       ];
     } else {
-      let all_gids = Object.keys(this.mediaSequences[seqIdx].audioSegments);
-      let all_langs = Object.keys(
-        this.mediaSequences[seqIdx].audioSegments[audioGroupId]
-      );
       console.log(`[B]-The group thinks it has a: ${audioLanguage}`);
-      console.log("this.audioSegments hold->", all_gids, ":", all_langs);
-      if (audioGroupId === "aac") {
-        console.log(
-          "segments from ['aac']\n",
-          this.mediaSequences[seqIdx].audioSegments[audioGroupId]
-        );
-      }
       return this.mediaSequences[seqIdx].audioSegments[audioGroupId][
         audioLanguage
       ];
@@ -622,6 +611,7 @@ class HLSVod {
 
     return m3u8;
   }
+
   /**
    * Gets a hls/ Makes m3u8-file with all of the correct Audio-segments
    *  belonging to a given groupID for a particular sequence
@@ -643,6 +633,10 @@ class HLSVod {
       audioLanguage,
       seqIdx
     );
+
+    if (!mediaSeqAudioSegments) {
+      return false;
+    }
 
     const targetDuration = this._determineTargetDuration(mediaSeqAudioSegments);
     // const targetDuration = this._determineTargetDuration(
@@ -1375,7 +1369,6 @@ class HLSVod {
 
       parser.on("m3u", (m3u) => {
         try {
-          console.log("########---_loadAudioManifest(", this.audioSegments[groupId][n_LANG] ? true: false, ") ->", groupId, n_LANG );
           if (this.audioSegments[groupId][n_LANG]) {
             for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
               const playlistItem = m3u.items.PlaylistItem[i];
