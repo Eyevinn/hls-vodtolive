@@ -187,55 +187,132 @@ class HLSVod {
             // <-------------------------------------------------------------------------- I'VE BEEN HERE
             let audioGroupId = streamItem.attributes.attributes["audio"];
             if (!this.audioSegments[audioGroupId]) {
-              this.audioSegments[audioGroupId] = [];
+              //this.audioSegments[audioGroupId] = [];
+              this.audioSegments[audioGroupId] = {};
             }
             debug(`Lookup media item for '${audioGroupId}'`);
-            // .find() gets the first media-item that satisfies condition. It will always find the top audio uri?
-            let audioGroupItem = m3u.items.MediaItem.find((item) => {
+
+            // # .find() gets the first media-item that satisfies condition. It will always find the top audio uri?
+            // let audioGroupItem = m3u.items.MediaItem.find((item) => {
+            //   //return (item.attributes.attributes.type === "AUDIO" && item.attributes.attributes["group-id"] === audioGroupId && item.attributes.attributes["language"] === "sp");
+            //   return (
+            //     item.attributes.attributes.type === "AUDIO" &&
+            //     item.attributes.attributes["group-id"] === audioGroupId
+            //   );
+            // });
+
+            // <-------------------------------------------------------------------------- I'VE BEEN HERE
+            let audioGroupItems = m3u.items.MediaItem.filter((item) => {
               //return (item.attributes.attributes.type === "AUDIO" && item.attributes.attributes["group-id"] === audioGroupId && item.attributes.attributes["language"] === "sp");
               return (
                 item.attributes.attributes.type === "AUDIO" &&
                 item.attributes.attributes["group-id"] === audioGroupId
               );
             });
-            /*
-              if(!audioGroupItem){
-                audioGroupItem = m3u.items.MediaItem.find((item) => {
-                  return (item.attributes.attributes.type === 'AUDIO' && item.attributes.attributes['group-id'] === audioGroupId);
-            });
+            // # find all langs amoungst the mediaitems that have this group id.
+            // # ALSO init a lang property whos value is an array [{seg}, {seg}, ...].
+            let n_LANGS = audioGroupItems.map((item) => {
+              let itemLang;
+              if (!item.attributes.attributes["language"]) {
+                itemLang = null;
+              } else {
+                itemLang = item.attributes.attributes["language"];
               }
-             */
 
-            let audioUri = audioGroupItem.attributes.attributes.uri;
-            if (!audioUri) {
-              let audioVariant = m3u.items.StreamItem.find((item) => {
-                return (
-                  !item.attributes.attributes.resolution &&
-                  item.attributes.attributes["audio"] === audioGroupId
-                );
-              });
-              if (audioVariant) {
-                audioUri = audioVariant.properties.uri;
+              if (!this.audioSegments[audioGroupId][itemLang]) {
+                this.audioSegments[audioGroupId][itemLang] = [];
               }
-            }
-            if (audioUri) {
-              let audioManifestUrl = url.resolve(baseUrl, audioUri);
-              if (!audioGroups[audioGroupId]) {
-                audioGroups[audioGroupId] = true;
-                audioManifestPromises.push(
-                  this._loadAudioManifest(
-                    audioManifestUrl,
-                    audioGroupId,
-                    _injectAudioManifest
-                  )
-                );
+              return (item = itemLang);
+            });
+
+            // # Need to clean up langs loaded from prev that current doesn't have.
+            let all_langs = Object.keys(this.audioSegments[audioGroupId]);
+            let toRemove = [];
+            all_langs.map((lang) => {
+              if (!n_LANGS.includes(lang)) {
+                toRemove.push(lang);
+              }
+            });
+            toRemove.map((lang) => {
+              console.log("###---Im deleting lang: ", lang, "---###");
+              delete this.audioSegments[audioGroupId][lang];
+            });
+
+            // let audioUri = audioGroupItem.attributes.attributes.uri;
+            // if (!audioUri) {
+            //   let audioVariant = m3u.items.StreamItem.find((item) => {
+            //     return (
+            //       !item.attributes.attributes.resolution &&
+            //       item.attributes.attributes["audio"] === audioGroupId
+            //     );
+            //   });
+            //   if (audioVariant) {
+            //     audioUri = audioVariant.properties.uri;
+            //   }
+            // }
+            //   if (audioUri) {
+            //     let audioManifestUrl = url.resolve(baseUrl, audioUri);
+            //     if (!audioGroups[audioGroupId]) {
+            //       audioGroups[audioGroupId] = true;
+            //       audioManifestPromises.push(
+            //         this._loadAudioManifest(
+            //           audioManifestUrl,
+            //           audioGroupId,
+            //           _injectAudioManifest
+            //         )
+            //       );
+            //     } else {
+            //       debug(
+            //         `Audio manifest for '${audioGroupId}' already loaded, skipping`
+            //       );
+            //     }
+            //   } else {
+            //     debug(`No media item for '${audioGroupId}' was found, skipping`);
+            //   }
+            // }
+
+            // # For each lang, find the lang uri and _loadAudioManifest for it.
+            for (let j = 0; j < n_LANGS.length; j++) {
+              let audioLang = n_LANGS[j];
+              let audioUri = audioGroupItems[j].attributes.attributes.uri;
+              if (!audioUri) {
+                //# if mediaItems dont have uris
+                let audioVariant = m3u.items.StreamItem.find((item) => {
+                  return (
+                    !item.attributes.attributes.resolution &&
+                    item.attributes.attributes["audio"] === audioGroupId
+                  );
+                });
+                if (audioVariant) {
+                  audioUri = audioVariant.properties.uri;
+                }
+              }
+
+              if (audioUri) {
+                let audioManifestUrl = url.resolve(baseUrl, audioUri);
+                if (!audioGroups[audioGroupId]) {
+                  audioGroups[audioGroupId] = {};
+                }
+                if (!audioGroups[audioGroupId][audioLang]) {
+                  audioGroups[audioGroupId][audioLang] = true;
+                  audioManifestPromises.push(
+                    this._loadAudioManifest(
+                      audioManifestUrl,
+                      audioGroupId,
+                      audioLang,
+                      _injectAudioManifest
+                    )
+                  );
+                } else {
+                  debug(
+                    `Audio manifest for language "${audioLang}" from '${audioGroupId}' in already loaded, skipping`
+                  );
+                }
               } else {
                 debug(
-                  `Audio manifest for '${audioGroupId}' already loaded, skipping`
+                  `No media item for '${audioGroupId}' in "${audioLang}" was found, skipping`
                 );
               }
-            } else {
-              debug(`No media item for '${audioGroupId}' was found, skipping`);
             }
           }
         }
@@ -346,9 +423,28 @@ class HLSVod {
    * @param {string} audioGroupId - audio group Id
    * @param {number} seqIdx - media sequence index (first is 0)
    */
-  getLiveMediaSequenceAudioSegments(audioGroupId, seqIdx) {
-    return this.mediaSequences[seqIdx].audioSegments[audioGroupId];
+  getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx) {
+    // <-------------------------------------------------------------------------- I'VE BEEN HERE
+    // case: no lang found? Just use the first one (usually the default)
+    console.log(`\n 1-I try get: ${audioLanguage}\n`)
+    if (
+      !this.mediaSequences[seqIdx].audioSegments[audioGroupId][audioLanguage]
+    ) {
+      console.log(`\n A-The group does not have a: ${audioLanguage}\n`);
+      let objLangs = this.mediaSequences[seqIdx].audioSegments[audioGroupId];
+      return this.mediaSequences[seqIdx].audioSegments[audioGroupId][
+        Object.keys(objLangs)[0]
+      ];
+    } else {
+      console.log(`\n B-The group thinks it has a: ${audioLanguage}\n`);
+      return this.mediaSequences[seqIdx].audioSegments[audioGroupId][
+        audioLanguage
+      ];
+    }
   }
+  // getLiveMediaSequenceAudioSegments(audioGroupId, seqIdx) {
+  //  return this.mediaSequences[seqIdx].audioSegments[audioGroupId];
+  // }
 
   /**
    * Get the available bandwidths for this VOD
@@ -364,6 +460,11 @@ class HLSVod {
       vals: Object.values(this.audioSegments),
     };
     return temp.keys;
+  }
+
+  // NEW ADDITION <-------------------------------------------------------------------------- I'VE BEEN HERE
+  getAudioLangsForAudioGroup(groupId) {
+    return Object.keys(this.audioSegments[groupId]);
   }
 
   /**
@@ -513,14 +614,28 @@ class HLSVod {
    * Gets a hls/ Makes m3u8-file with all of the correct Audio-segments
    *  belonging to a given groupID for a particular sequence
    */
-  getLiveMediaAudioSequences(offset, audioGroupId, seqIdx, discOffset) {
+  getLiveMediaAudioSequences(
+    offset,
+    audioGroupId,
+    audioLanguage,
+    seqIdx,
+    discOffset
+  ) {
+    // <-------------------------------------------------------------------------------------------------------------------------------------- BEEN HERE
+
     debug(
       `Get live audio media sequence [${seqIdx}] for audioGroupId=${audioGroupId}`
     );
-    const targetDuration = this._determineTargetDuration(
-      this.mediaSequences[seqIdx].audioSegments[audioGroupId]
+    const mediaSeqAudioSegments = this.getLiveMediaSequenceAudioSegments(
+      audioGroupId,
+      audioLanguage,
+      seqIdx
     );
 
+    const targetDuration = this._determineTargetDuration(mediaSeqAudioSegments);
+    // const targetDuration = this._determineTargetDuration(
+    //   this.mediaSequences[seqIdx].audioSegments[audioGroupId][audioLanguage]
+    // );
     let m3u8 = "#EXTM3U\n";
     m3u8 += "#EXT-X-VERSION:3\n";
     if (this.header) {
@@ -538,12 +653,8 @@ class HLSVod {
       "\n";
 
     let previousSegment = null;
-    for (
-      let i = 0;
-      i < this.mediaSequences[seqIdx].audioSegments[audioGroupId].length;
-      i++
-    ) {
-      const v = this.mediaSequences[seqIdx].audioSegments[audioGroupId][i];
+    for (let i = 0; i < mediaSeqAudioSegments.length; i++) {
+      const v = mediaSeqAudioSegments[i];
       if (v) {
         if (previousSegment != null) {
           if (previousSegment.discontinuity && v.timelinePosition) {
@@ -580,18 +691,10 @@ class HLSVod {
             }
           }
         } else {
-          if (
-            i != 0 &&
-            i !=
-              this.mediaSequences[seqIdx].audioSegments[audioGroupId].length - 1
-          ) {
+          if (i != 0 && i != mediaSeqAudioSegments.length - 1) {
             m3u8 += "#EXT-X-DISCONTINUITY\n";
           }
-          if (
-            v.daterange &&
-            i !=
-              this.mediaSequences[seqIdx].audioSegments[audioGroupId].length - 1
-          ) {
+          if (v.daterange && i != mediaSeqAudioSegments.length - 1) {
             const dateRangeAttributes = Object.keys(v.daterange)
               .map((key) => daterangeAttribute(key, v.daterange[key]))
               .join(",");
@@ -702,31 +805,69 @@ class HLSVod {
   }
 
   _copyAudioGroupsFromPrevious() {
+    // <-------------------------------------------------------------------------- I'VE BEEN HERE
     const previousVodSeqCount = this.previousVod.getLiveMediaSequencesCount();
     const audioGroups = this.previousVod.getAudioGroups();
     if (audioGroups.length > 0) {
       for (let i = 0; i < audioGroups.length; i++) {
         const audioGroupId = audioGroups[i];
-        const lastMediaAudioSequence =
-          this.previousVod.getLiveMediaSequenceAudioSegments(
-            audioGroupId,
-            previousVodSeqCount - 1
-          );
-        if (!this.audioSegments[audioGroupId]) {
-          this.audioSegments[audioGroupId] = [];
-        }
-        if (lastMediaAudioSequence) {
-          for (let idx = 1; idx < lastMediaAudioSequence.length; idx++) {
-            let q = lastMediaAudioSequence[idx];
-            this.audioSegments[audioGroupId].push(q);
+        const audioLangs =
+          this.previousVod.getAudioLangsForAudioGroup(audioGroupId);
+
+        for (let k = 0; k < audioLangs.length; k++) {
+          const audioLang = audioLangs[k];
+
+          const lastMediaAudioSequence =
+            this.previousVod.getLiveMediaSequenceAudioSegments(
+              audioGroupId,
+              audioLang,
+              previousVodSeqCount - 1
+            );
+          if (!this.audioSegments[audioGroupId]) {
+            this.audioSegments[audioGroupId] = {};
           }
+          if (!this.audioSegments[audioGroupId][audioLang]) {
+            this.audioSegments[audioGroupId][audioLang] = [];
+          }
+          if (lastMediaAudioSequence) {
+            for (let idx = 1; idx < lastMediaAudioSequence.length; idx++) {
+              let q = lastMediaAudioSequence[idx];
+              this.audioSegments[audioGroupId][audioLang].push(q);
+            }
+          }
+          this.audioSegments[audioGroupId][audioLang].push({
+            discontinuity: true,
+            daterange: this.rangeMetadata ? this.rangeMetadata : null,
+          });
         }
-        this.audioSegments[audioGroupId].push({
-          discontinuity: true,
-          daterange: this.rangeMetadata ? this.rangeMetadata : null,
-        });
       }
     }
+    // const previousVodSeqCount = this.previousVod.getLiveMediaSequencesCount();
+    // const audioGroups = this.previousVod.getAudioGroups();
+    // if (audioGroups.length > 0) {
+    //   for (let i = 0; i < audioGroups.length; i++) {
+
+    //     const audioGroupId = audioGroups[i];
+    //     const lastMediaAudioSequence =
+    //       this.previousVod.getLiveMediaSequenceAudioSegments(
+    //         audioGroupId,
+    //         previousVodSeqCount - 1
+    //       );
+    //     if (!this.audioSegments[audioGroupId]) {
+    //       this.audioSegments[audioGroupId] = [];
+    //     }
+    //     if (lastMediaAudioSequence) {
+    //       for (let idx = 1; idx < lastMediaAudioSequence.length; idx++) {
+    //         let q = lastMediaAudioSequence[idx];
+    //         this.audioSegments[audioGroupId].push(q);
+    //       }
+    //     }
+    //     this.audioSegments[audioGroupId].push({
+    //       discontinuity: true,
+    //       daterange: this.rangeMetadata ? this.rangeMetadata : null,
+    //     });
+    //   }
+    // }
   }
 
   _cleanupUnused() {
@@ -741,6 +882,8 @@ class HLSVod {
       toRemove.map((bw) => {
         delete this.segments[bw];
       });
+      //<---------------------------------------------------------------------------------------------------------------- BEEN HERE
+      //this.audioSegments = {};
       resolve();
     });
   }
@@ -786,6 +929,7 @@ class HLSVod {
             }
 
             if (!this.segments[bwIdx][segIdx]) {
+              // <-------------------------------------------------------------------------- I'VE BEEN HERE
               // Should not happen, debug
               console.error(
                 `The this.segments[bwIdx=${bwIdx}][segIdx=${segIdx}] is undefined`
@@ -806,13 +950,32 @@ class HLSVod {
             for (let i = 0; i < audioGroupIds.length; i++) {
               const audioGroupId = audioGroupIds[i];
               if (!audioSequence[audioGroupId]) {
-                audioSequence[audioGroupId] = [];
+                audioSequence[audioGroupId] = {};
               }
-              audioSequence[audioGroupId].push(
-                this.audioSegments[audioGroupId][segIdx]
-              );
+              const audioLangs = Object.keys(this.audioSegments[audioGroupId]);
+              for (let k = 0; k < audioLangs.length; k++) {
+                const audioLang = audioLangs[k];
+                if (!audioSequence[audioGroupId][audioLang]) {
+                  audioSequence[audioGroupId][audioLang] = [];
+                }
+                audioSequence[audioGroupId][audioLang].push(
+                  this.audioSegments[audioGroupId][audioLang][segIdx]
+                );
+              }
             }
           }
+          // if (audioGroupId) {
+          //   const audioGroupIds = Object.keys(this.audioSegments);
+          //   for (let i = 0; i < audioGroupIds.length; i++) {
+          //     const audioGroupId = audioGroupIds[i];
+          //     if (!audioSequence[audioGroupId]) {
+          //       audioSequence[audioGroupId] = [];
+          //     }
+          //     audioSequence[audioGroupId].push(
+          //       this.audioSegments[audioGroupId][segIdx]
+          //     );
+          //   }
+          // }
           segIdx++;
         } else {
           //debug(`Pushing seq=${this.mediaSequences.length} firstSeg=${sequence[Object.keys(this.segments)[0]][0].uri}, length=${sequence[Object.keys(this.segments)[0]].length}, duration=${duration} < ${this.SEQUENCE_DURATION}`);
@@ -934,9 +1097,16 @@ class HLSVod {
   }
 
   _getFirstAudioGroupWithSegments() {
-    const audioGroupIds = Object.keys(this.audioSegments).filter(
-      (id) => this.audioSegments[id].length > 0
-    );
+    // <-------------------------------------------------------------------------- I'VE BEEN HERE
+    const audioGroupIds = Object.keys(this.audioSegments).filter((id) => {
+      let idLangs = Object.keys(this.audioSegments[id]).filter((lang) => {
+        return this.audioSegments[id][lang].length > 0;
+      });
+      return idLangs.length > 0;
+    });
+    // const audioGroupIds = Object.keys(this.audioSegments).filter((id) => {
+    //   this.audioSegments[id].length > 0;
+    // });
     if (audioGroupIds.length > 0) {
       return audioGroupIds[0];
     } else {
@@ -1184,16 +1354,16 @@ class HLSVod {
     });
   }
 
-  _loadAudioManifest(audioManifestUri, groupId, _injectAudioManifest) {
+  _loadAudioManifest(audioManifestUri, groupId, n_LANG, _injectAudioManifest) {
+    // <-------------------------------------------------------------------------- I'VE BEEN HERE
     return new Promise((resolve, reject) => {
-      
       const parser = m3u8.createStream();
-      debug(`Loading audio manifest for group=${groupId}`);
+      debug(`Loading audio manifest for lang=${n_LANG} of group=${groupId}`);
       debug(`Audio manifest URI: ${audioManifestUri}`);
 
       parser.on("m3u", (m3u) => {
         try {
-          if (this.audioSegments[groupId]) {
+          if (this.audioSegments[groupId][n_LANG]) {
             for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
               const playlistItem = m3u.items.PlaylistItem[i];
               let segmentUri;
@@ -1209,7 +1379,7 @@ class HLSVod {
                 segmentUri = url.resolve(baseUrl, playlistItem.properties.uri);
               }
               if (playlistItem.properties.discontinuity) {
-                this.audioSegments[groupId].push({
+                this.audioSegments[groupId][n_LANG].push({
                   discontinuity: true,
                 });
               }
@@ -1217,10 +1387,13 @@ class HLSVod {
                 duration: playlistItem.properties.duration,
                 uri: segmentUri,
               };
-              this.audioSegments[groupId].push(q);
+              this.audioSegments[groupId][n_LANG].push(q);
             }
-            this.targetAudioDuration[groupId] = Math.ceil(
-              this.audioSegments[groupId]
+            if (!this.targetAudioDuration[groupId]) {
+              this.targetAudioDuration[groupId] = {};
+            }
+            this.targetAudioDuration[groupId][n_LANG] = Math.ceil(
+              this.audioSegments[groupId][n_LANG]
                 .map((el) => (el ? el.duration : 0))
                 .reduce((max, cur) => Math.max(max, cur), -Infinity)
             );
@@ -1246,10 +1419,73 @@ class HLSVod {
           })
           .catch(reject);
       } else {
-        const stream = _injectAudioManifest(groupId, _LANG);
+        const stream = _injectAudioManifest(groupId, n_LANG);
         stream.pipe(parser);
         stream.on("error", (err) => reject(err));
       }
+      // const parser = m3u8.createStream();
+      // debug(`Loading audio manifest for group=${groupId}`);
+      // debug(`Audio manifest URI: ${audioManifestUri}`);
+
+      // parser.on("m3u", (m3u) => {
+      //   try {
+      //     if (this.audioSegments[groupId]) {
+      //       for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
+      //         const playlistItem = m3u.items.PlaylistItem[i];
+      //         let segmentUri;
+      //         let baseUrl;
+
+      //         const m = audioManifestUri.match("^(.*)/.*?$");
+      //         if (m) {
+      //           baseUrl = m[1] + "/";
+      //         }
+      //         if (playlistItem.properties.uri.match("^http")) {
+      //           segmentUri = playlistItem.properties.uri;
+      //         } else {
+      //           segmentUri = url.resolve(baseUrl, playlistItem.properties.uri);
+      //         }
+      //         if (playlistItem.properties.discontinuity) {
+      //           this.audioSegments[groupId].push({
+      //             discontinuity: true,
+      //           });
+      //         }
+      //         let q = {
+      //           duration: playlistItem.properties.duration,
+      //           uri: segmentUri,
+      //         };
+      //         this.audioSegments[groupId].push(q);
+      //       }
+      //       this.targetAudioDuration[groupId] = Math.ceil(
+      //         this.audioSegments[groupId]
+      //           .map((el) => (el ? el.duration : 0))
+      //           .reduce((max, cur) => Math.max(max, cur), -Infinity)
+      //       );
+      //     }
+      //     resolve();
+      //   } catch (exc) {
+      //     reject(exc);
+      //   }
+      // });
+
+      // if (!_injectAudioManifest) {
+      //   fetch(audioManifestUri)
+      //     .then((res) => {
+      //       if (res.status === 200) {
+      //         res.body.pipe(parser);
+      //       } else {
+      //         throw new Error(
+      //           res.status +
+      //             ":: status code error trying to retrieve audio manifest " +
+      //             audioManifestUri
+      //         );
+      //       }
+      //     })
+      //     .catch(reject);
+      // } else {
+      //   const stream = _injectAudioManifest(groupId);
+      //   stream.pipe(parser);
+      //   stream.on("error", (err) => reject(err));
+      // }
     });
   }
 
