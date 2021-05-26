@@ -879,35 +879,119 @@ describe("HLSVod with not equal usage profiles", () => {
     })
   });
 });
-
-describe("HLSVod with separate audio variants", () => {
-  let mockMasterManifest;
-  let mockMediaManifest;
-
+/**
+ *  Changes:
+ *  - Read from new mock manifests and
+ *    update input arguments for vod.getLiveMediaSequenceAudioSegments(id, *new*->lang, seqIdx)
+ *  - Added 3 more unittests for different VOD after VOD cases.
+ */
+ describe("HLSVod with separate audio variants", () => {
   beforeEach(() => {
-    mockMasterManifest = function() {
-      return fs.createReadStream('testvectors/hls4/master.m3u8');
+    mockMasterManifest = function () {
+      //return fs.createReadStream("testvectors/hls4/master.m3u8");
+      return fs.createReadStream(
+        "testvectors/hls_multiaudiotracks/master.m3u8"
+      );
     };
-    mockMasterManifestNoUri = function() {
-      return fs.createReadStream('testvectors/hls4/master-nouri.m3u8');
+    mockMasterManifest2 = function () {
+      //return fs.createReadStream("testvectors/hls4/master.m3u8");
+      return fs.createReadStream(
+        "testvectors/hls_multiaudiotracks2/master.m3u8"
+      );
     };
-    mockMediaManifest = function(bandwidth) {
+    mockMasterManifestNoUri = function () {
+      return fs.createReadStream("testvectors/hls4/master-nouri.m3u8");
+    };
+    mockMediaManifest = function (bandwidth) {
       const fname = {
-        '354000': 'video-241929.m3u8',
-        '819000': 'video-680761.m3u8',
-        '1538000': 'video-1358751.m3u8',
-        '2485000': 'video-2252188.m3u8',
-        '3396000': 'video-3112126.m3u8'
+        354000: "video-241929.m3u8",
+        819000: "video-680761.m3u8",
+        1538000: "video-1358751.m3u8",
+        2485000: "video-2252188.m3u8",
+        3396000: "video-3112126.m3u8",
       };
-      return fs.createReadStream('testvectors/hls4/' + fname[bandwidth]);
+      return fs.createReadStream(
+        "testvectors/hls_multiaudiotracks/" + fname[bandwidth]
+      );
     };
-    mockAudioManifest = function(groupId) {
+    mockMediaManifest2 = function (bandwidth) {
       const fname = {
-        "audio-aacl-96": 'audio-96000.m3u8'
+        354000: "video-241929.m3u8",
+        819000: "video-680761.m3u8",
+        1538000: "video-1358751.m3u8",
+        2485000: "video-2252188.m3u8",
+        3396000: "video-3112126.m3u8",
       };
-      return fs.createReadStream('testvectors/hls4/' + fname[groupId]);
-    }
+      return fs.createReadStream(
+        "testvectors/hls_multiaudiotracks2/" + fname[bandwidth]
+      );
+    };
+    mockAudioManifest = function (groupId, lang) {
+      const fname = {
+        "audio-aacl-96": "audio-96000",
+        "audio-aacl-97": "audio-96000",
+      };
+      if (groupId && lang) {
+        return fs.createReadStream(
+          `testvectors/hls_multiaudiotracks/${fname[groupId]}-${lang}.m3u8`
+        );
+      } else {
+        return fs.createReadStream(
+          `testvectors/hls_multiaudiotracks/${fname[groupId]}.m3u8`
+        );
+      }
+    };
+    mockAudioManifest2 = function (groupId, lang) {
+      const fname = {
+        aac: "audio",
+        "audio-aacl-96": "audio",
+        "audio-aacl-97": "audio",
+      };
+      if (groupId && lang) {
+        return fs.createReadStream(
+          `testvectors/hls_multiaudiotracks2/${fname[groupId]}-${lang}.m3u8`
+        );
+      } else {
+        return fs.createReadStream(
+          `testvectors/hls_multiaudiotracks2/${fname[groupId]}.m3u8`
+        );
+      }
+    };
+    mockMasterManifest3 = function () {
+      //return fs.createReadStream("testvectors/hls4/master.m3u8");
+      return fs.createReadStream(
+        "testvectors/hls_multiaudiotracks3/master.m3u8"
+      );
+    };
+    mockMediaManifest3 = function (bandwidth) {
+      const fname = {
+        354000: "video-241929.m3u8",
+        819000: "video-680761.m3u8",
+        1538000: "video-1358751.m3u8",
+        2485000: "video-2252188.m3u8",
+        3396000: "video-3112126.m3u8",
+      };
+      return fs.createReadStream(
+        "testvectors/hls_multiaudiotracks3/" + fname[bandwidth]
+      );
+    };
+    mockAudioManifest3 = function (groupId, lang) {
+      const fname = {
+        "audio-aacl-96": "audio-96000",
+        "audio-aacl-97": "audio-96000",
+      };
+      if (groupId && lang) {
+        return fs.createReadStream(
+          `testvectors/hls_multiaudiotracks3/${fname[groupId]}-${lang}.m3u8`
+        );
+      } else {
+        return fs.createReadStream(
+          `testvectors/hls_multiaudiotracks3/${fname[groupId]}.m3u8`
+        );
+      }
+    };
   });
+
 
   it("returns the correct number of bandwidths", done => {
     mockVod = new HLSVod('http://mock.com/mock.m3u8');
