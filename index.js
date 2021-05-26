@@ -180,7 +180,7 @@ class HLSVod {
               }
               return (item = itemLang);
             });
-
+            
             // # For each lang, find the lang playlist uri and do _loadAudioManifest() on it.
             for (let j = 0; j < audioLanguages.length; j++) {
               let audioLang = audioLanguages[j];
@@ -461,20 +461,31 @@ class HLSVod {
 
   /**
    * Gets a hls/makes m3u8-file with all of the correct audio segments
-   * belonging to a given groupID & language for a particular sequence.
+   * belonging to a given groupID for a particular sequence.
    */
-  getLiveMediaAudioSequences(offset, audioGroupId, audioLanguage, seqIdx, discOffset) {// <------------------ BEEN HERE
-    debug(`Get live audio media sequence [${seqIdx}] for audioGroupId=${audioGroupId} and audioLanguage=${audioLanguage}`);
+   getLiveMediaAudioSequences(
+    offset,
+    audioGroupId,
+    audioLanguage,
+    seqIdx,
+    discOffset
+  ) {
+    // <--------------------------------------------------------------------------------------- BEEN HERE
+    debug(
+      `Get live audio media sequence [${seqIdx}] for audioGroupId=${audioGroupId}`
+    );
     const mediaSeqAudioSegments = this.getLiveMediaSequenceAudioSegments(
       audioGroupId,
       audioLanguage,
       seqIdx
     );
+
     // # If failed to find segments for given language,
-    // # return null rather than generating error on line 478.
+    // # return null rather than an error.
     if (!mediaSeqAudioSegments){
       return null;
     }
+
     const targetDuration = this._determineTargetDuration(mediaSeqAudioSegments);
 
     let m3u8 = "#EXTM3U\n";
@@ -488,11 +499,14 @@ class HLSVod {
     if (discInOffset == null) {
       discInOffset = 0;
     }
-    m3u8 += "#EXT-X-DISCONTINUITY-SEQUENCE:" + (discInOffset + this.discontinuities[seqIdx]) + "\n";
+    m3u8 +=
+      "#EXT-X-DISCONTINUITY-SEQUENCE:" +
+      (discInOffset + this.discontinuities[seqIdx]) +
+      "\n";
 
     let previousSegment = null;
-    for (let i = 0; i < this.mediaSequences[seqIdx].audioSegments[audioGroupId].length; i++) {
-      const v = this.mediaSequences[seqIdx].audioSegments[audioGroupId][i];
+    for (let i = 0; i < mediaSeqAudioSegments.length; i++) {
+      const v = mediaSeqAudioSegments[i];
       if (v) {
         if (previousSegment != null) {
           if (previousSegment.discontinuity && v.timelinePosition) {
@@ -503,35 +517,41 @@ class HLSVod {
 
         if (!v.discontinuity) {
           if (v.daterange) {
-            const dateRangeAttributes = Object.keys(v.daterange).map(key => daterangeAttribute(key, v.daterange[key])).join(',');
+            const dateRangeAttributes = Object.keys(v.daterange)
+              .map((key) => daterangeAttribute(key, v.daterange[key]))
+              .join(",");
             m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
-          }  
-          if(v.cue && v.cue.out) {
+          }
+          if (v.cue && v.cue.out) {
             m3u8 += "#EXT-X-CUE-OUT:DURATION=" + v.cue.duration + "\n";
           }
           if (v.cue && v.cue.cont) {
-            m3u8 += "#EXT-X-CUE-OUT-CONT:" + v.cue.cont + "/" + v.cue.duration + "\n";
+            m3u8 +=
+              "#EXT-X-CUE-OUT-CONT:" + v.cue.cont + "/" + v.cue.duration + "\n";
           }
           m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
           m3u8 += v.uri + "\n";
-          if(v.cue && v.cue.in) {
-            if (this.mediaSequences[seqIdx].segments[bw][i+1] && 
-              this.mediaSequences[seqIdx].segments[bw][i+1].discontinuity && 
-              i+1 == this.mediaSequences[seqIdx].segments[bw].length-1)
-            {
+          if (v.cue && v.cue.in) {
+            if (
+              this.mediaSequences[seqIdx].segments[bw][i + 1] &&
+              this.mediaSequences[seqIdx].segments[bw][i + 1].discontinuity &&
+              i + 1 == this.mediaSequences[seqIdx].segments[bw].length - 1
+            ) {
               // Do not add a closing cue-in if next is not a segment and last one in the list
             } else {
               m3u8 += "#EXT-X-CUE-IN" + "\n";
             }
           }
         } else {
-          if (i != 0 && i != this.mediaSequences[seqIdx].audioSegments[audioGroupId].length - 1) {
+          if (i != 0 && i != mediaSeqAudioSegments.length - 1) {
             m3u8 += "#EXT-X-DISCONTINUITY\n";
           }
-          if (v.daterange && i != this.mediaSequences[seqIdx].audioSegments[audioGroupId].length - 1) {
-            const dateRangeAttributes = Object.keys(v.daterange).map(key => daterangeAttribute(key, v.daterange[key])).join(',');
+          if (v.daterange && i != mediaSeqAudioSegments.length - 1) {
+            const dateRangeAttributes = Object.keys(v.daterange)
+              .map((key) => daterangeAttribute(key, v.daterange[key]))
+              .join(",");
             m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
-          }  
+          }
         }
         previousSegment = v;
       }
