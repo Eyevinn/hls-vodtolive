@@ -151,34 +151,79 @@ class HLSVod {
               }
             }
           }
-          if (streamItem.attributes.attributes['audio']) {
-            let audioGroupId = streamItem.attributes.attributes['audio'];
+          if (streamItem.attributes.attributes["audio"]) {
+            // <-------------------------------------------------------------------------- I'VE BEEN HERE
+            let audioGroupId = streamItem.attributes.attributes["audio"];
             if (!this.audioSegments[audioGroupId]) {
-              this.audioSegments[audioGroupId] = [];
+              this.audioSegments[audioGroupId] = {};
             }
             debug(`Lookup media item for '${audioGroupId}'`);
-            let audioGroupItem = m3u.items.MediaItem.find(item => {
-              return (item.attributes.attributes.type === 'AUDIO' && item.attributes.attributes['group-id'] === audioGroupId);
+            let audioGroupItems = m3u.items.MediaItem.filter((item) => {
+              return (
+                item.attributes.attributes.type === "AUDIO" &&
+                item.attributes.attributes["group-id"] === audioGroupId
+              );
             });
-            let audioUri = audioGroupItem.attributes.attributes.uri;
-            if (!audioUri) {
-              let audioVariant = m3u.items.StreamItem.find(item => {
-                return (!item.attributes.attributes.resolution && item.attributes.attributes['audio'] === audioGroupId);
-              });
-              if (audioVariant) {
-                audioUri = audioVariant.properties.uri;
-              }
-            }
-            if (audioUri) {
-              let audioManifestUrl = url.resolve(baseUrl, audioUri);
-              if (!audioGroups[audioGroupId]) {
-                audioGroups[audioGroupId] = true;
-                audioManifestPromises.push(this._loadAudioManifest(audioManifestUrl, audioGroupId, _injectAudioManifest));
+            // # Find all langs amongst the mediaItems that have this group id.
+            // # It extracts each mediaItems language attribute value.
+            // # ALSO initialize in this.audioSegments a lang. property whos value is an array [{seg1}, {seg2}, ...].
+            let audioLanguages = audioGroupItems.map((item) => {
+              let itemLang;
+              if (!item.attributes.attributes["language"]) {
+                itemLang = null;
               } else {
-                debug(`Audio manifest for '${audioGroupId}' already loaded, skipping`);
+                itemLang = item.attributes.attributes["language"];
               }
-            } else {
-              debug(`No media item for '${audioGroupId}' was found, skipping`);
+              // INIT lang in new group.
+              if (!this.audioSegments[audioGroupId][itemLang]) {
+                this.audioSegments[audioGroupId][itemLang] = [];
+              }
+              return (item = itemLang);
+            });
+
+            // # For each lang, find the lang playlist uri and do _loadAudioManifest() on it.
+            for (let j = 0; j < audioLanguages.length; j++) {
+              let audioLang = audioLanguages[j];
+              let audioUri = audioGroupItems[j].attributes.attributes.uri;
+              if (!audioUri) {
+                //# if mediaItems dont have uris
+                let audioVariant = m3u.items.StreamItem.find((item) => {
+                  return (
+                    !item.attributes.attributes.resolution &&
+                    item.attributes.attributes["audio"] === audioGroupId
+                  );
+                });
+                if (audioVariant) {
+                  audioUri = audioVariant.properties.uri;
+                }
+              }
+              if (audioUri) {
+                let audioManifestUrl = url.resolve(baseUrl, audioUri);
+                if (!audioGroups[audioGroupId]) {
+                  audioGroups[audioGroupId] = {};
+                }
+                // # Prevents 'loading' an audio track with same GID and LANG.
+                // # otherwise it just would've loaded OVER the latest occurens of the LANG in GID.
+                if (!audioGroups[audioGroupId][audioLang]) {
+                  audioGroups[audioGroupId][audioLang] = true;
+                  audioManifestPromises.push(
+                    this._loadAudioManifest(
+                      audioManifestUrl,
+                      audioGroupId,
+                      audioLang,
+                      _injectAudioManifest
+                    )
+                  );
+                } else {
+                  debug(
+                    `Audio manifest for language "${audioLang}" from '${audioGroupId}' in already loaded, skipping`
+                  );
+                }
+              } else {
+                debug(
+                  `No media item for '${audioGroupId}' in "${audioLang}" was found, skipping`
+                );
+              }
             }
           }
         }
@@ -276,10 +321,13 @@ class HLSVod {
    * Get all audio segments (duration, uri) for a specific media sequence
    *
    * @param {string} audioGroupId - audio group Id
+   * @param {string} audioLanguage - audio language
    * @param {number} seqIdx - media sequence index (first is 0)
    */
-  getLiveMediaSequenceAudioSegments(audioGroupId, seqIdx) {
-    return this.mediaSequences[seqIdx].audioSegments[audioGroupId];
+  getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx) {
+    // <------------------------------------------ I'VE BEEN HERE
+    // # How to handle when language not found? Right now it returns undefined.
+    return this.mediaSequences[seqIdx].audioSegments[audioGroupId][audioLanguage];
   }
 
   /**
@@ -291,6 +339,11 @@ class HLSVod {
 
   getAudioGroups() {
     return Object.keys(this.audioSegments);
+  }
+
+  // NEW ADDITION <------------------------------- I'VE BEEN HERE
+  getAudioLangsForAudioGroup(groupId) {
+    return Object.keys(this.audioSegments[groupId]);
   }
 
   /**
@@ -406,9 +459,23 @@ class HLSVod {
     return m3u8;
   }
 
-  getLiveMediaAudioSequences(offset, audioGroupId, seqIdx, discOffset) {
-    debug(`Get live audio media sequence [${seqIdx}] for audioGroupId=${audioGroupId}`);
-    const targetDuration = this._determineTargetDuration(this.mediaSequences[seqIdx].audioSegments[audioGroupId]);
+  /**
+   * Gets a hls/makes m3u8-file with all of the correct audio segments
+   * belonging to a given groupID & language for a particular sequence.
+   */
+  getLiveMediaAudioSequences(offset, audioGroupId, audioLanguage, seqIdx, discOffset) {// <------------------ BEEN HERE
+    debug(`Get live audio media sequence [${seqIdx}] for audioGroupId=${audioGroupId} and audioLanguage=${audioLanguage}`);
+    const mediaSeqAudioSegments = this.getLiveMediaSequenceAudioSegments(
+      audioGroupId,
+      audioLanguage,
+      seqIdx
+    );
+    // # If failed to find segments for given language,
+    // # return null rather than generating error on line 478.
+    if (!mediaSeqAudioSegments){
+      return null;
+    }
+    const targetDuration = this._determineTargetDuration(mediaSeqAudioSegments);
 
     let m3u8 = "#EXTM3U\n";
     m3u8 += "#EXT-X-VERSION:3\n";
@@ -561,26 +628,42 @@ class HLSVod {
     });
   }
 
-  _copyAudioGroupsFromPrevious() {
+  /**
+   * Gets previous VOD's audio -groupIds, -langs, -segments from its last sequence
+   * and adds them to the current VOD's this.audioSegments property.
+   */
+   _copyAudioGroupsFromPrevious() {
+    // <-------------------------------------------------------------------------- I'VE BEEN HERE
+    // # Added nested for-loop to iterate over every lang of a given group.
     const previousVodSeqCount = this.previousVod.getLiveMediaSequencesCount();
     const audioGroups = this.previousVod.getAudioGroups();
     if (audioGroups.length > 0) {
       for (let i = 0; i < audioGroups.length; i++) {
         const audioGroupId = audioGroups[i];
-        const lastMediaAudioSequence = this.previousVod.getLiveMediaSequenceAudioSegments(audioGroupId, previousVodSeqCount - 1);
-        if (!this.audioSegments[audioGroupId]) {
-          this.audioSegments[audioGroupId] = [];
-        }
-        if (lastMediaAudioSequence) {
-          for (let idx = 1; idx < lastMediaAudioSequence.length; idx++) {
-            let q = lastMediaAudioSequence[idx];
-            this.audioSegments[audioGroupId].push(q);
+        const audioLangs =
+          this.previousVod.getAudioLangsForAudioGroup(audioGroupId);
+
+        for (let k = 0; k < audioLangs.length; k++) {
+          const audioLang = audioLangs[k];
+          const lastMediaAudioSequence =
+            this.previousVod.getLiveMediaSequenceAudioSegments(audioGroupId, audioLang, previousVodSeqCount - 1);
+          if (!this.audioSegments[audioGroupId]) {
+            this.audioSegments[audioGroupId] = {};
           }
+          if (!this.audioSegments[audioGroupId][audioLang]) {
+            this.audioSegments[audioGroupId][audioLang] = [];
+          }
+          if (lastMediaAudioSequence) {
+            for (let idx = 1; idx < lastMediaAudioSequence.length; idx++) {
+              let q = lastMediaAudioSequence[idx];
+              this.audioSegments[audioGroupId][audioLang].push(q);
+            }
+          }
+          this.audioSegments[audioGroupId][audioLang].push({
+            discontinuity: true,
+            daterange: this.rangeMetadata ? this.rangeMetadata : null,
+          });
         }
-        this.audioSegments[audioGroupId].push({
-          discontinuity: true,
-          daterange: this.rangeMetadata ? this.rangeMetadata : null,
-        });
       }
     }
   }
@@ -651,14 +734,25 @@ class HLSVod {
             }
             sequence[bwIdx].push(this.segments[bwIdx][segIdx]);
           }
+          // <-------------------------------------------------------------------------- I'VE BEEN HERE
+          // # Added nested for-loop to iterate over every lang given a group.
           if (audioGroupId) {
             const audioGroupIds = Object.keys(this.audioSegments);
             for (let i = 0; i < audioGroupIds.length; i++) {
               const audioGroupId = audioGroupIds[i];
               if (!audioSequence[audioGroupId]) {
-                audioSequence[audioGroupId] = [];
+                audioSequence[audioGroupId] = {};
               }
-              audioSequence[audioGroupId].push(this.audioSegments[audioGroupId][segIdx]);
+              const audioLangs = Object.keys(this.audioSegments[audioGroupId]);
+              for (let k = 0; k < audioLangs.length; k++) {
+                const audioLang = audioLangs[k];
+                if (!audioSequence[audioGroupId][audioLang]) {
+                  audioSequence[audioGroupId][audioLang] = [];
+                }
+                audioSequence[audioGroupId][audioLang].push(
+                  this.audioSegments[audioGroupId][audioLang][segIdx]
+                );
+              }
             }
           }
           segIdx++;
@@ -770,7 +864,15 @@ class HLSVod {
   }
 
   _getFirstAudioGroupWithSegments() {
-    const audioGroupIds = Object.keys(this.audioSegments).filter(id => this.audioSegments[id].length > 0);
+// <-------------------------------------------------------------------------- I'VE BEEN HERE
+    // # Looks for first audio group with segments by checking if any language
+    // # track belonging to the group has segments.
+    const audioGroupIds = Object.keys(this.audioSegments).filter((id) => {
+      let idLangs = Object.keys(this.audioSegments[id]).filter((lang) => {
+        return this.audioSegments[id][lang].length > 0;
+      });
+      return idLangs.length > 0;
+    });
     if (audioGroupIds.length > 0) {
       return audioGroupIds[0];
     } else {
@@ -970,42 +1072,50 @@ class HLSVod {
     });
   }
 
-  _loadAudioManifest(audioManifestUri, groupId, _injectAudioManifest) {
+  _loadAudioManifest(audioManifestUri, groupId, language, _injectAudioManifest) {// <--------- I'VE BEEN HERE
+    // # Updated so that segment objects are pushed to Language array instead.
+    // # Updated input args for _injectAudioManifest().
     return new Promise((resolve, reject) => {
       const parser = m3u8.createStream();
-      debug(`Loading audio manifest for group=${groupId}`);
+      debug(`Loading audio manifest for lang=${language} of group=${groupId}`);
       debug(`Audio manifest URI: ${audioManifestUri}`);
 
       parser.on('m3u', m3u => {
         try {
-          if (this.audioSegments[groupId]) {
-
+          if (this.audioSegments[groupId][language]) {
             for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
               const playlistItem = m3u.items.PlaylistItem[i];
               let segmentUri;
               let baseUrl;
 
-              const m = audioManifestUri.match('^(.*)/.*?$');
+              const m = audioManifestUri.match("^(.*)/.*?$");
               if (m) {
-                baseUrl = m[1] + '/';
+                baseUrl = m[1] + "/";
               }
-              if (playlistItem.properties.uri.match('^http')) {
+              if (playlistItem.properties.uri.match("^http")) {
                 segmentUri = playlistItem.properties.uri;
               } else {
                 segmentUri = url.resolve(baseUrl, playlistItem.properties.uri);
               }
               if (playlistItem.properties.discontinuity) {
-                this.audioSegments[groupId].push({
-                  discontinuity: true
+                this.audioSegments[groupId][language].push({
+                  discontinuity: true,
                 });
               }
               let q = {
                 duration: playlistItem.properties.duration,
-                uri: segmentUri
+                uri: segmentUri,
               };
-              this.audioSegments[groupId].push(q);
+              this.audioSegments[groupId][language].push(q);
             }
-            this.targetAudioDuration[groupId] = Math.ceil(this.audioSegments[groupId].map(el => el ? el.duration : 0).reduce((max, cur) => Math.max(max, cur), -Infinity));
+            if (!this.targetAudioDuration[groupId]) {
+              this.targetAudioDuration[groupId] = {};
+            }
+            this.targetAudioDuration[groupId][language] = Math.ceil(
+              this.audioSegments[groupId][language]
+                .map((el) => (el ? el.duration : 0))
+                .reduce((max, cur) => Math.max(max, cur), -Infinity)
+            );
           }
           resolve();
         } catch(exc) {
@@ -1024,7 +1134,7 @@ class HLSVod {
         })
         .catch(reject);
       } else {
-        const stream = _injectAudioManifest(groupId);
+        const stream = _injectAudioManifest(groupId, language);
         stream.pipe(parser);
         stream.on('error', err => reject(err));
       }
