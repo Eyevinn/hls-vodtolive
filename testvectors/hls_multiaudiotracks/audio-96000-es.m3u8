@@ -1,0 +1,61 @@
+#EXTM3U
+#EXT-X-VERSION:4
+## Created with Unified Streaming Platform(version=1.7.25)
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXT-X-MEDIA-SEQUENCE:1
+#EXT-X-INDEPENDENT-SEGMENTS
+#EXT-X-TARGETDURATION:3
+#USP-X-TIMESTAMP-MAP:MPEGTS=900000,LOCAL=1970-01-01T00:00:00Z
+#EXTINF:3.008, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-1.aac
+#EXTINF:3.008, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-2.aac
+#EXTINF:2.9866, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-3.aac
+#EXTINF:3.008, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-4.aac
+#EXTINF:3.008, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-5.aac
+#EXTINF:2.9867, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-6.aac
+#EXTINF:3.008, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-7.aac
+#EXTINF:2.9867, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-8.aac
+#EXTINF:3.008, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-9.aac
+#EXTINF:3.008, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-10.aac
+#EXTINF:2.9866, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-11.aac
+#EXTINF:3.008, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-12.aac
+#EXTINF:3.008, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-13.aac
+#EXTINF:3.008, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-14.aac
+#EXTINF:3.008, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-15.aac
+#EXTINF:2.9866, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-16.aac
+#EXTINF:3.008, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-17.aac
+#EXTINF:3.008, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-18.aac
+#EXTINF:2.9867, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-19.aac
+#EXTINF:3.008, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-20.aac
+#EXTINF:2.9867, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-21.aac
+#EXTINF:3.008, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-22.aac
+#EXTINF:3.008, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-23.aac
+#EXTINF:2.9866, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-24.aac
+#EXTINF:3.008, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-25.aac
+#EXTINF:2.0054, no desc
+1woxvooiidb(11186147_ISMUSP)-audio=96000_es-26.aac
+#EXT-X-ENDLIST
