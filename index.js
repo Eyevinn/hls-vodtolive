@@ -215,7 +215,7 @@ class HLSVod {
 
             // # Need to clean up langs loaded from prev. VOD that current VOD doesn't have.
             // # Necessary, for the case when getLiveMediaSequenceAudioSegments() tries to
-            // # access an audioGroups' language that the current VOD never had.  
+            // # access an audioGroups' language that the current VOD never had.
             let allLangs = Object.keys(this.audioSegments[audioGroupId]);
             let toRemove = [];
             allLangs.map((lang) => {
@@ -251,7 +251,7 @@ class HLSVod {
                 // # Prevents 'loading' an audio track with same GID and LANG.
                 // # otherwise it just would've loaded OVER the latest occurens of the LANG in GID.
                 if (!audioGroups[audioGroupId][audioLang]) {
-                  audioGroups[audioGroupId][audioLang] = true; 
+                  audioGroups[audioGroupId][audioLang] = true;
                   audioManifestPromises.push(
                     this._loadAudioManifest(
                       audioManifestUrl,
@@ -381,20 +381,9 @@ class HLSVod {
    * @param {number} seqIdx - media sequence index (first is 0)
    */
   getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx) {
-    // <-------------------------------------------------------------------------- I'VE BEEN HERE
-    // # No lang found? 
-    // # Rather than returning 'undefined', just use the first one (usually the default)
-    if (!this.mediaSequences[seqIdx].audioSegments[audioGroupId][audioLanguage])
-    {
-      const AllLangsObj = this.mediaSequences[seqIdx].audioSegments[audioGroupId];
-      return this.mediaSequences[seqIdx].audioSegments[audioGroupId][
-        Object.keys(AllLangsObj)[0]
-      ];
-    } else {
-      return this.mediaSequences[seqIdx].audioSegments[audioGroupId][
-        audioLanguage
-      ];
-    }
+    // <------------------------------------------ I'VE BEEN HERE
+    // # How to handle when language not found? Right now it returns undefined.
+    return this.mediaSequences[seqIdx].audioSegments[audioGroupId][audioLanguage];
   }
 
   /**
@@ -561,7 +550,13 @@ class HLSVod {
    * Gets a hls/makes m3u8-file with all of the correct audio segments
    * belonging to a given groupID for a particular sequence.
    */
-  getLiveMediaAudioSequences(offset, audioGroupId, audioLanguage, seqIdx, discOffset) {
+  getLiveMediaAudioSequences(
+    offset,
+    audioGroupId,
+    audioLanguage,
+    seqIdx,
+    discOffset
+  ) {
     // <--------------------------------------------------------------------------------------- BEEN HERE
     debug(
       `Get live audio media sequence [${seqIdx}] for audioGroupId=${audioGroupId}`
@@ -571,6 +566,12 @@ class HLSVod {
       audioLanguage,
       seqIdx
     );
+
+    // # If failed to find segments for given language,
+    // # return null rather than an error.
+    if (!mediaSeqAudioSegments){
+      return null;
+    }
 
     const targetDuration = this._determineTargetDuration(mediaSeqAudioSegments);
 
@@ -1256,10 +1257,15 @@ class HLSVod {
     });
   }
 
-  _loadAudioManifest(audioManifestUri, groupId, language, _injectAudioManifest) {
-      // <-------------------------------------------------------------------------- I'VE BEEN HERE
-      // # Updated so that segment objects are pushed to Language array instead.
-      // # Updated input args for _injectAudioManifest().
+  _loadAudioManifest(
+    audioManifestUri,
+    groupId,
+    language,
+    _injectAudioManifest
+  ) {
+    // <-------------------------------------------------------------------------- I'VE BEEN HERE
+    // # Updated so that segment objects are pushed to Language array instead.
+    // # Updated input args for _injectAudioManifest().
     return new Promise((resolve, reject) => {
       const parser = m3u8.createStream();
       debug(`Loading audio manifest for lang=${language} of group=${groupId}`);
