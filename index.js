@@ -157,6 +157,10 @@ class HLSVod {
             if (!this.audioSegments[audioGroupId]) {
               this.audioSegments[audioGroupId] = {};
             }
+
+            console.log(`Prev. VOD had->`, Object.keys(this.audioSegments[audioGroupId]));
+            const previousVODLanguages = Object.keys(this.audioSegments[audioGroupId]);
+
             debug(`Lookup media item for '${audioGroupId}'`);
             let audioGroupItems = m3u.items.MediaItem.filter((item) => {
               return (
@@ -180,7 +184,25 @@ class HLSVod {
               }
               return (item = itemLang);
             });
+
+            // # Inject "default" language's segments to every new language relative to previous VOD.
+            // # For the case when this is a VOD following another, every language new or old should
+            // # start with some segments from the previous VOD's last sequence.
             
+            const newLanguages = audioLanguages.filter((lang)=>{ return !previousVODLanguages.includes(lang) })
+            console.log(`New. VOD has->All new langs->`, audioLanguages, "filtered langs ->", newLanguages);
+
+            if(JSON.stringify(newLanguages) !== JSON.stringify(audioLanguages)){
+              for(let i=0;i<newLanguages.length; i++){
+                const newLanguage = newLanguages[i];
+                console.log(`add lang->`, newLanguage);
+                const defaultLanguage = this._getFirstAudioLanguageWithSegments(audioGroupId);
+                this.audioSegments[audioGroupId][newLanguage] = this.audioSegments[audioGroupId][defaultLanguage];
+              }
+              console.log(`New. VOD update->`,Object.keys(this.audioSegments[audioGroupId]));
+            }
+
+
             // # For each lang, find the lang playlist uri and do _loadAudioManifest() on it.
             for (let j = 0; j < audioLanguages.length; j++) {
               let audioLang = audioLanguages[j];
@@ -327,6 +349,13 @@ class HLSVod {
   getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx) {
     // <------------------------------------------ I'VE BEEN HERE
     // # How to handle when language not found? Right now it returns undefined.
+    if(!this.mediaSequences[seqIdx].audioSegments[audioGroupId][audioLanguage]){
+      const fallbackLang = this._getFirstAudioLanguageWithSegments(audioGroupId);
+      console.log("DONT HAVE ", audioLanguage, "GINVING YOU ", fallbackLang)
+  
+      return this.mediaSequences[seqIdx].audioSegments[audioGroupId][fallbackLang];
+    }
+    
     return this.mediaSequences[seqIdx].audioSegments[audioGroupId][audioLanguage];
   }
 
@@ -684,9 +713,10 @@ class HLSVod {
             daterange: this.rangeMetadata ? this.rangeMetadata : null,
           });
         }
+        console.log("I COPIED AUDIO FROM PREV VOD::::", Object.keys(this.audioSegments[audioGroupId]) )
       }
     }
-  }
+}
 
   _cleanupUnused() {
     return new Promise((resolve, reject) => {
@@ -895,6 +925,20 @@ class HLSVod {
     });
     if (audioGroupIds.length > 0) {
       return audioGroupIds[0];
+    } else {
+      return null;
+    }
+  }
+
+  _getFirstAudioLanguageWithSegments(groupId) {
+    // <-------------------------------------------------------------------------- I'VE BEEN HERE
+    // # Looks for first audio language in group with segments by checking if any language
+    // # track belonging to the group has segments.
+    const LangsWithSegments = Object.keys(this.audioSegments[groupId]).filter((lang) => {
+      return this.audioSegments[groupId][lang].length > 0;
+    });
+    if (LangsWithSegments.length > 0) {
+      return LangsWithSegments[0];
     } else {
       return null;
     }
