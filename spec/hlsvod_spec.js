@@ -1610,7 +1610,7 @@ describe("HLSVod with separate audio variants", () => {
           0
         );
         // Does not have zxx, points to default lang ('de') segments instead and
-        // stitches with a copy of 'de'-segs from prev vod's last seq.  
+        // stitches with a copy of default segs from prev vod's last seq.  
         const seqAudioSegments2 = mockVod2.getLiveMediaSequenceAudioSegments(
           "audio-aacl-96",
           "zxx",
