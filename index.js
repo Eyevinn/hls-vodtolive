@@ -152,7 +152,6 @@ class HLSVod {
             }
           }
           if (streamItem.attributes.attributes["audio"]) {
-            // <-------------------------------------------------------------------------- I'VE BEEN HERE
             let audioGroupId = streamItem.attributes.attributes["audio"];
             if (!this.audioSegments[audioGroupId]) {
               this.audioSegments[audioGroupId] = {};
@@ -190,11 +189,12 @@ class HLSVod {
             // # For the case when this is a VOD following another, every language new or old should
             // # start with some segments from the previous VOD's last sequence.
             const newLanguages = audioLanguages.filter((lang)=>{ return !previousVODLanguages.includes(lang) })
+            // # If newLanguages and audioLanguages are the same then there are  
             if(JSON.stringify(newLanguages) !== JSON.stringify(audioLanguages)){
               for(let i=0;i<newLanguages.length; i++){
                 const newLanguage = newLanguages[i];            
                 const defaultLanguage = this._getFirstAudioLanguageWithSegments(audioGroupId);
-                this.audioSegments[audioGroupId][newLanguage] = this.audioSegments[audioGroupId][defaultLanguage];
+                this.audioSegments[audioGroupId][newLanguage] = [...this.audioSegments[audioGroupId][defaultLanguage]];
               }
             }
 
@@ -233,8 +233,8 @@ class HLSVod {
                 if (!audioGroups[audioGroupId]) {
                   audioGroups[audioGroupId] = {};
                 }
-                // # Prevents 'loading' an audio track with same GID and LANG.
-                // # otherwise it just would've loaded OVER the latest occurens of the LANG in GID.
+                // # Prevents 'loading' an audio track with same GroupID and LANG.
+                // # otherwise it just would've loaded OVER the latest occurens of the LANG in GroupID.
                 if (!audioGroups[audioGroupId][audioLang]) {
                   audioGroups[audioGroupId][audioLang] = true;
                   audioManifestPromises.push(
@@ -376,7 +376,6 @@ class HLSVod {
     return Object.keys(this.audioSegments);
   }
 
-  // NEW ADDITION <------------------------------- I'VE BEEN HERE
   getAudioLangsForAudioGroup(groupId) {
     return Object.keys(this.audioSegments[groupId]);
   }
@@ -496,7 +495,7 @@ class HLSVod {
 
   /**
    * Gets a hls/makes m3u8-file with all of the correct audio segments
-   * belonging to a given groupID for a particular sequence.
+   * belonging to a given groupID & language for a particular sequence.
    */
    getLiveMediaAudioSequences(
     offset,
@@ -505,7 +504,6 @@ class HLSVod {
     seqIdx,
     discOffset
   ) {
-    // <--------------------------------------------------------------------------------------- BEEN HERE
     debug(
       `Get live audio media sequence [${seqIdx}] for audioGroupId=${audioGroupId}`
     );
@@ -688,8 +686,6 @@ class HLSVod {
    * and adds them to the current VOD's this.audioSegments property.
    */
    _copyAudioGroupsFromPrevious() {
-    // <-------------------------------------------------------------------------- I'VE BEEN HERE
-    // # Added nested for-loop to iterate over every lang of a given group.
     const previousVodSeqCount = this.previousVod.getLiveMediaSequencesCount();
     const audioGroups = this.previousVod.getAudioGroups();
     if (audioGroups.length > 0) {
@@ -789,8 +785,6 @@ class HLSVod {
             }
             sequence[bwIdx].push(this.segments[bwIdx][segIdx]);
           }
-          // <-------------------------------------------------------------------------- I'VE BEEN HERE
-          // # Added nested for-loop to iterate over every lang given a group.
           if (audioGroupId) {
             const audioGroupIds = Object.keys(this.audioSegments);
             for (let i = 0; i < audioGroupIds.length; i++) {
@@ -919,7 +913,6 @@ class HLSVod {
   }
 
   _getFirstAudioGroupWithSegments() {
-// <-------------------------------------------------------------------------- I'VE BEEN HERE
     // # Looks for first audio group with segments by checking if any language
     // # track belonging to the group has segments.
     const audioGroupIds = Object.keys(this.audioSegments).filter((id) => {
@@ -936,7 +929,6 @@ class HLSVod {
   }
 
   _getFirstAudioLanguageWithSegments(groupId) {
-    // <-------------------------------------------------------------------------- I'VE BEEN HERE
     // # Looks for first audio language in group with segments by checking if any language
     // # track belonging to the group has segments.
     const LangsWithSegments = Object.keys(this.audioSegments[groupId]).filter((lang) => {
@@ -1141,7 +1133,7 @@ class HLSVod {
     });
   }
 
-  _loadAudioManifest(audioManifestUri, groupId, language, _injectAudioManifest) {// <--------- I'VE BEEN HERE
+  _loadAudioManifest(audioManifestUri, groupId, language, _injectAudioManifest) {
     // # Updated so that segment objects are pushed to Language array instead.
     // # Updated input args for _injectAudioManifest().
     return new Promise((resolve, reject) => {

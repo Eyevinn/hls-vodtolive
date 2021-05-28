@@ -1810,7 +1810,7 @@ describe("HLSVod with discontinuites in the source", () => {
         const seqSegments1 = mockVod.getLiveMediaSequenceSegments(0);
         expect(seqSegments1["401000"][2].discontinuity).toBe(true);
 
-        let m3u8 = mockVod.getLiveMediaAudioSequences(0, "aac", "en", 0); // <-------------------------------------------------------------------------- I'VE BEEN HERE
+        let m3u8 = mockVod.getLiveMediaAudioSequences(0, "aac", "en", 0);
         let m = m3u8.match("#EXT-X-DISCONTINUITY\n");
         expect(m).not.toBeNull();
         done();
