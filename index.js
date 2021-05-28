@@ -200,7 +200,7 @@ class HLSVod {
 
             // # Need to clean up langs. loaded from prev. VOD that current VOD doesn't have.
             // # Necessary, for the case when getLiveMediaSequenceAudioSegments() tries to
-            // # access an audioGroup's language that the current VOD never had.
+            // # access an audioGroup's language that the current VOD never had. A False-Positive.
             let allLangs = Object.keys(this.audioSegments[audioGroupId]);
             let toRemove = [];
             allLangs.map((junkLang) => {
