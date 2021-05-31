@@ -1,0 +1,30 @@
+#EXTM3U
+#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="Portuguese",DEFAULT=NO,AUTOSELECT=YES,FORCED=NO,LANGUAGE="pt",URI="https://cfvod.kaltura.com/api_v3/index.php/service/caption_captionasset/action/serveWebVTT/captionAssetId/1_ggcieltc/segmentDuration/300/a.m3u8"
+#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="Greek",DEFAULT=NO,AUTOSELECT=YES,FORCED=NO,LANGUAGE="el",URI="https://cfvod.kaltura.com/api_v3/index.php/service/caption_captionasset/action/serveWebVTT/captionAssetId/1_c9r9zk2q/segmentDuration/300/a.m3u8"
+#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="Thai",DEFAULT=NO,AUTOSELECT=YES,FORCED=NO,LANGUAGE="th",URI="https://cfvod.kaltura.com/api_v3/index.php/service/caption_captionasset/action/serveWebVTT/captionAssetId/1_p93zrdok/segmentDuration/300/a.m3u8"
+#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",DEFAULT=NO,AUTOSELECT=YES,FORCED=NO,LANGUAGE="en",URI="https://cfvod.kaltura.com/api_v3/index.php/service/caption_captionasset/action/serveWebVTT/captionAssetId/1_ttuaomxm/segmentDuration/300/a.m3u8"
+
+
+
+# AUDIO groups
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio-aacl-96",LANGUAGE="pl",NAME="English",AUTOSELECT=YES,DEFAULT=YES,URI="1woxvooiidb(11186147_ISMUSP)-audio=96000-pl.m3u8",SUBTITLES="subs"
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio-aacl-96",LANGUAGE="zxx",NAME="No linguistic content",AUTOSELECT=NO,DEFAULT=NO,URI="1woxvooiidb(11186147_ISMUSP)-audio=96000-zxx.m3u8",SUBTITLES="subs"
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio-aacl-96",LANGUAGE="en",NAME="Polish",AUTOSELECT=NO,DEFAULT=NO,URI="1woxvooiidb(11186147_ISMUSP)-audio=96000-en.m3u8",SUBTITLES="subs"
+
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio-aacl-96",LANGUAGE="de",NAME="German",AUTOSELECT=NO,DEFAULT=NO,URI="1woxvooiidb(11186147_ISMUSP)-audio=96000-de.m3u8",SUBTITLES="subs"
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio-aacl-97",LANGUAGE="es",NAME="Spanish",AUTOSELECT=NO,DEFAULT=NO,URI="1woxvooiidb(11186147_ISMUSP)-audio=96000-es.m3u8",SUBTITLES="subs"
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio-aacl-97",LANGUAGE="fr",NAME="French",AUTOSELECT=NO,DEFAULT=NO,URI="1woxvooiidb(11186147_ISMUSP)-audio=96000-fr.m3u8",SUBTITLES="subs"
+
+
+
+# variants
+#EXT-X-STREAM-INF:BANDWIDTH=354000,CODECS="mp4a.40.2,avc1.42C00D",RESOLUTION=384x216,FRAME-RATE=25,AUDIO="audio-aacl-96",CLOSED-CAPTIONS=NONE
+1woxvooiidb(11186147_ISMUSP)-video=241929.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=819000,CODECS="mp4a.40.2,avc1.42C01E",RESOLUTION=640x360,FRAME-RATE=25,AUDIO="audio-aacl-96",CLOSED-CAPTIONS=NONE
+1woxvooiidb(11186147_ISMUSP)-video=680761.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=1538000,CODECS="mp4a.40.2,avc1.4D401E",RESOLUTION=768x432,FRAME-RATE=25,AUDIO="audio-aacl-96",CLOSED-CAPTIONS=NONE
+1woxvooiidb(11186147_ISMUSP)-video=1358751.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=2485000,CODECS="mp4a.40.2,avc1.4D401F",RESOLUTION=1024x576,FRAME-RATE=25,AUDIO="audio-aacl-97",CLOSED-CAPTIONS=NONE
+1woxvooiidb(11186147_ISMUSP)-video=2252188.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=3396000,CODECS="mp4a.40.2,avc1.4D401F",RESOLUTION=1280x720,FRAME-RATE=25,AUDIO="audio-aacl-97",CLOSED-CAPTIONS=NONE
+1woxvooiidb(11186147_ISMUSP)-video=3112126.m3u8
