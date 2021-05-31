@@ -189,8 +189,8 @@ class HLSVod {
             // # For the case when this is a VOD following another, every language new or old should
             // # start with some segments from the previous VOD's last sequence.
             const newLanguages = audioLanguages.filter((lang)=>{ return !previousVODLanguages.includes(lang) })
-            // # If newLanguages and audioLanguages are the same then there are  
-            if(JSON.stringify(newLanguages) !== JSON.stringify(audioLanguages)){
+            // # Only inject if there were prior tracks.
+            if(previousVODLanguages.length > 0){
               for(let i=0;i<newLanguages.length; i++){
                 const newLanguage = newLanguages[i];            
                 const defaultLanguage = this._getFirstAudioLanguageWithSegments(audioGroupId);
