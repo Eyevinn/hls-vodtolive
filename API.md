@@ -10,15 +10,17 @@
     * [.addMetadata(key, value)](#HLSVod+addMetadata)
     * [.getVodUri()](#HLSVod+getVodUri)
     * [.getLiveMediaSequenceSegments(seqIdx)](#HLSVod+getLiveMediaSequenceSegments)
-    * [.getLiveMediaSequenceAudioSegments(audioGroupId, seqIdx)](#HLSVod+getLiveMediaSequenceAudioSegments)
+    * [.getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx)](#HLSVod+getLiveMediaSequenceAudioSegments)
     * [.getBandwidths()](#HLSVod+getBandwidths)
     * [.getLiveMediaSequencesCount()](#HLSVod+getLiveMediaSequencesCount)
     * [.getLiveMediaSequences(offset, bandwidth, seqIdx, discOffset)](#HLSVod+getLiveMediaSequences)
+    * [.getLiveMediaAudioSequences()](#HLSVod+getLiveMediaAudioSequences)
     * [.getUsageProfiles()](#HLSVod+getUsageProfiles)
     * [.getLastDiscontinuity()](#HLSVod+getLastDiscontinuity)
     * [.getDeltaTimes()](#HLSVod+getDeltaTimes)
     * [.getPlayheadPositions()](#HLSVod+getPlayheadPositions)
     * [.releasePreviousVod()](#HLSVod+releasePreviousVod)
+    * [._copyAudioGroupsFromPrevious()](#HLSVod+_copyAudioGroupsFromPrevious)
 
 <a name="new_HLSVod_new"></a>
 
@@ -83,7 +85,7 @@ Get all segments (duration, uri) for a specific media sequence
 
 <a name="HLSVod+getLiveMediaSequenceAudioSegments"></a>
 
-### hlsVod.getLiveMediaSequenceAudioSegments(audioGroupId, seqIdx)
+### hlsVod.getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx)
 Get all audio segments (duration, uri) for a specific media sequence
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
@@ -91,6 +93,7 @@ Get all audio segments (duration, uri) for a specific media sequence
 | Param | Type | Description |
 | --- | --- | --- |
 | audioGroupId | <code>string</code> | audio group Id |
+| audioLanguage | <code>string</code> | audio language |
 | seqIdx | <code>number</code> | media sequence index (first is 0) |
 
 <a name="HLSVod+getBandwidths"></a>
@@ -119,6 +122,13 @@ Get the HLS live media sequence for a specific media sequence and bandwidth
 | seqIdx | <code>number</code> |  |
 | discOffset | <code>number</code> | add this offset to all discontinuity sequences in the EXT-X-DISCONTINUITY-SEQUENCE tag |
 
+<a name="HLSVod+getLiveMediaAudioSequences"></a>
+
+### hlsVod.getLiveMediaAudioSequences()
+Gets a hls/makes m3u8-file with all of the correct audio segments
+belonging to a given groupID & language for a particular sequence.
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 <a name="HLSVod+getUsageProfiles"></a>
 
 ### hlsVod.getUsageProfiles()
@@ -147,5 +157,12 @@ Returns the playhead position for each media sequence
 
 ### hlsVod.releasePreviousVod()
 Remove pointers to previous VOD and release to garbage collector
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+_copyAudioGroupsFromPrevious"></a>
+
+### hlsVod.\_copyAudioGroupsFromPrevious()
+Gets previous VOD's audio -groupIds, -langs, -segments from its last sequence
+and adds them to the current VOD's this.audioSegments property.
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
