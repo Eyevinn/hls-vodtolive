@@ -20,6 +20,7 @@
     * [.getDeltaTimes()](#HLSVod+getDeltaTimes)
     * [.getPlayheadPositions()](#HLSVod+getPlayheadPositions)
     * [.releasePreviousVod()](#HLSVod+releasePreviousVod)
+    * [.getDuration()](#HLSVod+getDuration)
     * [._copyAudioGroupsFromPrevious()](#HLSVod+_copyAudioGroupsFromPrevious)
 
 <a name="new_HLSVod_new"></a>
@@ -157,6 +158,12 @@ Returns the playhead position for each media sequence
 
 ### hlsVod.releasePreviousVod()
 Remove pointers to previous VOD and release to garbage collector
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+getDuration"></a>
+
+### hlsVod.getDuration()
+Returns the current duration calculated from the sum of the duration of all segments
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 <a name="HLSVod+_copyAudioGroupsFromPrevious"></a>
