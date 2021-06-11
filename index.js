@@ -628,6 +628,21 @@ class HLSVod {
     this.previousVod = null;
   }
 
+  /**
+   * Returns the current duration calculated from the sum of the duration of all segments
+   */
+  getDuration() {
+    if (!this.segments) {
+      return null;
+    }
+    const bw = Object.keys(this.segments)[0];
+    if (!bw) {
+      return null;
+    }
+    const duration = this.segments[bw].reduce((acc, s) => s.duration ? acc + s.duration : acc, 0);
+    return duration;
+  }
+
   // ----- PRIVATE METHODS BELOW ----
 
   _loadPrevious() {
