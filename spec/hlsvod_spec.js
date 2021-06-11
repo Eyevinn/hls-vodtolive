@@ -395,6 +395,25 @@ describe("HLSVod after another VOD", () => {
         done();
       });
   });
+
+  it("provides the correct duration", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
+    mockVod
+      .load(mockMasterManifest, mockMediaManifest)
+      .then(() => {
+        expect(mockVod.getDuration()).toEqual(2652.266);
+        return mockVod2.loadAfter(
+          mockVod,
+          mockMasterNoAudioOnly,
+          mockMediaNoAudioOnly
+        );
+      })
+      .then(() => {
+        expect(mockVod2.getDuration()).toEqual(57.766);
+        done();
+      });
+  });
 });
 
 describe("HLSVod with ad splicing", () => {
