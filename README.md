@@ -131,8 +131,6 @@ This project was started as vod-to-live.js in 2018 by Eyevinn Technology.
 
 ## Attributions
 
-<img src="http://ottera.tv/wp-content/uploads/2019/04/Logo-1.png" width="100" title="OTTera logo">
-
 A special thanks to [OTTera](http://ottera.tv) for funding a number of bugfixes and help to triage issues. OTTera is a US based company that powers OTT and Linear Video services with over 45 million users worldwide.
 
 # [Contributing](CONTRIBUTING.md)
