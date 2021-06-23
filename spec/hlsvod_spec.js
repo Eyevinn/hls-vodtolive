@@ -2430,6 +2430,33 @@ describe("HLSVod with mixed target durations", () => {
       });
   });
 
+  it("sets correct EXT-X-TARGETDURATION with enforced target duration", (done) => {
+    let mockVod1 = new HLSVod("http://mock.com/mock.m3u8");
+    let mockVod2 = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod1
+      .load(mockMasterManifest1, mockMediaManifest1)
+      .then(() => {
+        return mockVod2.loadAfter(
+          mockVod1,
+          mockMasterManifest2,
+          mockMediaManifest2
+        );
+      })
+      .then(() => {
+        expect(
+          mockVod1
+            .getLiveMediaSequences(0, "1010931", 0, 0, 0, 5)
+            .match("EXT-X-TARGETDURATION:5")
+        ).not.toBeNull();
+        expect(
+          mockVod2
+            .getLiveMediaSequences(0, "1010931", 0, 0, 0, 5)
+            .match("EXT-X-TARGETDURATION:5")
+        ).not.toBeNull();
+        done();
+      });
+  });
+
   it("can download and parse a manifest", (done) => {
     let hlsVod = new HLSVod(
       "https://maitv-vod.lab.eyevinn.technology/VINN.mp4/master.m3u8"
