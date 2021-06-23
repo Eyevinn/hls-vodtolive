@@ -394,11 +394,15 @@ class HLSVod {
    * @param {string} bandwidth
    * @param {number} seqIdx
    * @param {number} discOffset - add this offset to all discontinuity sequences in the EXT-X-DISCONTINUITY-SEQUENCE tag
+   * @param {number} padding - add extra seconds on the EXT-X-TARGETDURATION
    */
-  getLiveMediaSequences(offset, bandwidth, seqIdx, discOffset) {
+  getLiveMediaSequences(offset, bandwidth, seqIdx, discOffset, padding) {
     const bw = this._getNearestBandwidthWithInitiatedSegments(bandwidth);
     debug(`Get live media sequence [${seqIdx}] for bw=${bw} (requested bw ${bandwidth})`);
-    const targetDuration = this._determineTargetDuration(this.mediaSequences[seqIdx].segments[bw]);
+    let targetDuration = this._determineTargetDuration(this.mediaSequences[seqIdx].segments[bw]);
+    if (padding) {
+      targetDuration += padding;
+    }
     let m3u8 = "#EXTM3U\n";
     m3u8 += "#EXT-X-VERSION:6\n";
     if (this.header) {
@@ -502,7 +506,8 @@ class HLSVod {
     audioGroupId,
     audioLanguage,
     seqIdx,
-    discOffset
+    discOffset,
+    padding
   ) {
     debug(
       `Get live audio media sequence [${seqIdx}] for audioGroupId=${audioGroupId}`
@@ -519,7 +524,10 @@ class HLSVod {
       return null;
     }
 
-    const targetDuration = this._determineTargetDuration(mediaSeqAudioSegments);
+    let targetDuration = this._determineTargetDuration(mediaSeqAudioSegments);
+    if (padding) {
+      targetDuration += padding;
+    }
 
     let m3u8 = "#EXTM3U\n";
     m3u8 += "#EXT-X-VERSION:3\n";

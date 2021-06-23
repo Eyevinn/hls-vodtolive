@@ -2376,7 +2376,7 @@ describe("HLSVod with mixed target durations", () => {
     };
   });
 
-  it("sets corect EXT-X-TARGETDURATION", (done) => {
+  it("sets correct EXT-X-TARGETDURATION", (done) => {
     let mockVod1 = new HLSVod("http://mock.com/mock.m3u8");
     let mockVod2 = new HLSVod("http://mock.com/mock.m3u8");
     mockVod1
@@ -2398,6 +2398,33 @@ describe("HLSVod with mixed target durations", () => {
           mockVod2
             .getLiveMediaSequences(0, "1010931", 0)
             .match("EXT-X-TARGETDURATION:10")
+        ).not.toBeNull();
+        done();
+      });
+  });
+
+  it("sets correct EXT-X-TARGETDURATION when added 1 second extra 'padding'", (done) => {
+    let mockVod1 = new HLSVod("http://mock.com/mock.m3u8");
+    let mockVod2 = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod1
+      .load(mockMasterManifest1, mockMediaManifest1)
+      .then(() => {
+        return mockVod2.loadAfter(
+          mockVod1,
+          mockMasterManifest2,
+          mockMediaManifest2
+        );
+      })
+      .then(() => {
+        expect(
+          mockVod1
+            .getLiveMediaSequences(0, "1010931", 0, 0, 1)
+            .match("EXT-X-TARGETDURATION:5")
+        ).not.toBeNull();
+        expect(
+          mockVod2
+            .getLiveMediaSequences(0, "1010931", 0, 0, 1)
+            .match("EXT-X-TARGETDURATION:11")
         ).not.toBeNull();
         done();
       });
