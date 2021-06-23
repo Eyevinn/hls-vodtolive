@@ -13,7 +13,7 @@
     * [.getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx)](#HLSVod+getLiveMediaSequenceAudioSegments)
     * [.getBandwidths()](#HLSVod+getBandwidths)
     * [.getLiveMediaSequencesCount()](#HLSVod+getLiveMediaSequencesCount)
-    * [.getLiveMediaSequences(offset, bandwidth, seqIdx, discOffset, padding)](#HLSVod+getLiveMediaSequences)
+    * [.getLiveMediaSequences(offset, bandwidth, seqIdx, discOffset, padding, forceTargetDuration)](#HLSVod+getLiveMediaSequences)
     * [.getLiveMediaAudioSequences()](#HLSVod+getLiveMediaAudioSequences)
     * [.getUsageProfiles()](#HLSVod+getUsageProfiles)
     * [.getLastDiscontinuity()](#HLSVod+getLastDiscontinuity)
@@ -111,7 +111,7 @@ Get the number of media sequences for this VOD
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 <a name="HLSVod+getLiveMediaSequences"></a>
 
-### hlsVod.getLiveMediaSequences(offset, bandwidth, seqIdx, discOffset, padding)
+### hlsVod.getLiveMediaSequences(offset, bandwidth, seqIdx, discOffset, padding, forceTargetDuration)
 Get the HLS live media sequence for a specific media sequence and bandwidth
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
@@ -123,6 +123,7 @@ Get the HLS live media sequence for a specific media sequence and bandwidth
 | seqIdx | <code>number</code> |  |
 | discOffset | <code>number</code> | add this offset to all discontinuity sequences in the EXT-X-DISCONTINUITY-SEQUENCE tag |
 | padding | <code>number</code> | add extra seconds on the EXT-X-TARGETDURATION |
+| forceTargetDuration | <code>number</code> | enforce a fixed EXT-X-TARGETDURATION |
 
 <a name="HLSVod+getLiveMediaAudioSequences"></a>
 
