@@ -43,6 +43,7 @@ class HLSVod {
     this.matchedBandwidths = {};
     this.deltaTimes = [];
     this.header = header;
+    this.lastUsedDiscSeq = null;
   }
 
   toJSON() {
@@ -65,6 +66,7 @@ class HLSVod {
       discontinuities: this.discontinuities,
       deltaTimes: this.deltaTimes,
       header: this.header,
+      lastUsedDiscSeq: this.lastUsedDiscSeq,
     };
     return JSON.stringify(serialized);
   }
@@ -93,6 +95,9 @@ class HLSVod {
     this.discontinuities = de.discontinuities;
     this.deltaTimes = de.deltaTimes;
     this.header = de.header;
+    if (de.lastUsedDiscSeq) {
+      this.lastUsedDiscSeq = de.lastUsedDiscSeq;
+    }
   }
 
   /**
@@ -234,7 +239,7 @@ class HLSVod {
                   audioGroups[audioGroupId] = {};
                 }
                 // # Prevents 'loading' an audio track with same GroupID and LANG.
-                // # otherwise it just would've loaded OVER the latest occurens of the LANG in GroupID.
+                // # otherwise it just would've loaded OVER the latest occurrent of the LANG in GroupID.
                 if (!audioGroups[audioGroupId][audioLang]) {
                   audioGroups[audioGroupId][audioLang] = true;
                   audioManifestPromises.push(
@@ -277,12 +282,11 @@ class HLSVod {
         fetch(this.masterManifestUri)
         .then(res => {
           if (res.status === 200) {
-	          res.body.pipe(parser);
+            res.body.pipe(parser);
           }
           else {
-          	throw new Error(res.status + ':: status code error trying to retrieve master manifest ' + masterManifestUri);
-          }  
-
+            throw new Error(res.status + ':: status code error trying to retrieve master manifest ' + masterManifestUri);
+          }
         })
         .catch(reject);
       } else {
@@ -311,6 +315,57 @@ class HLSVod {
         })
         .catch(err => {
           previousVod.releasePreviousVod();
+          reject(err);
+        });
+      } catch (exc) {
+        reject(exc);
+      }
+    });
+  }
+
+  /**
+   * Removes all segments that come before a specified media sequence.
+   * Then prepends the new additional segments in front, then finally
+   * create new media sequences with the newly updated collection of segments. 
+   * 
+   * @param {integer} mediaSeqNo The media Sequence index that is the live index.
+   * @param {segments object} AdditionalSegments New group of segments to merge with a possible subset of this.segments
+   * @param {audiosegments object} AdditionalAudioSegments New group of audio segments to merge with a possible subset of this.segments
+   * @returns A promise that new Media Sequences have been made
+   */
+  reload(mediaSeqNo, AdditionalSegments, AdditionalAudioSegments) {
+    return new Promise((resolve, reject) => {
+      const allBandwidths = this.getBandwidths();
+      // If there is anything to slice
+      if(mediaSeqNo > 0) {
+        allBandwidths.forEach(bw =>  this.segments[bw] = this.segments[bw].slice(mediaSeqNo - 1));
+      }
+
+      if (!this._isEmpty(this.audioSegments)) {
+        // TODO: slice all audio tracks, in all audio groups
+      }
+
+      // Find nearest BW in SFL and prepend them to the corresponding segments bandwidth
+      allBandwidths.forEach(bw => {
+        let nearestBw = this._getNearestBandwidthInList(bw, Object.keys(AdditionalSegments));
+        this.segments[bw] = AdditionalSegments[nearestBw].concat(this.segments[bw]);
+      });
+      // for audio segments if we have any
+      if (!this._isEmpty(this.audioSegments)) {
+        // TODO: Prepend segs to all audio tracks, in all audio groups
+      }
+
+      // Clean up/Reset HLSVod data since we are going to create new data
+      this.mediaSequences = [];
+      this.discontinuities = {};
+      this.deltaTimes = [];
+
+      try {
+        this._createMediaSequences()
+        .then(() => {
+          resolve()
+        })
+        .catch(err => {
           reject(err);
         });
       } catch (exc) {
@@ -361,7 +416,6 @@ class HLSVod {
       const fallbackLang = this._getFirstAudioLanguageWithSegments(audioGroupId);
       return this.mediaSequences[seqIdx].audioSegments[audioGroupId][fallbackLang];
     }
-    
     return this.mediaSequences[seqIdx].audioSegments[audioGroupId][audioLanguage];
   }
 
@@ -399,7 +453,6 @@ class HLSVod {
    */
   getLiveMediaSequences(offset, bandwidth, seqIdx, discOffset, padding, forceTargetDuration) {
     const bw = this._getNearestBandwidthWithInitiatedSegments(bandwidth);
-    debug(`Get live media sequence [${seqIdx}] for bw=${bw} (requested bw ${bandwidth})`);
     let targetDuration = this._determineTargetDuration(this.mediaSequences[seqIdx].segments[bw]);
     if (padding) {
       targetDuration += padding;
@@ -423,6 +476,7 @@ class HLSVod {
       discInOffset = 0;
     }
     m3u8 += "#EXT-X-DISCONTINUITY-SEQUENCE:" + (discInOffset + this.discontinuities[seqIdx]) + "\n";
+    this.lastUsedDiscSeq = discInOffset + this.discontinuities[seqIdx];
 
     if (!this.mediaSequences[seqIdx]) {
       debug('No sequence idx: ' + seqIdx);
@@ -662,6 +716,13 @@ class HLSVod {
     return duration;
   }
 
+  /**
+   * Returns the last added Discontinuity sequence count from getLiveMediaSequences()
+   */
+  getLastUsedDiscSeq() {
+    return this.lastUsedDiscSeq;
+  }
+
   // ----- PRIVATE METHODS BELOW ----
 
   _loadPrevious() {
@@ -719,7 +780,7 @@ class HLSVod {
    * Gets previous VOD's audio -groupIds, -langs, -segments from its last sequence
    * and adds them to the current VOD's this.audioSegments property.
    */
-   _copyAudioGroupsFromPrevious() {
+  _copyAudioGroupsFromPrevious() {
     const previousVodSeqCount = this.previousVod.getLiveMediaSequencesCount();
     const audioGroups = this.previousVod.getAudioGroups();
     if (audioGroups.length > 0) {
@@ -751,7 +812,7 @@ class HLSVod {
         }
       }
     }
-}
+  }
 
   _cleanupUnused() {
     return new Promise((resolve, reject) => {
@@ -800,7 +861,7 @@ class HLSVod {
         if (!this.segments[bw][segIdx].discontinuity) {
           duration += this.segments[bw][segIdx].duration;
         }
-//        console.log(segIdx, this.segments[bw][segIdx], duration, this.segments[bw].length);
+        //console.log(segIdx, this.segments[bw][segIdx], duration, this.segments[bw].length);
         if (duration < this.SEQUENCE_DURATION) {
           const bandwidths = Object.keys(this.segments);
           for (let i = 0; i < bandwidths.length; i++) {
@@ -1027,7 +1088,6 @@ class HLSVod {
             }
 
             for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
-
               if (this.splices[spliceIdx]) {
                 nextSplicePosition = this.splices[spliceIdx].position;
                 spliceBw = this._getNearestBandwidthForSplice(this.splices[spliceIdx], bw);
@@ -1236,6 +1296,13 @@ class HLSVod {
     });
   }
 
+  _getNearestBandwidthInList(bw, list) {
+    const sorted = list.sort((a, b) => b - a);
+    return sorted.reduce((a, b) => {
+      return Math.abs(b - bw) < Math.abs(a - bw) ? b : a;
+    });
+  }
+
   _getNearestBandwidth(bandwidth) {
     if (this.usageProfileMappingRev != null) {
       return this.usageProfileMappingRev[bandwidth];
@@ -1333,7 +1400,15 @@ class HLSVod {
   _inspect() {
     return this;
   }
+
+  _isEmpty(obj) {
+    for(var key in obj) {
+      if(obj.hasOwnProperty(key)) {
+        return false;
+      }
+    }
+    return true;
+  }
 }
 
 module.exports = HLSVod;
-
