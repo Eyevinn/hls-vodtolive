@@ -328,9 +328,9 @@ class HLSVod {
    * Then prepends the new additional segments in front, then finally
    * create new media sequences with the newly updated collection of segments. 
    * 
-   * @param {integer} mediaSeqNo The media Sequence index that is the live index.
-   * @param {segments object} AdditionalSegments New group of segments to merge with a possible subset of this.segments
-   * @param {audiosegments object} AdditionalAudioSegments New group of audio segments to merge with a possible subset of this.segments
+   * @param {number} mediaSeqNo The media Sequence index that is the live index.
+   * @param {object} AdditionalSegments New group of segments to merge with a possible subset of this.segments
+   * @param {object} AdditionalAudioSegments New group of audio segments to merge with a possible subset of this.segments
    * @returns A promise that new Media Sequences have been made
    */
   reload(mediaSeqNo, AdditionalSegments, AdditionalAudioSegments) {
