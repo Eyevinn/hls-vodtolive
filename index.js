@@ -163,10 +163,9 @@ class HLSVod {
             }
             debug(`Lookup media item for '${audioGroupId}'`);
 
-            
             // # Needed for the case when loading after another VOD.
             const previousVODLanguages = Object.keys(this.audioSegments[audioGroupId]);
-            
+
             let audioGroupItems = m3u.items.MediaItem.filter((item) => {
               return (
                 item.attributes.attributes.type === "AUDIO" &&
@@ -329,11 +328,11 @@ class HLSVod {
    * create new media sequences with the newly updated collection of segments. 
    * 
    * @param {number} mediaSeqNo The media Sequence index that is the live index.
-   * @param {object} AdditionalSegments New group of segments to merge with a possible subset of this.segments
-   * @param {object} AdditionalAudioSegments New group of audio segments to merge with a possible subset of this.segments
+   * @param {object} additionalSegments New group of segments to merge with a possible subset of this.segments
+   * @param {object} additionalAudioSegments New group of audio segments to merge with a possible subset of this.segments
    * @returns A promise that new Media Sequences have been made
    */
-  reload(mediaSeqNo, AdditionalSegments, AdditionalAudioSegments) {
+  reload(mediaSeqNo, additionalSegments, additionalAudioSegments) {
     return new Promise((resolve, reject) => {
       const allBandwidths = this.getBandwidths();
       // If there is anything to slice
@@ -347,8 +346,8 @@ class HLSVod {
 
       // Find nearest BW in SFL and prepend them to the corresponding segments bandwidth
       allBandwidths.forEach(bw => {
-        let nearestBw = this._getNearestBandwidthInList(bw, Object.keys(AdditionalSegments));
-        this.segments[bw] = AdditionalSegments[nearestBw].concat(this.segments[bw]);
+        let nearestBw = this._getNearestBandwidthInList(bw, Object.keys(additionalSegments));
+        this.segments[bw] = additionalSegments[nearestBw].concat(this.segments[bw]);
       });
       // for audio segments if we have any
       if (!this._isEmpty(this.audioSegments)) {
