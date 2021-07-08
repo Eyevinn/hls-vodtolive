@@ -7,6 +7,7 @@
     * [new HLSVod(vodManifestUri, splices, timeOffset, startTimeOffset, header)](#new_HLSVod_new)
     * [.load()](#HLSVod+load)
     * [.loadAfter(previousVod)](#HLSVod+loadAfter)
+    * [.reload(mediaSeqNo, additionalSegments, additionalAudioSegments)](#HLSVod+reload) ⇒
     * [.addMetadata(key, value)](#HLSVod+addMetadata)
     * [.getVodUri()](#HLSVod+getVodUri)
     * [.getLiveMediaSequenceSegments(seqIdx)](#HLSVod+getLiveMediaSequenceSegments)
@@ -21,6 +22,7 @@
     * [.getPlayheadPositions()](#HLSVod+getPlayheadPositions)
     * [.releasePreviousVod()](#HLSVod+releasePreviousVod)
     * [.getDuration()](#HLSVod+getDuration)
+    * [.getLastUsedDiscSeq()](#HLSVod+getLastUsedDiscSeq)
     * [._copyAudioGroupsFromPrevious()](#HLSVod+_copyAudioGroupsFromPrevious)
 
 <a name="new_HLSVod_new"></a>
@@ -54,6 +56,22 @@ contains the end sequences of the previous VOD
 | Param | Type | Description |
 | --- | --- | --- |
 | previousVod | [<code>HLSVod</code>](#HLSVod) | the previous VOD to concatenate to |
+
+<a name="HLSVod+reload"></a>
+
+### hlsVod.reload(mediaSeqNo, additionalSegments, additionalAudioSegments) ⇒
+Removes all segments that come before a specified media sequence.
+Then prepends the new additional segments in front, then finally
+create new media sequences with the newly updated collection of segments.
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+**Returns**: A promise that new Media Sequences have been made  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| mediaSeqNo | <code>number</code> | The media Sequence index that is the live index. |
+| additionalSegments | <code>object</code> | New group of segments to merge with a possible subset of this.segments |
+| additionalAudioSegments | <code>object</code> | New group of audio segments to merge with a possible subset of this.segments |
 
 <a name="HLSVod+addMetadata"></a>
 
@@ -166,6 +184,12 @@ Remove pointers to previous VOD and release to garbage collector
 
 ### hlsVod.getDuration()
 Returns the current duration calculated from the sum of the duration of all segments
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+getLastUsedDiscSeq"></a>
+
+### hlsVod.getLastUsedDiscSeq()
+Returns the last added Discontinuity sequence count from getLiveMediaSequences()
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 <a name="HLSVod+_copyAudioGroupsFromPrevious"></a>
