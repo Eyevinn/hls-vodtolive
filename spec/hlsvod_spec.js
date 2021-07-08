@@ -10,7 +10,6 @@ describe("HLSVod standalone", () => {
   let mockMediaManifest2;
   let mockMasterNoAudioOnly;
   let mockMediaNoAudioOnly;
-  // i added these
   let mockMasterManifestNoUri;
   let mockAudioManifest;
   let mockMediaManifest3;
@@ -43,7 +42,6 @@ describe("HLSVod standalone", () => {
       );
     };
 
-    // i added these
     mockMasterManifestNoUri = function () {
       return fs.createReadStream("testvectors/hls7/master.m3u8");
     };
@@ -1836,7 +1834,7 @@ describe("HLSVod with discontinuites in the source", () => {
       });
   });
 
-  it("increments discontinuity sequence correctly", (done) => {
+  it("increments discontinuity sequence correctly, and update and stores last used discontinuity counter", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8");
     mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
     mockVod3 = new HLSVod("http://mock.com/mock3.m3u8");
@@ -1855,19 +1853,23 @@ describe("HLSVod with discontinuites in the source", () => {
         let m3u8 = mockVod.getLiveMediaSequences(0, "401000", 1, 0);
         let m = m3u8.match("#EXT-X-DISCONTINUITY-SEQUENCE:0");
         expect(m).not.toBeNull();
+        expect(mockVod.getLastUsedDiscSeq()).toEqual(0);
         let l = mockVod.getLastDiscontinuity();
         m3u8 = mockVod.getLiveMediaSequences(0, "401000", 2, 0);
         m = m3u8.match("#EXT-X-DISCONTINUITY-SEQUENCE:1");
         expect(m).not.toBeNull();
+        expect(mockVod.getLastUsedDiscSeq()).toEqual(1);
         let c = mockVod.getLiveMediaSequencesCount();
         m3u8 = mockVod2.getLiveMediaSequences(c, "401000", 13, l);
         m = m3u8.match("#EXT-X-DISCONTINUITY-SEQUENCE:1");
         expect(m).not.toBeNull();
         m3u8 = mockVod2.getLiveMediaSequences(c, "401000", 14, l);
         m = m3u8.match("#EXT-X-DISCONTINUITY-SEQUENCE:2");
+        expect(mockVod2.getLastUsedDiscSeq()).toEqual(2);
         expect(m).not.toBeNull();
         m3u8 = mockVod2.getLiveMediaSequences(c, "401000", 17, l);
         m = m3u8.match("#EXT-X-DISCONTINUITY-SEQUENCE:3");
+        expect(mockVod2.getLastUsedDiscSeq()).toEqual(3);
         expect(m).not.toBeNull();
         expect(mockVod2.getLastDiscontinuity()).toEqual(4);
         i = c + mockVod2.getLiveMediaSequencesCount();
@@ -1882,9 +1884,11 @@ describe("HLSVod with discontinuites in the source", () => {
         let j = mockVod2.getLastDiscontinuity();
         let m3u8 = mockVod3.getLiveMediaSequences(i, "401000", 0, j);
         m = m3u8.match("#EXT-X-DISCONTINUITY-SEQUENCE:4");
+        expect(mockVod3.getLastUsedDiscSeq()).toEqual(4);
         expect(m).not.toBeNull();
         m3u8 = mockVod3.getLiveMediaSequences(i, "401000", 14, j);
         m = m3u8.match("#EXT-X-DISCONTINUITY-SEQUENCE:5");
+        expect(mockVod3.getLastUsedDiscSeq()).toEqual(5);
         expect(m).not.toBeNull();
         done();
       });
@@ -2693,6 +2697,99 @@ describe("HLSVod playhead positions", () => {
       expect(positions).toEqual([0]);
       done();
     });
+  });
+
+});
+
+describe("HLSVod reload media sequences", () => {
+  let mockMasterManifest1;
+  let mockMediaManifest1;
+  let mockMasterManifest2;
+  let mockMediaManifest2;
+
+  beforeEach(() => {
+    mockMasterManifest1 = function () {
+      return fs.createReadStream("testvectors/hls_reload1/master.m3u8");
+    };
+
+    mockMediaManifest1 = function (bandwidth) {
+      return fs.createReadStream("testvectors/hls_reload1/1.m3u8");
+    };
+
+    mockMasterManifest2 = function () {
+      return fs.createReadStream("testvectors/hls_reload2/master.m3u8");
+    };
+
+    mockMediaManifest2 = function (bandwidth) {
+      return fs.createReadStream("testvectors/hls_reload2/1.m3u8");
+    };
+  });
+
+  it("can reload at the beginning of a HLSVod", (done) => {
+    let vod1segments = {};
+    mockVod = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
+
+    mockVod
+      .load(mockMasterManifest1, mockMediaManifest1)
+      .then(() => {
+        vod1segments = mockVod.getLiveMediaSequenceSegments(1);
+      }).then(() => {
+        mockVod2.load(mockMasterManifest2, mockMediaManifest2)
+        .then(() => {
+          mockVod2.reload(0, vod1segments)
+          .then(() => {
+            expect(vod1segments).toEqual(mockVod2.getLiveMediaSequenceSegments(0));
+            done();
+           });
+        });
+      });
+  });
+
+  it("can reload at the middle of a HLSVod", (done) => {
+    let vod1segments = {};
+    mockVod = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
+
+    mockVod
+      .load(mockMasterManifest1, mockMediaManifest1)
+      .then(() => {
+        vod1segments = mockVod.getLiveMediaSequenceSegments(1);
+      }).then(() => {
+        mockVod2.load(mockMasterManifest2, mockMediaManifest2)
+        .then(() => {
+          let topSegment = mockVod2.getLiveMediaSequenceSegments(6)['401000'][0];
+          mockVod2.reload(7, vod1segments)
+          .then(() => {
+            let size = mockVod2.getLiveMediaSequenceSegments(1)['401000'].length;
+            expect(mockVod2.getLiveMediaSequenceSegments(1)['401000'][size - 1]).toEqual(topSegment);
+            done();
+           });
+        });
+      });
+  });
+
+  it("can reload at the end of a HLSVod", (done) => {
+    let vod1segments = {};
+    mockVod = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
+
+    mockVod
+      .load(mockMasterManifest1, mockMediaManifest1)
+      .then(() => {
+        vod1segments = mockVod.getLiveMediaSequenceSegments(1);
+      }).then(() => {
+        mockVod2.load(mockMasterManifest2, mockMediaManifest2)
+        .then(() => {
+          let topSegment = mockVod2.getLiveMediaSequenceSegments(12)['401000'][0];
+          mockVod2.reload(13, vod1segments)
+          .then(() => {
+            let size = mockVod2.getLiveMediaSequenceSegments(1)['401000'].length;
+            expect(mockVod2.getLiveMediaSequenceSegments(1)['401000'][size - 1]).toEqual(topSegment);
+             done();
+           });
+        });
+      });
   });
 });
 
