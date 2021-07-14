@@ -2125,23 +2125,16 @@ describe("Two short HLSVods", () => {
       .then(() => {
         const segsVod1_0 = mockVod1.getLiveMediaSequenceSegments(0);
         const segsVod2_0 = mockVod2.getLiveMediaSequenceSegments(0);
-        const segsVod2_1 = mockVod2.getLiveMediaSequenceSegments(1);
         expect(segsVod1_0["1010931"][0].discontinuity).toBe(true);
         expect(segsVod2_0["1010931"][0].uri).toEqual(
-          "http://mock.com/1010931/seg-1-v2-a1.ts"
-        );
-        expect(segsVod2_1["1010931"][0].uri).toEqual(
-          "http://mock.com/1010931/seg-2-v2-a1.ts"
+          "http://mock.com/1010931/seg-2-v2-a1.ts" // Pop seg-1 together with discontinuity tag, to match media sequence count
         );
         expect(
-          segsVod2_0["1010931"][[segsVod1_0["1010931"].length - 1]]
+          segsVod2_0["1010931"][[segsVod1_0["1010931"].length - 1 - 1]]
             .discontinuity
         ).toBe(true); // Identifies discontinuity right after vod1 (takes into account removed disc at start of vod1)
         expect(
           segsVod2_0["1010931"][[segsVod2_0["1010931"].length - 1]].uri
-        ).toEqual("http://mock.com/1010931/seg-5-v2-a1.ts");
-        expect(
-          segsVod2_1["1010931"][[segsVod2_1["1010931"].length - 1]].uri
         ).toEqual("http://mock.com/1010931/seg-6-v2-a1.ts");
         done();
       })
@@ -2741,7 +2734,28 @@ describe("HLSVod reload media sequences", () => {
           .then(() => {
             expect(vod1segments).toEqual(mockVod2.getLiveMediaSequenceSegments(0));
             done();
-           });
+          });
+        });
+      });
+  });
+
+  it("can reload at the beginning of a HLSVod, and insert segments after live point", (done) => {
+    let vod1segments = {};
+    mockVod = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
+
+    mockVod
+      .load(mockMasterManifest1, mockMediaManifest1)
+      .then(() => {
+        vod1segments = mockVod.getLiveMediaSequenceSegments(1);
+      }).then(() => {
+        mockVod2.load(mockMasterManifest2, mockMediaManifest2)
+        .then(() => {
+          mockVod2.reload(0, vod1segments, null, true)
+          .then(() => {
+            expect(vod1segments).toEqual(mockVod2.getLiveMediaSequenceSegments(mockVod2.getLiveMediaSequencesCount() - 1));
+            done();
+          });
         });
       });
   });
@@ -2764,7 +2778,30 @@ describe("HLSVod reload media sequences", () => {
             let size = mockVod2.getLiveMediaSequenceSegments(1)['401000'].length;
             expect(mockVod2.getLiveMediaSequenceSegments(1)['401000'][size - 1]).toEqual(topSegment);
             done();
-           });
+          });
+        });
+      });
+  });
+
+  it("can reload at the middle of a HLSVod, and insert segments after live point", (done) => {
+    let vod1segments = {};
+    mockVod = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
+
+    mockVod
+      .load(mockMasterManifest1, mockMediaManifest1)
+      .then(() => {
+        vod1segments = mockVod.getLiveMediaSequenceSegments(1);
+      }).then(() => {
+        mockVod2.load(mockMasterManifest2, mockMediaManifest2)
+        .then(() => {
+          let size = mockVod2.getLiveMediaSequenceSegments(7)['401000'].length;
+          let bottomSegment = mockVod2.getLiveMediaSequenceSegments(7)['401000'][size -1];
+          mockVod2.reload(7, vod1segments, null, true)
+          .then(() => {
+            expect(mockVod2.getLiveMediaSequenceSegments(mockVod2.getLiveMediaSequencesCount() - 2)['401000'][0]).toEqual(bottomSegment);
+            done();
+          });
         });
       });
   });
@@ -2787,7 +2824,30 @@ describe("HLSVod reload media sequences", () => {
             let size = mockVod2.getLiveMediaSequenceSegments(1)['401000'].length;
             expect(mockVod2.getLiveMediaSequenceSegments(1)['401000'][size - 1]).toEqual(topSegment);
              done();
-           });
+          });
+        });
+      });
+  });
+
+  it("can reload at the end of a HLSVod, and insert segments after live point", (done) => {
+    let vod1segments = {};
+    mockVod = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
+
+    mockVod
+      .load(mockMasterManifest1, mockMediaManifest1)
+      .then(() => {
+        vod1segments = mockVod.getLiveMediaSequenceSegments(1);
+      }).then(() => {
+        mockVod2.load(mockMasterManifest2, mockMediaManifest2)
+        .then(() => {
+          let size = mockVod2.getLiveMediaSequenceSegments(12)['401000'].length;
+          let bottomSegment = mockVod2.getLiveMediaSequenceSegments(12)['401000'][size -1];
+          mockVod2.reload(12, vod1segments, null, true)
+          .then(() => {
+            expect(mockVod2.getLiveMediaSequenceSegments(mockVod2.getLiveMediaSequencesCount() - 2)['401000'][0]).toEqual(bottomSegment);
+            done();
+          });
         });
       });
   });
