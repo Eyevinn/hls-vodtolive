@@ -323,35 +323,50 @@ class HLSVod {
   }
 
   /**
-   * Removes all segments that come before a specified media sequence.
-   * Then prepends the new additional segments in front, then finally
-   * create new media sequences with the newly updated collection of segments. 
+   * Removes all segments that come before or after a specified media sequence.
+   * Then adds the new additional segments in front or behind. 
+   * It finally creates new media sequences with the updated collection of segments. 
    * 
    * @param {number} mediaSeqNo The media Sequence index that is the live index.
    * @param {object} additionalSegments New group of segments to merge with a possible subset of this.segments
    * @param {object} additionalAudioSegments New group of audio segments to merge with a possible subset of this.segments
+   * @param {boolean} insertAfter Whether the additional segments are to be added in front of the live index or behind.
    * @returns A promise that new Media Sequences have been made
    */
-  reload(mediaSeqNo, additionalSegments, additionalAudioSegments) {
+  reload(mediaSeqNo, additionalSegments, additionalAudioSegments, insertAfter) {
     return new Promise((resolve, reject) => {
       const allBandwidths = this.getBandwidths();
-      // If there is anything to slice
-      if(mediaSeqNo > 0) {
-        allBandwidths.forEach(bw =>  this.segments[bw] = this.segments[bw].slice(mediaSeqNo - 1));
-      }
-
-      if (!this._isEmpty(this.audioSegments)) {
-        // TODO: slice all audio tracks, in all audio groups
-      }
-
-      // Find nearest BW in SFL and prepend them to the corresponding segments bandwidth
-      allBandwidths.forEach(bw => {
-        let nearestBw = this._getNearestBandwidthInList(bw, Object.keys(additionalSegments));
-        this.segments[bw] = additionalSegments[nearestBw].concat(this.segments[bw]);
-      });
-      // for audio segments if we have any
-      if (!this._isEmpty(this.audioSegments)) {
-        // TODO: Prepend segs to all audio tracks, in all audio groups
+      if (!insertAfter) {
+        // If there is anything to slice
+        if(mediaSeqNo > 0) {
+          allBandwidths.forEach(bw => this.segments[bw] = this.segments[bw].slice(mediaSeqNo - 1));
+        }
+        if (!this._isEmpty(this.audioSegments)) {
+          // TODO: slice all audio tracks, in all audio groups
+        }
+        // Find nearest BW in SFL and prepend them to the corresponding segments bandwidth
+        allBandwidths.forEach(bw => {
+          let nearestBw = this._getNearestBandwidthInList(bw, Object.keys(additionalSegments));
+          this.segments[bw] = additionalSegments[nearestBw].concat(this.segments[bw]);
+        });
+        if (!this._isEmpty(this.audioSegments)) {
+          // TODO: Prepend segs to all audio tracks, in all audio groups
+        }
+      } else {
+        if(mediaSeqNo >= 0) {
+          let size = this.mediaSequences[mediaSeqNo].segments[allBandwidths[0]].length;
+          allBandwidths.forEach(bw => this.segments[bw] = this.segments[bw].slice(mediaSeqNo, (mediaSeqNo + size)));
+        }
+        if (!this._isEmpty(this.audioSegments)) {
+          // TODO: slice all audio tracks, in all audio groups
+        }
+        allBandwidths.forEach(bw => {
+          let nearestBw = this._getNearestBandwidthInList(bw, Object.keys(additionalSegments));
+          this.segments[bw] = this.segments[bw].concat(additionalSegments[nearestBw]);
+        });
+        if (!this._isEmpty(this.audioSegments)) {
+          // TODO: Prepend segs to all audio tracks, in all audio groups
+        }
       }
 
       // Clean up/Reset HLSVod data since we are going to create new data
@@ -400,6 +415,14 @@ class HLSVod {
    */
   getLiveMediaSequenceSegments(seqIdx) {
     return this.mediaSequences[seqIdx].segments;
+  }
+
+  /**
+   * Get all segments (duration, uri)
+   *
+   */
+  getMediaSegments() {
+    return this.segments;
   }
 
   /**
@@ -755,7 +778,11 @@ class HLSVod {
       this.segments[destBw] = [];
     }
     if (lastMediaSequence) {
-      for (let idx = 1; idx < lastMediaSequence.length; idx++) {
+      let start = 1;
+      if (lastMediaSequence[0].discontinuity) {
+        start = 2;
+      }
+      for (let idx = start; idx < lastMediaSequence.length; idx++) {
         let q = lastMediaSequence[idx];
         if (!q) {
           // should not happen, debug
