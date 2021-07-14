@@ -61,6 +61,21 @@ describe("HLSVod standalone", () => {
     });
   });
 
+  it("return the correct loaded segments", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod.load(mockMasterManifest, mockMediaManifest).then(() => {
+      let allHLSVodSegments = mockVod.getMediaSegments();
+      expect(Object.keys(allHLSVodSegments)).toEqual(mockVod.getBandwidths());
+      expect(allHLSVodSegments["1497000"][0].uri).toBe(
+        "https://tv4play-i.akamaihd.net/i/mp4root/2018-01-26/pid200032972(3953564_,T3MP445,T3MP435,T3MP425,T3MP415,T3MP48,T3MP43,T3MP4130,).mp4.csmil/segment1_3_av.ts"
+      );
+      expect(allHLSVodSegments["1497000"][allHLSVodSegments["1497000"].length - 1].uri).toBe(
+        "https://tv4play-i.akamaihd.net/i/mp4root/2018-01-26/pid200032972(3953564_,T3MP445,T3MP435,T3MP425,T3MP415,T3MP48,T3MP43,T3MP4130,).mp4.csmil/segment295_3_av.ts"
+      );
+      done();
+    });
+  });
+
   it("returns the correct number of media sequences", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8");
     mockVod.load(mockMasterManifest, mockMediaManifest).then(() => {
