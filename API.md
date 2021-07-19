@@ -7,10 +7,11 @@
     * [new HLSVod(vodManifestUri, splices, timeOffset, startTimeOffset, header)](#new_HLSVod_new)
     * [.load()](#HLSVod+load)
     * [.loadAfter(previousVod)](#HLSVod+loadAfter)
-    * [.reload(mediaSeqNo, additionalSegments, additionalAudioSegments)](#HLSVod+reload) ⇒
+    * [.reload(mediaSeqNo, additionalSegments, additionalAudioSegments, insertAfter)](#HLSVod+reload) ⇒
     * [.addMetadata(key, value)](#HLSVod+addMetadata)
     * [.getVodUri()](#HLSVod+getVodUri)
     * [.getLiveMediaSequenceSegments(seqIdx)](#HLSVod+getLiveMediaSequenceSegments)
+    * [.getMediaSegments()](#HLSVod+getMediaSegments)
     * [.getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx)](#HLSVod+getLiveMediaSequenceAudioSegments)
     * [.getBandwidths()](#HLSVod+getBandwidths)
     * [.getLiveMediaSequencesCount()](#HLSVod+getLiveMediaSequencesCount)
@@ -59,10 +60,10 @@ contains the end sequences of the previous VOD
 
 <a name="HLSVod+reload"></a>
 
-### hlsVod.reload(mediaSeqNo, additionalSegments, additionalAudioSegments) ⇒
-Removes all segments that come before a specified media sequence.
-Then prepends the new additional segments in front, then finally
-create new media sequences with the newly updated collection of segments.
+### hlsVod.reload(mediaSeqNo, additionalSegments, additionalAudioSegments, insertAfter) ⇒
+Removes all segments that come before or after a specified media sequence.
+Then adds the new additional segments in front or behind. 
+It finally creates new media sequences with the updated collection of segments.
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 **Returns**: A promise that new Media Sequences have been made  
@@ -72,6 +73,7 @@ create new media sequences with the newly updated collection of segments.
 | mediaSeqNo | <code>number</code> | The media Sequence index that is the live index. |
 | additionalSegments | <code>object</code> | New group of segments to merge with a possible subset of this.segments |
 | additionalAudioSegments | <code>object</code> | New group of audio segments to merge with a possible subset of this.segments |
+| insertAfter | <code>boolean</code> | Whether the additional segments are to be added in front of the live index or behind. |
 
 <a name="HLSVod+addMetadata"></a>
 
@@ -102,6 +104,12 @@ Get all segments (duration, uri) for a specific media sequence
 | --- | --- | --- |
 | seqIdx | <code>number</code> | media sequence index (first is 0) |
 
+<a name="HLSVod+getMediaSegments"></a>
+
+### hlsVod.getMediaSegments()
+Get all segments (duration, uri)
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 <a name="HLSVod+getLiveMediaSequenceAudioSegments"></a>
 
 ### hlsVod.getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx)
