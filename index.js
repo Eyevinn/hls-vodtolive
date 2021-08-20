@@ -355,7 +355,15 @@ class HLSVod {
       } else {
         if(mediaSeqNo >= 0) {
           let size = this.mediaSequences[mediaSeqNo].segments[allBandwidths[0]].length;
-          allBandwidths.forEach(bw => this.segments[bw] = this.segments[bw].slice(mediaSeqNo, (mediaSeqNo + size)));
+          let targetUri =  this.mediaSequences[mediaSeqNo].segments[allBandwidths[0]][0].uri;
+          let targetPos = 0;
+          for (let i = mediaSeqNo; i < this.segments[allBandwidths[0]].length; i++) {
+            // Should be True once
+            if (this.segments[allBandwidths[0]][i].uri === targetUri) {
+              targetPos = i;
+            }
+          }
+          allBandwidths.forEach(bw => this.segments[bw] = this.segments[bw].slice((targetPos), (targetPos + size)));
         }
         if (!this._isEmpty(this.audioSegments)) {
           // TODO: slice all audio tracks, in all audio groups
@@ -449,6 +457,7 @@ class HLSVod {
   }
 
   getAudioGroups() {
+    
     return Object.keys(this.audioSegments);
   }
 
