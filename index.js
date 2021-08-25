@@ -339,42 +339,56 @@ class HLSVod {
       if (!insertAfter) {
         // If there is anything to slice
         if(mediaSeqNo > 0) {
-          allBandwidths.forEach(bw => this.segments[bw] = this.segments[bw].slice(mediaSeqNo - 1));
+          let targetUri =  this.mediaSequences[mediaSeqNo].segments[allBandwidths[0]][0].uri;
+          let targetPos = 0;
+          for (let i = mediaSeqNo; i < this.segments[allBandwidths[0]].length; i++) {
+            if (this.segments[allBandwidths[0]][i].uri === targetUri) {
+              targetPos = i;
+            }
+          }
+          allBandwidths.forEach(bw => this.segments[bw] = this.segments[bw].slice(targetPos));
         }
+
         if (!this._isEmpty(this.audioSegments)) {
           // TODO: slice all audio tracks, in all audio groups
         }
+
         // Find nearest BW in SFL and prepend them to the corresponding segments bandwidth
         allBandwidths.forEach(bw => {
           let nearestBw = this._getNearestBandwidthInList(bw, Object.keys(additionalSegments));
           this.segments[bw] = additionalSegments[nearestBw].concat(this.segments[bw]);
         });
+
         if (!this._isEmpty(this.audioSegments)) {
           // TODO: Prepend segs to all audio tracks, in all audio groups
         }
+
       } else {
         if(mediaSeqNo >= 0) {
           let size = this.mediaSequences[mediaSeqNo].segments[allBandwidths[0]].length;
           let targetUri =  this.mediaSequences[mediaSeqNo].segments[allBandwidths[0]][0].uri;
           let targetPos = 0;
           for (let i = mediaSeqNo; i < this.segments[allBandwidths[0]].length; i++) {
-            // Should be True once
             if (this.segments[allBandwidths[0]][i].uri === targetUri) {
               targetPos = i;
             }
           }
           allBandwidths.forEach(bw => this.segments[bw] = this.segments[bw].slice((targetPos), (targetPos + size)));
         }
+
         if (!this._isEmpty(this.audioSegments)) {
           // TODO: slice all audio tracks, in all audio groups
         }
+
         allBandwidths.forEach(bw => {
           let nearestBw = this._getNearestBandwidthInList(bw, Object.keys(additionalSegments));
           this.segments[bw] = this.segments[bw].concat(additionalSegments[nearestBw]);
         });
+
         if (!this._isEmpty(this.audioSegments)) {
           // TODO: Prepend segs to all audio tracks, in all audio groups
         }
+        
       }
 
       // Clean up/Reset HLSVod data since we are going to create new data
