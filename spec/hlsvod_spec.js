@@ -2745,7 +2745,8 @@ describe("HLSVod reload media sequences", () => {
       }).then(() => {
         mockVod2.load(mockMasterManifest2, mockMediaManifest2)
         .then(() => {
-          mockVod2.reload(0, vod1segments)
+          let targetBws = Object.keys(vod1segments);
+          mockVod2.reload(0, vod1segments, null, targetBws)
           .then(() => {
             expect(vod1segments).toEqual(mockVod2.getLiveMediaSequenceSegments(0));
             done();
@@ -2763,10 +2764,12 @@ describe("HLSVod reload media sequences", () => {
       .load(mockMasterManifest1, mockMediaManifest1)
       .then(() => {
         vod1segments = mockVod.getLiveMediaSequenceSegments(1);
+        Object.keys(vod1segments).forEach( bw => vod1segments[bw].unshift({discontinuity: true}));
       }).then(() => {
         mockVod2.load(mockMasterManifest2, mockMediaManifest2)
         .then(() => {
-          mockVod2.reload(0, vod1segments, null, true)
+          let targetBws = Object.keys(vod1segments);
+          mockVod2.reload(0, vod1segments, null, targetBws, true)
           .then(() => {
             expect(vod1segments).toEqual(mockVod2.getLiveMediaSequenceSegments(mockVod2.getLiveMediaSequencesCount() - 1));
             done();
@@ -2784,14 +2787,16 @@ describe("HLSVod reload media sequences", () => {
       .load(mockMasterManifest1, mockMediaManifest1)
       .then(() => {
         vod1segments = mockVod.getLiveMediaSequenceSegments(1);
+        Object.keys(vod1segments).forEach( bw => vod1segments[bw].push({discontinuity: true}));
       }).then(() => {
         mockVod2.load(mockMasterManifest2, mockMediaManifest2)
         .then(() => {
-          let topSegment = mockVod2.getLiveMediaSequenceSegments(6)['401000'][0];
-          mockVod2.reload(7, vod1segments)
+          let topSegmentPreReload = mockVod2.getLiveMediaSequenceSegments(6)['401000'][0];
+          let targetBws = Object.keys(vod1segments);
+          mockVod2.reload(6, vod1segments, null, targetBws)
           .then(() => {
             let size = mockVod2.getLiveMediaSequenceSegments(1)['401000'].length;
-            expect(mockVod2.getLiveMediaSequenceSegments(1)['401000'][size - 1]).toEqual(topSegment);
+            expect(mockVod2.getLiveMediaSequenceSegments(1)['401000'][size - 1]).toEqual(topSegmentPreReload);
             done();
           });
         });
@@ -2807,14 +2812,16 @@ describe("HLSVod reload media sequences", () => {
       .load(mockMasterManifest1, mockMediaManifest1)
       .then(() => {
         vod1segments = mockVod.getLiveMediaSequenceSegments(1);
+        Object.keys(vod1segments).forEach( bw => vod1segments[bw].unshift({discontinuity: true}));
       }).then(() => {
         mockVod2.load(mockMasterManifest2, mockMediaManifest2)
         .then(() => {
           let size = mockVod2.getLiveMediaSequenceSegments(7)['401000'].length;
-          let bottomSegment = mockVod2.getLiveMediaSequenceSegments(7)['401000'][size -1];
-          mockVod2.reload(7, vod1segments, null, true)
+          let bottomSegmentPreReload = mockVod2.getLiveMediaSequenceSegments(7)['401000'][size -1];
+          let targetBws = Object.keys(vod1segments);
+          mockVod2.reload(7, vod1segments, null, targetBws, true)
           .then(() => {
-            expect(mockVod2.getLiveMediaSequenceSegments(mockVod2.getLiveMediaSequencesCount() - 2)['401000'][0]).toEqual(bottomSegment);
+            expect(mockVod2.getLiveMediaSequenceSegments(mockVod2.getLiveMediaSequencesCount() - 2)['401000'][0]).toEqual(bottomSegmentPreReload);
             done();
           });
         });
@@ -2830,14 +2837,16 @@ describe("HLSVod reload media sequences", () => {
       .load(mockMasterManifest1, mockMediaManifest1)
       .then(() => {
         vod1segments = mockVod.getLiveMediaSequenceSegments(1);
+        Object.keys(vod1segments).forEach( bw => vod1segments[bw].push({discontinuity: true}));
       }).then(() => {
         mockVod2.load(mockMasterManifest2, mockMediaManifest2)
         .then(() => {
-          let topSegment = mockVod2.getLiveMediaSequenceSegments(12)['401000'][0];
-          mockVod2.reload(13, vod1segments)
+          let topSegmentPreReload = mockVod2.getLiveMediaSequenceSegments(12)['401000'][0];
+          let targetBws = Object.keys(vod1segments);
+          mockVod2.reload(12, vod1segments, null, targetBws)
           .then(() => {
             let size = mockVod2.getLiveMediaSequenceSegments(1)['401000'].length;
-            expect(mockVod2.getLiveMediaSequenceSegments(1)['401000'][size - 1]).toEqual(topSegment);
+            expect(mockVod2.getLiveMediaSequenceSegments(1)['401000'][size - 1]).toEqual(topSegmentPreReload);
              done();
           });
         });
@@ -2853,14 +2862,17 @@ describe("HLSVod reload media sequences", () => {
       .load(mockMasterManifest1, mockMediaManifest1)
       .then(() => {
         vod1segments = mockVod.getLiveMediaSequenceSegments(1);
+        Object.keys(vod1segments).forEach( bw => vod1segments[bw].unshift({discontinuity: true}));
       }).then(() => {
         mockVod2.load(mockMasterManifest2, mockMediaManifest2)
         .then(() => {
           let size = mockVod2.getLiveMediaSequenceSegments(12)['401000'].length;
-          let bottomSegment = mockVod2.getLiveMediaSequenceSegments(12)['401000'][size -1];
-          mockVod2.reload(12, vod1segments, null, true)
+         
+          let bottomSegmentPreReload = mockVod2.getLiveMediaSequenceSegments(12)['401000'][size -1];
+          let targetBws = Object.keys(vod1segments);
+          mockVod2.reload(12, vod1segments, null, targetBws, true)
           .then(() => {
-            expect(mockVod2.getLiveMediaSequenceSegments(mockVod2.getLiveMediaSequencesCount() - 2)['401000'][0]).toEqual(bottomSegment);
+            expect(mockVod2.getLiveMediaSequenceSegments(mockVod2.getLiveMediaSequencesCount() - 2)['401000'][0]).toEqual(bottomSegmentPreReload);
             done();
           });
         });

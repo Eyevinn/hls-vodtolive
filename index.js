@@ -330,7 +330,8 @@ class HLSVod {
    * @param {number} mediaSeqNo The media Sequence index that is the live index.
    * @param {object} additionalSegments New group of segments to merge with a possible subset of this.segments
    * @param {object} additionalAudioSegments New group of audio segments to merge with a possible subset of this.segments
-   * @param {boolean} insertAfter Whether the additional segments are to be added in front of the live index or behind.
+   * @param {array} targetBandwidths List of bandwidths used to map the bandwidths from the new group and from this.segments
+   * @param {boolean} insertAfter Whether the additional segments are to be added in front of the live index or behind
    * @returns A promise that new Media Sequences have been made
    */
   reload(mediaSeqNo, additionalSegments, additionalAudioSegments, targetBandwidths, insertAfter) {
@@ -354,7 +355,7 @@ class HLSVod {
         }
 
         // Find nearest BW and prepend them to the corresponding segments bandwidth
-        this._concatSegmentsMatchByBandWidth(additionalSegments, targetBandwidths);
+        this._concatSegmentsMatchByBandWidth(additionalSegments, targetBandwidths, insertAfter);
 
         if (!this._isEmpty(this.audioSegments)) {
           // TODO: Prepend segs to all audio tracks, in all audio groups
@@ -378,7 +379,7 @@ class HLSVod {
         }
 
         // Find nearest BW in SFL and prepend them to the corresponding segments bandwidth
-        this._concatSegmentsMatchByBandWidth(additionalSegments, targetBandwidths);
+        this._concatSegmentsMatchByBandWidth(additionalSegments, targetBandwidths, insertAfter);
 
         if (!this._isEmpty(this.audioSegments)) {
           // TODO: Prepend segs to all audio tracks, in all audio groups
@@ -1453,21 +1454,34 @@ class HLSVod {
     return true;
   }
 
-  _concatSegmentsMatchByBandWidth(segs, bandwidths) {
-    let maxSize = 0;
-    const allBandwidths = this.getBandwidths();
-    bandwidths.forEach(bw => {
-      let nearestBw1 = this._getNearestBandwidthInList(bw, Object.keys(segs));
-      let nearestBw2 = this._getNearestBandwidthInList(bw, Object.keys(this.segments));
-      this.segments[nearestBw2] = segs[nearestBw1].concat(this.segments[nearestBw1]);
-      maxSize = this.segments[nearestBw2].length;
-    });
+  _concatSegmentsMatchByBandWidth(segs, bandwidths, insertAfter) {
 
-    allBandwidths.forEach(bw => {
-      if (this.segments[bw].length < maxSize) {
-        this.segments[bw] = segs[Object.keys(segs)[0]].concat(this.segments[bw]);
-      }
+
+    // copy over original contents to a temp item instead of this.segments.
+    // reset tmp = this.segments;
+    //          this.segments ={};
+
+    let temp = this.segments;
+    this.segments = {};
+    // this.segments SHOULD GET NEW KEYS(bandwidths)
+    // what keys? the nearest event segs bws to CH bws.
+    bandwidths.forEach(bw => {
+      let nearestBw = this._getNearestBandwidthInList(bw, Object.keys(segs));
+      this.segments[nearestBw] = [];
     });
+    // what should these new keys have for value?: depending on instertAfter
+    // true: original segments that are nearest respektive CH bws. concat with eventSegs[nearestbw].
+    if (insertAfter) {
+      Object.keys(this.segments).forEach( bw => {
+        let nearestBwTemp = this._getNearestBandwidthInList(bw, Object.keys(temp));
+        this.segments[bw] = temp[nearestBwTemp].concat(segs[bw]);
+      });
+    } else {
+      Object.keys(this.segments).forEach( bw => {
+        let nearestBwTemp = this._getNearestBandwidthInList(bw, Object.keys(temp));
+        this.segments[bw] = segs[bw].concat(temp[nearestBwTemp]);
+      });
+    }
   }
 }
 
