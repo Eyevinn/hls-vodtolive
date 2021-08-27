@@ -333,7 +333,7 @@ class HLSVod {
    * @param {boolean} insertAfter Whether the additional segments are to be added in front of the live index or behind.
    * @returns A promise that new Media Sequences have been made
    */
-  reload(mediaSeqNo, additionalSegments, additionalAudioSegments, insertAfter) {
+  reload(mediaSeqNo, additionalSegments, additionalAudioSegments, targetBandwidths, insertAfter) {
     return new Promise((resolve, reject) => {
       const allBandwidths = this.getBandwidths();
       if (!insertAfter) {
@@ -353,11 +353,8 @@ class HLSVod {
           // TODO: slice all audio tracks, in all audio groups
         }
 
-        // Find nearest BW in SFL and prepend them to the corresponding segments bandwidth
-        allBandwidths.forEach(bw => {
-          let nearestBw = this._getNearestBandwidthInList(bw, Object.keys(additionalSegments));
-          this.segments[bw] = additionalSegments[nearestBw].concat(this.segments[bw]);
-        });
+        // Find nearest BW and prepend them to the corresponding segments bandwidth
+        this._concatSegmentsMatchByBandWidth(additionalSegments, targetBandwidths);
 
         if (!this._isEmpty(this.audioSegments)) {
           // TODO: Prepend segs to all audio tracks, in all audio groups
@@ -380,15 +377,12 @@ class HLSVod {
           // TODO: slice all audio tracks, in all audio groups
         }
 
-        allBandwidths.forEach(bw => {
-          let nearestBw = this._getNearestBandwidthInList(bw, Object.keys(additionalSegments));
-          this.segments[bw] = this.segments[bw].concat(additionalSegments[nearestBw]);
-        });
+        // Find nearest BW in SFL and prepend them to the corresponding segments bandwidth
+        this._concatSegmentsMatchByBandWidth(additionalSegments, targetBandwidths);
 
         if (!this._isEmpty(this.audioSegments)) {
           // TODO: Prepend segs to all audio tracks, in all audio groups
         }
-        
       }
 
       // Clean up/Reset HLSVod data since we are going to create new data
@@ -1457,6 +1451,23 @@ class HLSVod {
       }
     }
     return true;
+  }
+
+  _concatSegmentsMatchByBandWidth(segs, bandwidths) {
+    let maxSize = 0;
+    const allBandwidths = this.getBandwidths();
+    bandwidths.forEach(bw => {
+      let nearestBw1 = this._getNearestBandwidthInList(bw, Object.keys(segs));
+      let nearestBw2 = this._getNearestBandwidthInList(bw, Object.keys(this.segments));
+      this.segments[nearestBw2] = segs[nearestBw1].concat(this.segments[nearestBw1]);
+      maxSize = this.segments[nearestBw2].length;
+    });
+
+    allBandwidths.forEach(bw => {
+      if (this.segments[bw].length < maxSize) {
+        this.segments[bw] = segs[Object.keys(segs)[0]].concat(this.segments[bw]);
+      }
+    });
   }
 }
 
