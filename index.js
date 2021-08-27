@@ -330,7 +330,6 @@ class HLSVod {
    * @param {number} mediaSeqNo The media Sequence index that is the live index.
    * @param {object} additionalSegments New group of segments to merge with a possible subset of this.segments
    * @param {object} additionalAudioSegments New group of audio segments to merge with a possible subset of this.segments
-   * @param {array} targetBandwidths List of bandwidths used to map the bandwidths from the new group and from this.segments
    * @param {boolean} insertAfter Whether the additional segments are to be added in front of the live index or behind
    * @returns A promise that new Media Sequences have been made
    */
@@ -385,7 +384,7 @@ class HLSVod {
           let nearestBw = this._getNearestBandwidthInList(bw, Object.keys(additionalSegments));
           this.segments[bw] = this.segments[bw].concat(additionalSegments[nearestBw]);
         });
-        
+
         if (!this._isEmpty(this.audioSegments)) {
           // TODO: Prepend segs to all audio tracks, in all audio groups
         }
