@@ -73,7 +73,7 @@ It finally creates new media sequences with the updated collection of segments.
 | mediaSeqNo | <code>number</code> | The media Sequence index that is the live index. |
 | additionalSegments | <code>object</code> | New group of segments to merge with a possible subset of this.segments |
 | additionalAudioSegments | <code>object</code> | New group of audio segments to merge with a possible subset of this.segments |
-| insertAfter | <code>boolean</code> | Whether the additional segments are to be added in front of the live index or behind. |
+| insertAfter | <code>boolean</code> | Whether the additional segments are to be added in front of the live index or behind |
 
 <a name="HLSVod+addMetadata"></a>
 
