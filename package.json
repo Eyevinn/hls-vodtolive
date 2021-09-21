@@ -41,6 +41,6 @@
   "dependencies": {
     "@eyevinn/m3u8": "^0.4.0",
     "debug": "^4.1.1",
-    "node-fetch": "^2.6.1"
+    "node-fetch": "2.6.2"
   }
 }
