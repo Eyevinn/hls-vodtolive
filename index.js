@@ -284,7 +284,7 @@ class HLSVod {
             res.body.pipe(parser);
           }
           else {
-            throw new Error(res.status + ':: status code error trying to retrieve master manifest ' + masterManifestUri);
+            throw new Error(res.status + ':: status code error trying to retrieve master manifest ' + this.masterManifestUri);
           }
         })
         .catch(reject);
