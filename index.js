@@ -569,9 +569,10 @@ class HLSVod {
               m3u8 += "#EXT-X-CUE-OUT-CONT:" + v.cue.cont + "/" + v.cue.duration + "\n";
             }
           }
-          m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
-          m3u8 += v.uri + "\n";
-
+          if (v.uri) {
+            m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
+            m3u8 += v.uri + "\n";
+          }
           if (v.cue && v.cue.in) {
             if (this.mediaSequences[seqIdx].segments[bw][i+1] && 
               this.mediaSequences[seqIdx].segments[bw][i+1].discontinuity && 
@@ -679,8 +680,10 @@ class HLSVod {
             m3u8 +=
               "#EXT-X-CUE-OUT-CONT:" + v.cue.cont + "/" + v.cue.duration + "\n";
           }
-          m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
-          m3u8 += v.uri + "\n";
+          if (v.uri) {
+            m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
+            m3u8 += v.uri + "\n";
+          }
           if (v.cue && v.cue.in) {
             if (
               this.mediaSequences[seqIdx].segments[bw][i + 1] &&
@@ -906,7 +909,7 @@ class HLSVod {
 
       let length = this.segments[bw].length;
       while (this.segments[bw][segIdx] && segIdx != length) {
-        if (!this.segments[bw][segIdx].discontinuity) {
+        if (this.segments[bw][segIdx].uri) {
           duration += this.segments[bw][segIdx].duration;
         }
         //console.log(segIdx, this.segments[bw][segIdx], duration, this.segments[bw].length);
@@ -950,8 +953,8 @@ class HLSVod {
           segIdx++;
         } else {
           //debug(`Pushing seq=${this.mediaSequences.length} firstSeg=${sequence[Object.keys(this.segments)[0]][0].uri}, length=${sequence[Object.keys(this.segments)[0]].length}, duration=${duration} < ${this.SEQUENCE_DURATION}`);
-          if (sequence[Object.keys(this.segments)[0]][0].discontinuity) {
-            // If first element in the sequence is a discontinuity we need to 'skip' the following element that
+          if (!sequence[Object.keys(this.segments)[0]][0].uri) {
+            // If first element in the sequence is a discontinuity or a cue tag we need to 'skip' the following element that
             // contains the segment uri and is the actual playlist item to roll over the top.
             segOffset++;
           }
