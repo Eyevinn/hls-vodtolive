@@ -569,9 +569,10 @@ class HLSVod {
               m3u8 += "#EXT-X-CUE-OUT-CONT:" + v.cue.cont + "/" + v.cue.duration + "\n";
             }
           }
-          m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
-          m3u8 += v.uri + "\n";
-
+          if (v.uri) {
+            m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
+            m3u8 += v.uri + "\n";
+          }
           if (v.cue && v.cue.in) {
             if (this.mediaSequences[seqIdx].segments[bw][i+1] && 
               this.mediaSequences[seqIdx].segments[bw][i+1].discontinuity && 
