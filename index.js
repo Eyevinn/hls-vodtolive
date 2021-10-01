@@ -21,8 +21,9 @@ class HLSVod {
    * @param {number} timeOffset - time offset as unix timestamp ms
    * @param {number} startTimeOffset - start time offset in N ms from start
    * @param {string} header - prepend the m3u8 playlist with this text
+   * @param {Object} opts - additional overrides/settings
    */
-  constructor(vodManifestUri, splices, timeOffset, startTimeOffset, header) {
+  constructor(vodManifestUri, splices, timeOffset, startTimeOffset, header, opts= {}) {
     this.masterManifestUri = vodManifestUri;
     this.segments = {};
     this.audioSegments = {};
@@ -44,6 +45,9 @@ class HLSVod {
     this.deltaTimes = [];
     this.header = header;
     this.lastUsedDiscSeq = null;
+
+    // set default function to resolve the segment URI if not overridden in passed options
+    this.resolveSegmentUri = opts.resolveSegmentUri || this._resolveSegmentUri;
   }
 
   toJSON() {
@@ -1087,6 +1091,18 @@ class HLSVod {
     }
   }
 
+  _resolveSegmentUri(uri = false, baseUrl = false) {
+    let segmentUri = false;
+    if (uri) {
+      if (uri.match('^http')) {
+        segmentUri = uri;
+      } else {
+        segmentUri = url.resolve(baseUrl, uri);
+      }
+    }
+    return segmentUri;
+  }
+
   _loadMediaManifest(mediaManifestUri, bandwidth, _injectMediaManifest) {
     return new Promise((resolve, reject) => {
       const parser = m3u8.createStream();
@@ -1155,11 +1171,8 @@ class HLSVod {
                 baseUrl = m[1] + '/';
               }
 
-              if (playlistItem.properties.uri.match('^http')) {
-                segmentUri = playlistItem.properties.uri;
-              } else {
-                segmentUri = url.resolve(baseUrl, playlistItem.properties.uri);
-              }
+              segmentUri = this.resolveSegmentUri(playlistItem.properties.uri, baseUrl);
+
               if (playlistItem.properties.discontinuity) {
                 this.segments[bw].push({
                   discontinuity: true
@@ -1232,10 +1245,16 @@ class HLSVod {
                 } : null;
                 let q = {
                   duration: playlistItem.properties.duration,
-                  uri: segmentUri,
                   timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                   cue: cue
                 }
+
+                // handle cases such as EXT-CUE-IN at the end of a playlist
+                // that may not have a URI
+                if (segmentUri) {
+                  q.uri = segmentUri;
+                }
+
                 if (this.segments[bw].length === 0) {
                   // Add daterange metadata if this is the first segment
                   if (this.rangeMetadata) {
