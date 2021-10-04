@@ -1155,10 +1155,14 @@ class HLSVod {
                 baseUrl = m[1] + '/';
               }
 
-              if (playlistItem.properties.uri.match('^http')) {
-                segmentUri = playlistItem.properties.uri;
-              } else {
-                segmentUri = url.resolve(baseUrl, playlistItem.properties.uri);
+              // some items such as CUE-IN parse as a PlaylistItem
+              // but have no URI
+              if (playlistItem.properties.uri) {
+                if (playlistItem.properties.uri.match('^http')) {
+                  segmentUri = playlistItem.properties.uri;
+                } else {
+                  segmentUri = url.resolve(baseUrl, playlistItem.properties.uri);
+                }
               }
               if (playlistItem.properties.discontinuity) {
                 this.segments[bw].push({
@@ -1232,9 +1236,11 @@ class HLSVod {
                 } : null;
                 let q = {
                   duration: playlistItem.properties.duration,
-                  uri: segmentUri,
                   timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                   cue: cue
+                }
+                if (segmentUri) {
+                  q.uri = segmentUri;
                 }
                 if (this.segments[bw].length === 0) {
                   // Add daterange metadata if this is the first segment
@@ -1298,10 +1304,15 @@ class HLSVod {
               if (m) {
                 baseUrl = m[1] + "/";
               }
-              if (playlistItem.properties.uri.match("^http")) {
-                segmentUri = playlistItem.properties.uri;
-              } else {
-                segmentUri = url.resolve(baseUrl, playlistItem.properties.uri);
+
+              // some items such as CUE-IN parse as a PlaylistItem
+              // but have no URI
+              if (playlistItem.properties.uri) {
+                if (playlistItem.properties.uri.match("^http")) {
+                  segmentUri = playlistItem.properties.uri;
+                } else {
+                  segmentUri = url.resolve(baseUrl, playlistItem.properties.uri);
+                }
               }
               if (playlistItem.properties.discontinuity) {
                 this.audioSegments[groupId][language].push({
@@ -1309,9 +1320,11 @@ class HLSVod {
                 });
               }
               let q = {
-                duration: playlistItem.properties.duration,
-                uri: segmentUri,
+                duration: playlistItem.properties.duration
               };
+              if (segmentUri) {
+                q.uri = segmentUri;
+              }
               this.audioSegments[groupId][language].push(q);
             }
             if (!this.targetAudioDuration[groupId]) {
