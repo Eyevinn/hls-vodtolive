@@ -2262,7 +2262,7 @@ describe("Two short HLSVods", () => {
       });
   });
 
-  fit("provides a correct mediasequence with parts from all three VODs", (done) => {
+  it("provides a correct mediasequence with parts from all three VODs", (done) => {
     let mockVod1 = new HLSVod("http://mock.com/mock.m3u8");
     let mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
     let mockVod3 = new HLSVod("http://mock.com/mock3.m3u8");
