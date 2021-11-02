@@ -2116,7 +2116,7 @@ describe("Two short HLSVods", () => {
         ).toBe(true); // Identifies discontinuity right after vod1
         expect(
           segsVod2_0["1010931"][[segsVod2_0["1010931"].length - 1]].uri
-        ).toEqual("http://mock.com/1010931/seg-6-v2-a1.ts");
+        ).toEqual("http://mock.com/1010931/seg-7-v2-a1.ts");
         done();
       })
       .catch((err) => {
@@ -2148,9 +2148,12 @@ describe("Two short HLSVods", () => {
           segsVod2_0["1010931"][[segsVod1_0["1010931"].length - 1 - 1]]
             .discontinuity
         ).toBe(true); // Identifies discontinuity right after vod1 (takes into account removed disc at start of vod1)
+        // With node-m3u8@0.4.1, expect last SegItem to include CUE data
         expect(
-          segsVod2_0["1010931"][[segsVod2_0["1010931"].length - 1]].uri
-        ).toEqual("http://mock.com/1010931/seg-6-v2-a1.ts");
+          segsVod2_0["1010931"][[segsVod2_0["1010931"].length - 1]].cue.in).toBe(true);
+          expect(
+            segsVod2_0["1010931"][[segsVod2_0["1010931"].length - 1]].uri).toEqual(
+              "http://mock.com/1010931/seg-7-v2-a1.ts");
         done();
       })
       .catch((err) => {
@@ -2259,7 +2262,7 @@ describe("Two short HLSVods", () => {
       });
   });
 
-  it("provides a correct mediasequence with parts from all three VODs", (done) => {
+  fit("provides a correct mediasequence with parts from all three VODs", (done) => {
     let mockVod1 = new HLSVod("http://mock.com/mock.m3u8");
     let mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
     let mockVod3 = new HLSVod("http://mock.com/mock3.m3u8");
@@ -2282,7 +2285,7 @@ describe("Two short HLSVods", () => {
       .then(() => {
         expect(mockVod1.getLiveMediaSequencesCount()).toEqual(1);
         expect(mockVod2.getLiveMediaSequencesCount()).toEqual(1);
-        expect(mockVod3.getLiveMediaSequencesCount()).toEqual(12);
+        expect(mockVod3.getLiveMediaSequencesCount()).toEqual(13);
 
         const seqSegments2_0 = mockVod2.getLiveMediaSequenceSegments(0);
         const seqSegments3_0 = mockVod3.getLiveMediaSequenceSegments(0);

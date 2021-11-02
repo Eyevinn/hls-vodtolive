@@ -16,7 +16,9 @@
 ./1010931/seg-4-v2-a1.ts
 #EXTINF:10,
 ./1010931/seg-5-v2-a1.ts
-#EXTINF:10,
+#EXTINF:5,
 ./1010931/seg-6-v2-a1.ts
 #EXT-X-DISCONTINUITY
 #EXT-X-CUE-IN
+#EXTINF:5,
+./1010931/seg-7-v2-a1.ts
