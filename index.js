@@ -344,6 +344,7 @@ class HLSVod {
           for (let i = mediaSeqNo; i < this.segments[allBandwidths[0]].length; i++) {
             if (this.segments[allBandwidths[0]][i].uri === targetUri) {
               targetPos = i;
+              break;
             }
           }
           allBandwidths.forEach(bw => this.segments[bw] = this.segments[bw].slice(targetPos));
@@ -371,6 +372,7 @@ class HLSVod {
           for (let i = mediaSeqNo; i < this.segments[allBandwidths[0]].length; i++) {
             if (this.segments[allBandwidths[0]][i].uri === targetUri) {
               targetPos = i;
+              break;
             }
           }
           allBandwidths.forEach(bw => this.segments[bw] = this.segments[bw].slice((targetPos), (targetPos + size)));
