@@ -569,23 +569,19 @@ class HLSVod {
               m3u8 += "#EXT-X-CUE-OUT-CONT:" + v.cue.cont + "/" + v.cue.duration + "\n";
             }
           }
+          if (v.cue && v.cue.in) {
+            m3u8 += "#EXT-X-CUE-IN" + "\n";
+          }
           if (v.uri) {
             m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
             m3u8 += v.uri + "\n";
           }
-          if (v.cue && v.cue.in) {
-            if (this.mediaSequences[seqIdx].segments[bw][i+1] && 
-              this.mediaSequences[seqIdx].segments[bw][i+1].discontinuity && 
-              i+1 == this.mediaSequences[seqIdx].segments[bw].length-1)
-            {
-              // Do not add a closing cue-in if next is not a segment and last one in the list
-            } else {
-              m3u8 += "#EXT-X-CUE-IN" + "\n";
-            }
-          }
         } else {
           if (i != 0 && i != this.mediaSequences[seqIdx].segments[bw].length - 1){
             m3u8 += "#EXT-X-DISCONTINUITY\n";
+            if (v.cue && v.cue.in) {
+              m3u8 += "#EXT-X-CUE-IN" + "\n";
+            }
           }
           if (v.daterange && i != this.mediaSequences[seqIdx].segments[bw].length - 1) {
             const dateRangeAttributes = Object.keys(v.daterange).map(key => daterangeAttribute(key, v.daterange[key])).join(',');
