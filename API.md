@@ -4,7 +4,7 @@
 **Kind**: global class  
 
 * [HLSVod](#HLSVod)
-    * [new HLSVod(vodManifestUri, splices, timeOffset, startTimeOffset, header)](#new_HLSVod_new)
+    * [new HLSVod(vodManifestUri, splices, timeOffset, startTimeOffset, header, opts)](#new_HLSVod_new)
     * [.load()](#HLSVod+load)
     * [.loadAfter(previousVod)](#HLSVod+loadAfter)
     * [.reload(mediaSeqNo, additionalSegments, additionalAudioSegments, insertAfter)](#HLSVod+reload) ⇒
@@ -15,6 +15,7 @@
     * [.getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx)](#HLSVod+getLiveMediaSequenceAudioSegments)
     * [.getBandwidths()](#HLSVod+getBandwidths)
     * [.getLiveMediaSequencesCount()](#HLSVod+getLiveMediaSequencesCount)
+    * [.getLastSequenceMediaSequenceValue()](#HLSVod+getLastSequenceMediaSequenceValue)
     * [.getLiveMediaSequences(offset, bandwidth, seqIdx, discOffset, padding, forceTargetDuration)](#HLSVod+getLiveMediaSequences)
     * [.getLiveMediaAudioSequences()](#HLSVod+getLiveMediaAudioSequences)
     * [.getUsageProfiles()](#HLSVod+getUsageProfiles)
@@ -28,7 +29,7 @@
 
 <a name="new_HLSVod_new"></a>
 
-### new HLSVod(vodManifestUri, splices, timeOffset, startTimeOffset, header)
+### new HLSVod(vodManifestUri, splices, timeOffset, startTimeOffset, header, opts)
 Create an HLS VOD instance
 
 
@@ -39,6 +40,7 @@ Create an HLS VOD instance
 | timeOffset | <code>number</code> | time offset as unix timestamp ms |
 | startTimeOffset | <code>number</code> | start time offset in N ms from start |
 | header | <code>string</code> | prepend the m3u8 playlist with this text |
+| opts | <code>string</code> | other options |
 
 <a name="HLSVod+load"></a>
 
@@ -49,8 +51,7 @@ Load and parse the HLS VOD
 <a name="HLSVod+loadAfter"></a>
 
 ### hlsVod.loadAfter(previousVod)
-Load and parse the HLS VOD where the first media sequences
-contains the end sequences of the previous VOD
+Load and parse the HLS VOD where the first media sequencescontains the end sequences of the previous VOD
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 
@@ -61,9 +62,7 @@ contains the end sequences of the previous VOD
 <a name="HLSVod+reload"></a>
 
 ### hlsVod.reload(mediaSeqNo, additionalSegments, additionalAudioSegments, insertAfter) ⇒
-Removes all segments that come before or after a specified media sequence.
-Then adds the new additional segments in front or behind. 
-It finally creates new media sequences with the updated collection of segments.
+Removes all segments that come before or after a specified media sequence.Then adds the new additional segments in front or behind.It finally creates new media sequences with the updated collection of segments.
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 **Returns**: A promise that new Media Sequences have been made  
@@ -135,6 +134,12 @@ Get the available bandwidths for this VOD
 Get the number of media sequences for this VOD
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+getLastSequenceMediaSequenceValue"></a>
+
+### hlsVod.getLastSequenceMediaSequenceValue()
+Get the media-sequence value for the last media sequence of this VOD
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 <a name="HLSVod+getLiveMediaSequences"></a>
 
 ### hlsVod.getLiveMediaSequences(offset, bandwidth, seqIdx, discOffset, padding, forceTargetDuration)
@@ -154,8 +159,7 @@ Get the HLS live media sequence for a specific media sequence and bandwidth
 <a name="HLSVod+getLiveMediaAudioSequences"></a>
 
 ### hlsVod.getLiveMediaAudioSequences()
-Gets a hls/makes m3u8-file with all of the correct audio segments
-belonging to a given groupID & language for a particular sequence.
+Gets a hls/makes m3u8-file with all of the correct audio segmentsbelonging to a given groupID & language for a particular sequence.
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 <a name="HLSVod+getUsageProfiles"></a>
@@ -203,7 +207,6 @@ Returns the last added Discontinuity sequence count from getLiveMediaSequences()
 <a name="HLSVod+_copyAudioGroupsFromPrevious"></a>
 
 ### hlsVod.\_copyAudioGroupsFromPrevious()
-Gets previous VOD's audio -groupIds, -langs, -segments from its last sequence
-and adds them to the current VOD's this.audioSegments property.
+Gets previous VOD's audio -groupIds, -langs, -segments from its last sequenceand adds them to the current VOD's this.audioSegments property.
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
