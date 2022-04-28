@@ -1,12 +1,15 @@
-const m3u8 = require('@eyevinn/m3u8');
-const fetch = require('node-fetch');
-const url = require('url');
-const { deserialize } = require('v8');
-const debug = require('debug')('hls-vodtolive');
-const verbose = require('debug')('hls-vodtolive-verbose');
+const m3u8 = require("@eyevinn/m3u8");
+const fetch = require("node-fetch");
+const { AbortController } = require("abort-controller");
+const url = require("url");
+const { deserialize } = require("v8");
+const debug = require("debug")("hls-vodtolive");
+const verbose = require("debug")("hls-vodtolive-verbose");
+
+const timer = (ms) => new Promise((res) => setTimeout(res, ms));
 
 const daterangeAttribute = (key, attr) => {
-  if (key === "planned-duration" || key === "duration") {
+  if (key === "planned-duration" || key === "duration") {
     return key.toUpperCase() + "=" + `${attr.toFixed(3)}`;
   } else {
     return key.toUpperCase() + "=" + `"${attr}"`;
@@ -21,8 +24,9 @@ class HLSVod {
    * @param {number} timeOffset - time offset as unix timestamp ms
    * @param {number} startTimeOffset - start time offset in N ms from start
    * @param {string} header - prepend the m3u8 playlist with this text
+   * @param {string} opts - other options
    */
-  constructor(vodManifestUri, splices, timeOffset, startTimeOffset, header) {
+  constructor(vodManifestUri, splices, timeOffset, startTimeOffset, header, opts) {
     this.masterManifestUri = vodManifestUri;
     this.segments = {};
     this.audioSegments = {};
@@ -35,15 +39,20 @@ class HLSVod {
     this.segmentsInitiated = {};
     this.splices = splices || [];
     this.timeOffset = timeOffset || null;
-    this.startTimeOffset = startTimeOffset || null;
+    this.startTimeOffset = startTimeOffset || null;
     this.usageProfileMapping = null;
     this.usageProfileMappingRev = null;
     this.discontinuities = {};
+    this.mediaSequenceValues = {};
     this.rangeMetadata = null;
     this.matchedBandwidths = {};
     this.deltaTimes = [];
     this.header = header;
     this.lastUsedDiscSeq = null;
+    this.sequenceAlwaysContainNewSegments = false;
+    if (opts && opts.sequenceAlwaysContainNewSegments) {
+      this.sequenceAlwaysContainNewSegments = opts.sequenceAlwaysContainNewSegments;
+    }
   }
 
   toJSON() {
@@ -67,6 +76,8 @@ class HLSVod {
       deltaTimes: this.deltaTimes,
       header: this.header,
       lastUsedDiscSeq: this.lastUsedDiscSeq,
+      mediaSequenceValues: this.mediaSequenceValues,
+      sequenceAlwaysContainNewSegments: this.sequenceAlwaysContainNewSegments,
     };
     return JSON.stringify(serialized);
   }
@@ -98,6 +109,8 @@ class HLSVod {
     if (de.lastUsedDiscSeq) {
       this.lastUsedDiscSeq = de.lastUsedDiscSeq;
     }
+    this.mediaSequenceValues = de.mediaSequenceValues;
+    this.sequenceAlwaysContainNewSegments = de.sequenceAlwaysContainNewSegments;
   }
 
   /**
@@ -107,13 +120,13 @@ class HLSVod {
     return new Promise((resolve, reject) => {
       const parser = m3u8.createStream();
 
-      parser.on('m3u', m3u => {
+      parser.on("m3u", (m3u) => {
         let mediaManifestPromises = [];
         let audioManifestPromises = [];
         let baseUrl;
-        const m = this.masterManifestUri.match('^(.*)/.*?$');
+        const m = this.masterManifestUri.match("^(.*)/.*?$");
         if (m) {
-          baseUrl = m[1] + '/';
+          baseUrl = m[1] + "/";
         }
 
         if (this.previousVod && this.previousVod.getBandwidths().length === m3u.items.StreamItem.length) {
@@ -122,11 +135,11 @@ class HLSVod {
           this.usageProfileMapping = {};
           this.usageProfileMappingRev = {};
           const bandwidths = m3u.items.StreamItem.sort((a, b) => {
-            return a.attributes.attributes['bandwidth'] - b.attributes.attributes['bandwidth'];
-          }).map(v => v.attributes.attributes['bandwidth']);
-          debug(`${previousBandwidths} : ${bandwidths}`)
+            return a.attributes.attributes["bandwidth"] - b.attributes.attributes["bandwidth"];
+          }).map((v) => v.attributes.attributes["bandwidth"]);
+          debug(`${previousBandwidths} : ${bandwidths}`);
           for (let i = 0; i < previousBandwidths.length; i++) {
-            this.usageProfileMapping[previousBandwidths[i]] = bandwidths[i] + '';
+            this.usageProfileMapping[previousBandwidths[i]] = bandwidths[i] + "";
             this.usageProfileMappingRev[bandwidths[i]] = previousBandwidths[i];
           }
         }
@@ -139,7 +152,7 @@ class HLSVod {
 
           if (streamItem.get("bandwidth")) {
             let usageProfile = {
-              bw: streamItem.get("bandwidth")
+              bw: streamItem.get("bandwidth"),
             };
             if (streamItem.get("resolution")) {
               usageProfile.resolution = streamItem.get("resolution")[0] + "x" + streamItem.get("resolution")[1];
@@ -150,7 +163,7 @@ class HLSVod {
             this.usageProfile.push(usageProfile);
 
             // Do not add if it is a variant included in an audio group as it will be loaded and parsed seperate
-            if (!m3u.items.MediaItem.find(mediaItem => mediaItem.get("type") === "AUDIO" && mediaItem.get("uri") == streamItem.get("uri"))) {
+            if (!m3u.items.MediaItem.find((mediaItem) => mediaItem.get("type") === "AUDIO" && mediaItem.get("uri") == streamItem.get("uri"))) {
               if (streamItem.get("codecs") !== "mp4a.40.2") {
                 mediaManifestPromises.push(this._loadMediaManifest(mediaManifestUrl, streamItem.get("bandwidth"), _injectMediaManifest));
               }
@@ -167,10 +180,7 @@ class HLSVod {
             const previousVODLanguages = Object.keys(this.audioSegments[audioGroupId]);
 
             let audioGroupItems = m3u.items.MediaItem.filter((item) => {
-              return (
-                item.attributes.attributes.type === "AUDIO" &&
-                item.attributes.attributes["group-id"] === audioGroupId
-              );
+              return item.attributes.attributes.type === "AUDIO" && item.attributes.attributes["group-id"] === audioGroupId;
             });
             // # Find all langs amongst the mediaItems that have this group id.
             // # It extracts each mediaItems language attribute value.
@@ -192,11 +202,13 @@ class HLSVod {
             // # Inject "default" language's segments to every new language relative to previous VOD.
             // # For the case when this is a VOD following another, every language new or old should
             // # start with some segments from the previous VOD's last sequence.
-            const newLanguages = audioLanguages.filter((lang)=>{ return !previousVODLanguages.includes(lang) })
+            const newLanguages = audioLanguages.filter((lang) => {
+              return !previousVODLanguages.includes(lang);
+            });
             // # Only inject if there were prior tracks.
-            if(previousVODLanguages.length > 0){
-              for(let i=0;i<newLanguages.length; i++){
-                const newLanguage = newLanguages[i];            
+            if (previousVODLanguages.length > 0) {
+              for (let i = 0; i < newLanguages.length; i++) {
+                const newLanguage = newLanguages[i];
                 const defaultLanguage = this._getFirstAudioLanguageWithSegments(audioGroupId);
                 this.audioSegments[audioGroupId][newLanguage] = [...this.audioSegments[audioGroupId][defaultLanguage]];
               }
@@ -223,10 +235,7 @@ class HLSVod {
               if (!audioUri) {
                 //# if mediaItems dont have uris
                 let audioVariant = m3u.items.StreamItem.find((item) => {
-                  return (
-                    !item.attributes.attributes.resolution &&
-                    item.attributes.attributes["audio"] === audioGroupId
-                  );
+                  return !item.attributes.attributes.resolution && item.attributes.attributes["audio"] === audioGroupId;
                 });
                 if (audioVariant) {
                   audioUri = audioVariant.properties.uri;
@@ -241,57 +250,45 @@ class HLSVod {
                 // # otherwise it just would've loaded OVER the latest occurrent of the LANG in GroupID.
                 if (!audioGroups[audioGroupId][audioLang]) {
                   audioGroups[audioGroupId][audioLang] = true;
-                  audioManifestPromises.push(
-                    this._loadAudioManifest(
-                      audioManifestUrl,
-                      audioGroupId,
-                      audioLang,
-                      _injectAudioManifest
-                    )
-                  );
+                  audioManifestPromises.push(this._loadAudioManifest(audioManifestUrl, audioGroupId, audioLang, _injectAudioManifest));
                 } else {
-                  debug(
-                    `Audio manifest for language "${audioLang}" from '${audioGroupId}' in already loaded, skipping`
-                  );
+                  debug(`Audio manifest for language "${audioLang}" from '${audioGroupId}' in already loaded, skipping`);
                 }
               } else {
-                debug(
-                  `No media item for '${audioGroupId}' in "${audioLang}" was found, skipping`
-                );
+                debug(`No media item for '${audioGroupId}' in "${audioLang}" was found, skipping`);
               }
             }
           }
         }
         Promise.all(mediaManifestPromises.concat(audioManifestPromises))
-        .then(this._cleanupUnused.bind(this))
-        .then(this._createMediaSequences.bind(this))
-        .then(resolve)
-        .catch(err => {
-          debug("Error loading VOD: Need to cleanup");
-          this._cleanupOnFailure();
-          reject(err);
-        });
+          .then(this._cleanupUnused.bind(this))
+          .then(this._createMediaSequences.bind(this))
+          .then(resolve)
+          .catch((err) => {
+            debug("Error loading VOD: Need to cleanup");
+            this._cleanupOnFailure();
+            reject(err);
+          });
       });
 
-      parser.on('error', err => {
+      parser.on("error", (err) => {
         reject(err);
       });
 
       if (!_injectMasterManifest) {
-        fetch(this.masterManifestUri)
-        .then(res => {
-          if (res.status === 200) {
-            res.body.pipe(parser);
-          }
-          else {
-            throw new Error(res.status + ':: status code error trying to retrieve master manifest ' + this.masterManifestUri);
-          }
-        })
-        .catch(reject);
+        fetchWithRetry(this.masterManifestUri, null, 5, 1000, 5000, debug)
+          .then((res) => {
+            if (res.status === 200) {
+              res.body.pipe(parser);
+            } else {
+              throw new Error(res.status + ":: status code error trying to retrieve master manifest " + this.masterManifestUri);
+            }
+          })
+          .catch(reject);
       } else {
         const stream = _injectMasterManifest();
         stream.pipe(parser);
-        stream.on('error', err => reject(err));
+        stream.on("error", (err) => reject(err));
       }
     });
   }
@@ -308,14 +305,14 @@ class HLSVod {
       try {
         this._loadPrevious();
         this.load(_injectMasterManifest, _injectMediaManifest, _injectAudioManifest)
-        .then(() => {
-          previousVod.releasePreviousVod();
-          resolve();
-        })
-        .catch(err => {
-          previousVod.releasePreviousVod();
-          reject(err);
-        });
+          .then(() => {
+            previousVod.releasePreviousVod();
+            resolve();
+          })
+          .catch((err) => {
+            previousVod.releasePreviousVod();
+            reject(err);
+          });
       } catch (exc) {
         reject(exc);
       }
@@ -324,9 +321,9 @@ class HLSVod {
 
   /**
    * Removes all segments that come before or after a specified media sequence.
-   * Then adds the new additional segments in front or behind. 
-   * It finally creates new media sequences with the updated collection of segments. 
-   * 
+   * Then adds the new additional segments in front or behind.
+   * It finally creates new media sequences with the updated collection of segments.
+   *
    * @param {number} mediaSeqNo The media Sequence index that is the live index.
    * @param {object} additionalSegments New group of segments to merge with a possible subset of this.segments
    * @param {object} additionalAudioSegments New group of audio segments to merge with a possible subset of this.segments
@@ -338,8 +335,8 @@ class HLSVod {
       const allBandwidths = this.getBandwidths();
       if (!insertAfter) {
         // If there is anything to slice
-        if(mediaSeqNo > 0) {
-          let targetUri =  this.mediaSequences[mediaSeqNo].segments[allBandwidths[0]][0].uri;
+        if (mediaSeqNo > 0) {
+          let targetUri = this.mediaSequences[mediaSeqNo].segments[allBandwidths[0]][0].uri;
           let targetPos = 0;
           for (let i = mediaSeqNo; i < this.segments[allBandwidths[0]].length; i++) {
             if (this.segments[allBandwidths[0]][i].uri === targetUri) {
@@ -347,7 +344,7 @@ class HLSVod {
               break;
             }
           }
-          allBandwidths.forEach(bw => this.segments[bw] = this.segments[bw].slice(targetPos));
+          allBandwidths.forEach((bw) => (this.segments[bw] = this.segments[bw].slice(targetPos)));
         }
 
         if (!this._isEmpty(this.audioSegments)) {
@@ -355,7 +352,7 @@ class HLSVod {
         }
 
         // Find nearest BW in SFL and prepend them to the corresponding segments bandwidth
-        allBandwidths.forEach(bw => {
+        allBandwidths.forEach((bw) => {
           let nearestBw = this._getNearestBandwidthInList(bw, Object.keys(additionalSegments));
           this.segments[bw] = additionalSegments[nearestBw].concat(this.segments[bw]);
         });
@@ -363,11 +360,10 @@ class HLSVod {
         if (!this._isEmpty(this.audioSegments)) {
           // TODO: Prepend segs to all audio tracks, in all audio groups
         }
-
       } else {
-        if(mediaSeqNo >= 0) {
+        if (mediaSeqNo >= 0) {
           let size = this.mediaSequences[mediaSeqNo].segments[allBandwidths[0]].length;
-          let targetUri =  this.mediaSequences[mediaSeqNo].segments[allBandwidths[0]][0].uri;
+          let targetUri = this.mediaSequences[mediaSeqNo].segments[allBandwidths[0]][0].uri;
           let targetPos = 0;
           for (let i = mediaSeqNo; i < this.segments[allBandwidths[0]].length; i++) {
             if (this.segments[allBandwidths[0]][i].uri === targetUri) {
@@ -375,14 +371,14 @@ class HLSVod {
               break;
             }
           }
-          allBandwidths.forEach(bw => this.segments[bw] = this.segments[bw].slice((targetPos), (targetPos + size)));
+          allBandwidths.forEach((bw) => (this.segments[bw] = this.segments[bw].slice(targetPos, targetPos + size)));
         }
 
         if (!this._isEmpty(this.audioSegments)) {
           // TODO: slice all audio tracks, in all audio groups
         }
 
-        allBandwidths.forEach(bw => {
+        allBandwidths.forEach((bw) => {
           let nearestBw = this._getNearestBandwidthInList(bw, Object.keys(additionalSegments));
           this.segments[bw] = this.segments[bw].concat(additionalSegments[nearestBw]);
         });
@@ -394,17 +390,18 @@ class HLSVod {
 
       // Clean up/Reset HLSVod data since we are going to create new data
       this.mediaSequences = [];
+      this.mediaSequenceValues = {};
       this.discontinuities = {};
       this.deltaTimes = [];
 
       try {
         this._createMediaSequences()
-        .then(() => {
-          resolve()
-        })
-        .catch(err => {
-          reject(err);
-        });
+          .then(() => {
+            resolve();
+          })
+          .catch((err) => {
+            reject(err);
+          });
       } catch (exc) {
         reject(exc);
       }
@@ -413,9 +410,9 @@ class HLSVod {
 
   /**
    * Add metadata timed for this VOD
-   * 
+   *
    * @param {key} key - EXT-X-DATERANGE attribute key
-   * @param {*} value 
+   * @param {*} value
    */
   addMetadata(key, value) {
     if (this.rangeMetadata === null) {
@@ -456,12 +453,23 @@ class HLSVod {
    * @param {number} seqIdx - media sequence index (first is 0)
    */
   getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx) {
-    // # When language not found, return segments from first language.
-    if(!this.mediaSequences[seqIdx].audioSegments[audioGroupId][audioLanguage]){
-      const fallbackLang = this._getFirstAudioLanguageWithSegments(audioGroupId);
-      return this.mediaSequences[seqIdx].audioSegments[audioGroupId][fallbackLang];
+    try {
+      // # When language not found, return segments from first language.
+      if (!this.mediaSequences[seqIdx].audioSegments[audioGroupId]) {
+        audioGroupId = this._getFirstAudioGroupWithSegments();
+        if (!audioGroupId) {
+          return [];
+        }
+      }
+      if (!this.mediaSequences[seqIdx].audioSegments[audioGroupId][audioLanguage]) {
+        const fallbackLang = this._getFirstAudioLanguageWithSegments(audioGroupId);
+        return this.mediaSequences[seqIdx].audioSegments[audioGroupId][fallbackLang];
+      }
+      return this.mediaSequences[seqIdx].audioSegments[audioGroupId][audioLanguage];
+    } catch (err) {
+      console.error(err);
+      return [];
     }
-    return this.mediaSequences[seqIdx].audioSegments[audioGroupId][audioLanguage];
   }
 
   /**
@@ -472,7 +480,6 @@ class HLSVod {
   }
 
   getAudioGroups() {
-    
     return Object.keys(this.audioSegments);
   }
 
@@ -485,6 +492,14 @@ class HLSVod {
    */
   getLiveMediaSequencesCount() {
     return this.mediaSequences.length;
+  }
+
+  /**
+   * Get the media-sequence value for the last media sequence of this VOD
+   */
+  getLastSequenceMediaSequenceValue() {
+    const end = Object.keys(this.mediaSequenceValues).length - 1;
+    return this.mediaSequenceValues[end];
   }
 
   /**
@@ -514,9 +529,10 @@ class HLSVod {
     if (this.header) {
       m3u8 += this.header;
     }
-	  m3u8 += "#EXT-X-INDEPENDENT-SEGMENTS\n";
+    const seqStep = this.mediaSequenceValues[seqIdx];
+    m3u8 += "#EXT-X-INDEPENDENT-SEGMENTS\n";
     m3u8 += "#EXT-X-TARGETDURATION:" + targetDuration + "\n";
-    m3u8 += "#EXT-X-MEDIA-SEQUENCE:" + (offset + seqIdx) + "\n";
+    m3u8 += "#EXT-X-MEDIA-SEQUENCE:" + (offset + seqStep) + "\n";
     let discInOffset = discOffset;
     if (discInOffset == null) {
       discInOffset = 0;
@@ -525,11 +541,11 @@ class HLSVod {
     this.lastUsedDiscSeq = discInOffset + this.discontinuities[seqIdx];
 
     if (!this.mediaSequences[seqIdx]) {
-      debug('No sequence idx: ' + seqIdx);
+      debug("No sequence idx: " + seqIdx);
       return m3u8;
     }
     if (!this.mediaSequences[seqIdx].segments[bw]) {
-      debug('No segments in media sequence idx: ' + seqIdx + ` bw: ` + bw);
+      debug("No segments in media sequence idx: " + seqIdx + ` bw: ` + bw);
       debug(this.mediaSequences[seqIdx]);
       return m3u8;
     }
@@ -547,27 +563,28 @@ class HLSVod {
 
         if (!v.discontinuity) {
           if (v.daterange) {
-            const dateRangeAttributes = Object.keys(v.daterange).map(key => daterangeAttribute(key, v.daterange[key])).join(',');
-            if (v.daterange['start-date']) {
-              m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + v.daterange['start-date'] + "\n";
+            const dateRangeAttributes = Object.keys(v.daterange)
+              .map((key) => daterangeAttribute(key, v.daterange[key]))
+              .join(",");
+            if (v.daterange["start-date"]) {
+              m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + v.daterange["start-date"] + "\n";
             }
             m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
           }
-  
-          if(v.cue && v.cue.out) {
+
+          if (v.cue && v.cue.out) {
             if (v.cue.scteData) {
-              m3u8 += '#EXT-OATCLS-SCTE35:' + v.cue.scteData + "\n";
+              m3u8 += "#EXT-OATCLS-SCTE35:" + v.cue.scteData + "\n";
             }
             if (v.cue.assetData) {
-              m3u8 += '#EXT-X-ASSET:' + v.cue.assetData + "\n";
+              m3u8 += "#EXT-X-ASSET:" + v.cue.assetData + "\n";
             }
             m3u8 += "#EXT-X-CUE-OUT:DURATION=" + v.cue.duration + "\n";
           }
           if (v.cue && v.cue.cont) {
             if (v.cue.scteData) {
-              m3u8 += '#EXT-X-CUE-OUT-CONT:ElapsedTime=' + v.cue.cont + ',Duration=' + v.cue.duration + ',SCTE35=' + v.cue.scteData + "\n";
-            }
-            else {
+              m3u8 += "#EXT-X-CUE-OUT-CONT:ElapsedTime=" + v.cue.cont + ",Duration=" + v.cue.duration + ",SCTE35=" + v.cue.scteData + "\n";
+            } else {
               m3u8 += "#EXT-X-CUE-OUT-CONT:" + v.cue.cont + "/" + v.cue.duration + "\n";
             }
           }
@@ -579,19 +596,21 @@ class HLSVod {
             m3u8 += v.uri + "\n";
           }
         } else {
-          if (i != 0 && i != this.mediaSequences[seqIdx].segments[bw].length - 1){
+          if (i != 0 && i != this.mediaSequences[seqIdx].segments[bw].length - 1) {
             m3u8 += "#EXT-X-DISCONTINUITY\n";
             if (v.cue && v.cue.in) {
               m3u8 += "#EXT-X-CUE-IN" + "\n";
             }
           }
           if (v.daterange && i != this.mediaSequences[seqIdx].segments[bw].length - 1) {
-            const dateRangeAttributes = Object.keys(v.daterange).map(key => daterangeAttribute(key, v.daterange[key])).join(',');
-            if (v.daterange['start-date']) {
-              m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + v.daterange['start-date'] + "\n";
+            const dateRangeAttributes = Object.keys(v.daterange)
+              .map((key) => daterangeAttribute(key, v.daterange[key]))
+              .join(",");
+            if (v.daterange["start-date"]) {
+              m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + v.daterange["start-date"] + "\n";
             }
             m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
-          }  
+          }
         }
 
         previousSegment = v;
@@ -605,27 +624,13 @@ class HLSVod {
    * Gets a hls/makes m3u8-file with all of the correct audio segments
    * belonging to a given groupID & language for a particular sequence.
    */
-   getLiveMediaAudioSequences(
-    offset,
-    audioGroupId,
-    audioLanguage,
-    seqIdx,
-    discOffset,
-    padding,
-    forceTargetDuration
-  ) {
-    debug(
-      `Get live audio media sequence [${seqIdx}] for audioGroupId=${audioGroupId}`
-    );
-    const mediaSeqAudioSegments = this.getLiveMediaSequenceAudioSegments(
-      audioGroupId,
-      audioLanguage,
-      seqIdx
-    );
+  getLiveMediaAudioSequences(offset, audioGroupId, audioLanguage, seqIdx, discOffset, padding, forceTargetDuration) {
+    debug(`Get live audio media sequence [${seqIdx}] for audioGroupId=${audioGroupId}`);
+    const mediaSeqAudioSegments = this.getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx);
 
     // # If failed to find segments for given language,
     // # return null rather than an error.
-    if (!mediaSeqAudioSegments){
+    if (!mediaSeqAudioSegments) {
       return null;
     }
 
@@ -638,20 +643,19 @@ class HLSVod {
     }
 
     let m3u8 = "#EXTM3U\n";
-    m3u8 += "#EXT-X-VERSION:3\n";
+    m3u8 += "#EXT-X-VERSION:6\n";
     if (this.header) {
       m3u8 += this.header;
     }
+    const seqStep = this.mediaSequenceValues[seqIdx];
+    m3u8 += "#EXT-X-INDEPENDENT-SEGMENTS\n";
     m3u8 += "#EXT-X-TARGETDURATION:" + targetDuration + "\n";
-    m3u8 += "#EXT-X-MEDIA-SEQUENCE:" + (offset + seqIdx) + "\n";
+    m3u8 += "#EXT-X-MEDIA-SEQUENCE:" + (offset + seqStep) + "\n";
     let discInOffset = discOffset;
     if (discInOffset == null) {
       discInOffset = 0;
     }
-    m3u8 +=
-      "#EXT-X-DISCONTINUITY-SEQUENCE:" +
-      (discInOffset + this.discontinuities[seqIdx]) +
-      "\n";
+    m3u8 += "#EXT-X-DISCONTINUITY-SEQUENCE:" + (discInOffset + this.discontinuities[seqIdx]) + "\n";
 
     let previousSegment = null;
     for (let i = 0; i < mediaSeqAudioSegments.length; i++) {
@@ -675,8 +679,7 @@ class HLSVod {
             m3u8 += "#EXT-X-CUE-OUT:DURATION=" + v.cue.duration + "\n";
           }
           if (v.cue && v.cue.cont) {
-            m3u8 +=
-              "#EXT-X-CUE-OUT-CONT:" + v.cue.cont + "/" + v.cue.duration + "\n";
+            m3u8 += "#EXT-X-CUE-OUT-CONT:" + v.cue.cont + "/" + v.cue.duration + "\n";
           }
           if (v.uri) {
             m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
@@ -726,17 +729,17 @@ class HLSVod {
   }
 
   /**
-   * Get the delta times for each media sequence. 
+   * Get the delta times for each media sequence.
    */
   getDeltaTimes() {
-    return this.deltaTimes.map(o => o.interval);
+    return this.deltaTimes.map((o) => o.interval);
   }
 
   /**
    * Returns the playhead position for each media sequence
    */
   getPlayheadPositions() {
-    return this.deltaTimes.map(o => o.position);
+    return this.deltaTimes.map((o) => o.position);
   }
 
   /**
@@ -757,7 +760,7 @@ class HLSVod {
     if (!bw) {
       return null;
     }
-    const duration = this.segments[bw].reduce((acc, s) => s.duration ? acc + s.duration : acc, 0);
+    const duration = this.segments[bw].reduce((acc, s) => (s.duration ? acc + s.duration : acc), 0);
     return duration;
   }
 
@@ -782,7 +785,7 @@ class HLSVod {
   _hasMediaSequences(bandwidth) {
     const previousVodSeqCount = this.previousVod.getLiveMediaSequencesCount();
     const lastMediaSequence = this.previousVod.getLiveMediaSequenceSegments(previousVodSeqCount - 1)[bandwidth];
-    return (lastMediaSequence && lastMediaSequence !== undefined);
+    return lastMediaSequence && lastMediaSequence !== undefined;
   }
 
   _copyFromPrevious(destBw, sourceBw) {
@@ -835,20 +838,18 @@ class HLSVod {
     if (audioGroups.length > 0) {
       for (let i = 0; i < audioGroups.length; i++) {
         const audioGroupId = audioGroups[i];
-        const audioLangs =
-          this.previousVod.getAudioLangsForAudioGroup(audioGroupId);
+        const audioLangs = this.previousVod.getAudioLangsForAudioGroup(audioGroupId);
 
         for (let k = 0; k < audioLangs.length; k++) {
           const audioLang = audioLangs[k];
-          const lastMediaAudioSequence =
-            this.previousVod.getLiveMediaSequenceAudioSegments(audioGroupId, audioLang, previousVodSeqCount - 1);
+          const lastMediaAudioSequence = this.previousVod.getLiveMediaSequenceAudioSegments(audioGroupId, audioLang, previousVodSeqCount - 1);
           if (!this.audioSegments[audioGroupId]) {
             this.audioSegments[audioGroupId] = {};
           }
           if (!this.audioSegments[audioGroupId][audioLang]) {
             this.audioSegments[audioGroupId][audioLang] = [];
           }
-          if (lastMediaAudioSequence) {
+          if (lastMediaAudioSequence.length > 0) {
             for (let idx = 1; idx < lastMediaAudioSequence.length; idx++) {
               let q = lastMediaAudioSequence[idx];
               this.audioSegments[audioGroupId][audioLang].push(q);
@@ -867,12 +868,12 @@ class HLSVod {
     return new Promise((resolve, reject) => {
       // Remove all bandwidths that are remaining from previous VOD and has not been initiated
       let toRemove = [];
-      Object.keys(this.segments).map(bw => {
+      Object.keys(this.segments).map((bw) => {
         if (!this.segmentsInitiated[bw]) {
           toRemove.push(bw);
         }
       });
-      toRemove.map(bw => {
+      toRemove.map((bw) => {
         delete this.segments[bw];
       });
       resolve();
@@ -883,20 +884,29 @@ class HLSVod {
     return new Promise((resolve, reject) => {
       let segOffset = 0;
       let segIdx = 0;
+      let seqIndex = 0;
+      let totalRemovedDiscTags = 0;
+      let totalRemovedSegments = 0;
+      let totalSeqDurVideo = 0;
+      let totalSeqDurAudio = 0;
       let duration = 0;
-      const bw = this._getFirstBwWithSegments()
+      const bw = this._getFirstBwWithSegments();
       let sequence = {};
-
-      const audioGroupId = this._getFirstAudioGroupWithSegments();
       let audioSequence = {};
 
-      // Remove all double discontinuities
+      const audioGroupId = this._getFirstAudioGroupWithSegments();
+      let audioLang = null;
+      if (audioGroupId) {
+        audioLang = this._getFirstAudioLanguageWithSegments(audioGroupId);
+      }
+
+      // Remove all double discontinuities (video)
       const bandwidths = Object.keys(this.segments);
       for (let i = 0; i < bandwidths.length; i++) {
         const bwIdx = bandwidths[i];
 
         this.segments[bwIdx] = this.segments[bwIdx].filter((elem, idx, arr) => {
-          if (idx > 0) {
+          if (idx > 0 && arr[idx - 1] && arr[idx]) {
             if (arr[idx - 1].discontinuity && arr[idx].discontinuity) {
               return false;
             }
@@ -904,83 +914,296 @@ class HLSVod {
           return true;
         });
       }
+      // Remove all double discontinuities (audio)
+      if (audioGroupId) {
+        const audioGroupIds = Object.keys(this.audioSegments);
+        for (let i = 0; i < audioGroupIds.length; i++) {
+          const audioGroupId = audioGroupIds[i];
+          const audioLangs = Object.keys(this.audioSegments[audioGroupId]);
+          for (let k = 0; k < audioLangs.length; k++) {
+            const audioLang = audioLangs[k];
+            this.audioSegments[audioGroupId][audioLang] = this.audioSegments[audioGroupId][audioLang].filter((elem, idx, arr) => {
+              if (idx > 0 && arr[idx - 1] && arr[idx]) {
+                if (arr[idx - 1].discontinuity && arr[idx].discontinuity) {
+                  return false;
+                }
+              }
+              return true;
+            });
+          }
+        }
+      }
 
       let length = this.segments[bw].length;
-      while (this.segments[bw][segIdx] && segIdx != length) {
-        if (this.segments[bw][segIdx].uri) {
-          duration += this.segments[bw][segIdx].duration;
-        }
-        //console.log(segIdx, this.segments[bw][segIdx], duration, this.segments[bw].length);
-        if (duration < this.SEQUENCE_DURATION) {
-          const bandwidths = Object.keys(this.segments);
-          for (let i = 0; i < bandwidths.length; i++) {
-            const bwIdx = bandwidths[i];
-            if (!sequence[bwIdx]) {
-              sequence[bwIdx] = [];
-            }
+      if (!this.sequenceAlwaysContainNewSegments) {
+        /*---------------------------------------------.
+         * Generate Sequences out of segments (type-A) |
+         *---------------------------------------------'
+         * Each sequence may only step by 1 count, and we allow
+         * for SKIPPING adding a segment if it would raise the
+         * sequence duration to over the set limit.
+         */
+        while (this.segments[bw][segIdx] && segIdx != length) {
+          if (this.segments[bw][segIdx].uri) {
+            duration += this.segments[bw][segIdx].duration;
+          }
+          //console.log(segIdx, this.segments[bw][segIdx], duration, this.segments[bw].length);
+          if (duration < this.SEQUENCE_DURATION) {
+            const bandwidths = Object.keys(this.segments);
+            for (let i = 0; i < bandwidths.length; i++) {
+              const bwIdx = bandwidths[i];
+              if (!sequence[bwIdx]) {
+                sequence[bwIdx] = [];
+              }
 
-            if (!this.segments[bwIdx][segIdx]) {
-              // Should not happen, debug
-              console.error(`The this.segments[bwIdx=${bwIdx}][segIdx=${segIdx}] is undefined`);
-              console.error("Initiated bandwidths: ", this.segmentsInitiated);
-              console.error(Object.keys(this.segments).map(b => { return { bw: b, len: this.segments[b].length}; }));
-              reject("Internal datastructure error");
-              return;
-            }
-            sequence[bwIdx].push(this.segments[bwIdx][segIdx]);
-          }
-          if (audioGroupId) {
-            const audioGroupIds = Object.keys(this.audioSegments);
-            for (let i = 0; i < audioGroupIds.length; i++) {
-              const audioGroupId = audioGroupIds[i];
-              if (!audioSequence[audioGroupId]) {
-                audioSequence[audioGroupId] = {};
-              }
-              const audioLangs = Object.keys(this.audioSegments[audioGroupId]);
-              for (let k = 0; k < audioLangs.length; k++) {
-                const audioLang = audioLangs[k];
-                if (!audioSequence[audioGroupId][audioLang]) {
-                  audioSequence[audioGroupId][audioLang] = [];
-                }
-                audioSequence[audioGroupId][audioLang].push(
-                  this.audioSegments[audioGroupId][audioLang][segIdx]
+              if (!this.segments[bwIdx][segIdx]) {
+                // Should not happen, debug
+                console.error(`The this.segments[bwIdx=${bwIdx}][segIdx=${segIdx}] is undefined`);
+                console.error("Initiated bandwidths: ", this.segmentsInitiated);
+                console.error(
+                  Object.keys(this.segments).map((b) => {
+                    return { bw: b, len: this.segments[b].length };
+                  })
                 );
+                reject("Internal datastructure error");
+                return;
+              }
+              sequence[bwIdx].push(this.segments[bwIdx][segIdx]);
+            }
+            if (audioGroupId) {
+              const audioGroupIds = Object.keys(this.audioSegments);
+              for (let i = 0; i < audioGroupIds.length; i++) {
+                const audioGroupId = audioGroupIds[i];
+                if (!audioSequence[audioGroupId]) {
+                  audioSequence[audioGroupId] = {};
+                }
+                const audioLangs = Object.keys(this.audioSegments[audioGroupId]);
+                for (let k = 0; k < audioLangs.length; k++) {
+                  const audioLang = audioLangs[k];
+                  if (!audioSequence[audioGroupId][audioLang]) {
+                    audioSequence[audioGroupId][audioLang] = [];
+                  }
+                  audioSequence[audioGroupId][audioLang].push(this.audioSegments[audioGroupId][audioLang][segIdx]);
+                }
               }
             }
-          }
-          segIdx++;
-        } else {
-          //debug(`Pushing seq=${this.mediaSequences.length} firstSeg=${sequence[Object.keys(this.segments)[0]][0].uri}, length=${sequence[Object.keys(this.segments)[0]].length}, duration=${duration} < ${this.SEQUENCE_DURATION}`);
-          if (!sequence[Object.keys(this.segments)[0]][0].uri) {
-            // If first element in the sequence is a discontinuity or a cue tag we need to 'skip' the following element that
-            // contains the segment uri and is the actual playlist item to roll over the top.
+            segIdx++;
+          } else {
+            //debug(`Pushing seq=${this.mediaSequences.length} firstSeg=${sequence[Object.keys(this.segments)[0]][0].uri}, length=${sequence[Object.keys(this.segments)[0]].length}, duration=${duration} < ${this.SEQUENCE_DURATION}`);
+            if (!sequence[Object.keys(this.segments)[0]][0].uri) {
+              // If first element in the sequence is a discontinuity or a cue tag we need to 'skip' the following element that
+              // contains the segment uri and is the actual playlist item to roll over the top.
+              segOffset++;
+            }
+            duration = 0;
+            this.mediaSequences.push({
+              segments: sequence,
+              audioSegments: audioSequence,
+            });
+            this.mediaSequenceValues[seqIndex] = seqIndex;
+            seqIndex++;
+            sequence = {};
+            audioSequence = {};
             segOffset++;
+            segIdx = segOffset;
           }
+        }
+
+        if (duration < this.SEQUENCE_DURATION) {
+          // We are out of segments but have not reached the full duration of a sequence
           duration = 0;
           this.mediaSequences.push({
             segments: sequence,
-            audioSegments: audioSequence
+            audioSegments: audioSequence,
           });
+          this.mediaSequenceValues[seqIndex] = seqIndex;
           sequence = {};
           audioSequence = {};
-          segOffset++;
-          segIdx = segOffset;
+        }
+      } else {
+        /*---------------------------------------------.
+         * Generate Sequences out of segments (type-B) |
+         *---------------------------------------------'
+         * Each sequence may step more than 1 count if needed, also each sequence
+         * must include an addition of a new segment. e.i. When adding a new segment,
+         * if it would raise the sequence duration to over the set limit, then we
+         * will remove yet another segment from the top of the segment list.
+         */
+        const videoSequences = [];
+        const audioSequences = [];
+        let segIdxVideo = 0;
+        let segIdxAudio = 0;
+        const SIZE = this.segments[bw].length;
+        // Process Video Segments
+        while (this.segments[bw][segIdxVideo] && segIdxVideo != SIZE) {
+          try {
+            totalSeqDurVideo = 0;
+            const _sequence = JSON.parse(JSON.stringify(sequence));
+            if (_sequence[bw] && _sequence[bw].length > 0) {
+              let temp = 0;
+              _sequence[bw].forEach((seg) => {
+                if (seg && seg.duration) {
+                  temp += seg.duration;
+                }
+              });
+              totalSeqDurVideo = temp;
+            }
+            let prevTotalSeqDurVideo = totalSeqDurVideo;
+            let prevSegIdx = segIdxVideo;
+            // 1 - Add new segments until we overflow (per variant)
+            bandwidths.forEach((_bw) => {
+              segIdxVideo = prevSegIdx;
+              totalSeqDurVideo = prevTotalSeqDurVideo;
+              if (!_sequence[_bw]) {
+                _sequence[_bw] = [];
+              }
+              while (totalSeqDurVideo < this.SEQUENCE_DURATION && segIdxVideo != SIZE) {
+                // Push segment...
+                const seg = this.segments[_bw][segIdxVideo];
+                if (seg && seg.duration) {
+                  totalSeqDurVideo += seg.duration;
+                }
+                _sequence[_bw].push(seg);
+                segIdxVideo++;
+              }
+            });
+            // 2 - Shift excess segments and keep count of what has been removed (per variant)
+            while (totalSeqDurVideo >= this.SEQUENCE_DURATION) {
+              let timeToRemove = 0;
+              let incrementDiscSeqCount = false;
+
+              bandwidths.forEach((bw) => {
+                let seg = _sequence[bw].shift();
+                while (!seg || !seg.duration) {
+                  incrementDiscSeqCount = true;
+                  seg = _sequence[bw].shift();
+                }
+                if (seg && seg.duration) {
+                  timeToRemove = seg.duration;
+                }
+              });
+
+              if (timeToRemove) {
+                totalSeqDurVideo -= timeToRemove;
+                totalRemovedSegments++;
+              }
+              if (incrementDiscSeqCount) {
+                totalRemovedDiscTags++;
+              }
+            }
+
+            videoSequences.push(_sequence);
+
+            this.mediaSequenceValues[seqIndex] = totalRemovedSegments;
+            if (seqIndex === 0) {
+              // Compensate for hlsvod loaded after another.
+              totalRemovedSegments++;
+              this.mediaSequenceValues[seqIndex] = totalRemovedSegments;
+            }
+            this.discontinuities[seqIndex] = totalRemovedDiscTags;
+            sequence = _sequence;
+            seqIndex++;
+          } catch (err) {
+            console.error(err);
+          }
+        }
+
+        if (audioGroupId) {
+          // Process Audio Segments
+          while (this.audioSegments[audioGroupId][audioLang][segIdxAudio] && segIdxAudio != SIZE) {
+            totalSeqDurAudio = 0;
+            const _audioSequence = JSON.parse(JSON.stringify(audioSequence));
+            if (_audioSequence[audioGroupId] && _audioSequence[audioGroupId][audioLang] && _audioSequence[audioGroupId][audioLang].length > 0) {
+              let temp = 0;
+              _audioSequence[audioGroupId][audioLang].forEach((seg) => {
+                if (seg && seg.duration) {
+                  temp += seg.duration;
+                }
+              });
+              totalSeqDurAudio = temp;
+            }
+            let prevTotalSeqDur = totalSeqDurAudio;
+            let prevSegIdx = segIdxAudio;
+            // 1 - Add new segments until we overflow (per variant)
+            const audioGroupIds = Object.keys(this.audioSegments);
+            audioGroupIds.forEach((groupId) => {
+              if (!_audioSequence[groupId]) {
+                _audioSequence[groupId] = {};
+              }
+              const audioLangs = Object.keys(this.audioSegments[groupId]);
+              audioLangs.forEach((lang) => {
+                if (!_audioSequence[groupId][lang]) {
+                  _audioSequence[groupId][lang] = [];
+                }
+                segIdxAudio = prevSegIdx;
+                totalSeqDurAudio = prevTotalSeqDur;
+                while (totalSeqDurAudio < this.SEQUENCE_DURATION && segIdxAudio != SIZE) {
+                  // Push segment...
+                  const seg = this.audioSegments[groupId][lang][segIdxAudio];
+                  if (seg && seg.duration) {
+                    totalSeqDurAudio += seg.duration;
+                  }
+                  _audioSequence[groupId][lang].push(seg);
+                  segIdxAudio++;
+                }
+              });
+            });
+            // 2 - Shift excess segments and keep count of what has been removed (per variant)
+            while (totalSeqDurAudio >= this.SEQUENCE_DURATION) {
+              let timeToRemove = 0;
+              const audioGroupIds = Object.keys(this.audioSegments);
+
+              audioGroupIds.forEach((_group) => {
+                const audioLangs = Object.keys(this.audioSegments[_group]);
+                audioLangs.forEach((_lang) => {
+                  let seg = _audioSequence[_group][_lang].shift();
+                  while (!seg || !seg.duration) {
+                    seg = _audioSequence[_group][_lang].shift();
+                  }
+                  if (seg && seg.duration) {
+                    timeToRemove = seg.duration;
+                  }
+                });
+              });
+
+              if (timeToRemove) {
+                totalSeqDurAudio -= timeToRemove;
+              }
+            }
+
+            audioSequences.push(_audioSequence);
+            audioSequence = _audioSequence;
+          }
+        }
+        // Transfer all generated sequences to 'this.mediaSequences'
+        this.mediaSequences = videoSequences.map((videoSeq, index) => {
+          let audioSeq = {};
+          if (audioSequences.length > 0 && audioSequences[index]) {
+            audioSeq = audioSequences[index];
+          }
+          const mseq = {
+            segments: videoSeq,
+            audioSegments: audioSeq,
+          };
+          return mseq;
+        });
+
+        if (totalSeqDurVideo < this.SEQUENCE_DURATION) {
+          // We are out of segments but have not reached the full duration of a sequence
+          totalSeqDurVideo = 0;
+          this.mediaSequences.push({
+            segments: sequence,
+            audioSegments: audioSequence,
+          });
+          this.mediaSequenceValues[seqIndex] = totalRemovedSegments;
+          this.discontinuities[seqIndex] = totalRemovedDiscTags;
+          sequence = {};
+          audioSequence = {};
         }
       }
 
-      if (duration < this.SEQUENCE_DURATION) {
-        // We are out of segments but have not reached the full duration of a sequence
-        duration = 0;
-        this.mediaSequences.push({
-          segments: sequence,
-          audioSegments: audioSequence
-        });
-        sequence = {};
-        audioSequence = {};
-      }
-
       if (!this.mediaSequences) {
-        reject('Failed to init media sequences');
+        reject("Failed to init media sequences");
       } else {
         let discSeqNo = 0;
         this.deltaTimes.push({
@@ -997,12 +1220,16 @@ class HLSVod {
             discSeqNo++;
             debug(`Increasing discont sequence ${discSeqNo}`);
           }
-          this.discontinuities[seqNo] = discSeqNo;
+          if (!this.sequenceAlwaysContainNewSegments) {
+            this.discontinuities[seqNo] = discSeqNo;
+          } else {
+            this.discontinuities[seqNo] += discSeqNo;
+            discSeqNo = 0;
+          }
           if (seqNo > 0) {
-            const positionIncrement =
-              mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].discontinuity ?
-              mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2].duration :
-              mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].duration;
+            const positionIncrement = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].discontinuity
+              ? mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2].duration
+              : mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].duration;
             const interval = positionIncrement - lastPositionIncrement;
             this.deltaTimes.push({
               interval: interval,
@@ -1014,9 +1241,9 @@ class HLSVod {
             }
           } else {
             if (mseq.segments[bwIdx]) {
-              lastPositionIncrement = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].discontinuity ?
-                mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2].duration :
-                mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].duration;
+              lastPositionIncrement = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].discontinuity
+                ? mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2].duration
+                : mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].duration;
             }
           }
         }
@@ -1033,7 +1260,6 @@ class HLSVod {
     this.segments = {};
     this.audioSegments = {};
     this.mediaSequences = [];
-    this.mediaSequences = [];
     this.targetDuration = {};
     this.targetAudioDuration = {};
     this.usageProfile = [];
@@ -1041,17 +1267,19 @@ class HLSVod {
     this.usageProfileMapping = null;
     this.usageProfileMappingRev = null;
     this.discontinuities = {};
+    this.mediaSequenceValues = {};
+    this.sequenceAlwaysContainNewSegments = null;
     this.rangeMetadata = null;
     this.matchedBandwidths = {};
-    this.deltaTimes = [];    
+    this.deltaTimes = [];
   }
 
   _getFirstBwWithSegments() {
-    const bandwidths = Object.keys(this.segments).filter(bw => this.segmentsInitiated[bw]);
+    const bandwidths = Object.keys(this.segments).filter((bw) => this.segmentsInitiated[bw]);
     if (bandwidths.length > 0) {
       return bandwidths[0];
     } else {
-      console.log('ERROR: could not find any bw with segments');
+      console.log("ERROR: could not find any bw with segments");
       return null;
     }
   }
@@ -1100,7 +1328,7 @@ class HLSVod {
             debug(`Already initiated due to previous match with ${bandwidth}, reset`);
             this.segments[bandwidth] = [];
           }
-          const bandwidthsWithSequences = Object.keys(this.segments).filter(a => this._hasMediaSequences(a));
+          const bandwidthsWithSequences = Object.keys(this.segments).filter((a) => this._hasMediaSequences(a));
           debug(`Bandwidths with sequences: ${bandwidthsWithSequences}`);
           const sourceBw = Number(bandwidthsWithSequences.sort((a, b) => b - a)[0]);
           debug(`Was not able to match ${bandwidth}, will create and copy from previous ${sourceBw}`);
@@ -1116,7 +1344,7 @@ class HLSVod {
       }
       let timelinePosition = 0;
 
-      parser.on('m3u', m3u => {
+      parser.on("m3u", (m3u) => {
         try {
           if (!this.segmentsInitiated[bw]) {
             let position = 0;
@@ -1126,7 +1354,7 @@ class HLSVod {
             // Remove segments in the beginning if we have a start time offset
             if (this.startTimeOffset != null) {
               let remain = this.startTimeOffset;
-              while(remain > 0) {
+              while (remain > 0) {
                 const removed = m3u.items.PlaylistItem.shift();
                 if (!removed) {
                   remain = 0;
@@ -1148,15 +1376,15 @@ class HLSVod {
               let segmentUri;
               let baseUrl;
 
-              const m = mediaManifestUri.match('^(.*)/.*?$');
+              const m = mediaManifestUri.match("^(.*)/.*?$");
               if (m) {
-                baseUrl = m[1] + '/';
+                baseUrl = m[1] + "/";
               }
 
               // some items such as CUE-IN parse as a PlaylistItem
               // but have no URI
               if (playlistItem.properties.uri) {
-                if (playlistItem.properties.uri.match('^http')) {
+                if (playlistItem.properties.uri.match("^http")) {
                   segmentUri = playlistItem.properties.uri;
                 } else {
                   segmentUri = url.resolve(baseUrl, playlistItem.properties.uri);
@@ -1164,7 +1392,7 @@ class HLSVod {
               }
               if (playlistItem.properties.discontinuity) {
                 this.segments[bw].push({
-                  discontinuity: true
+                  discontinuity: true,
                 });
               }
               let diff = 0;
@@ -1175,29 +1403,29 @@ class HLSVod {
                   // Only insert discontinuity if this is not the first segment
                   debug(`Inserting discontinuity at ${bw}:${position} (${i}/${m3u.items.PlaylistItem.length})`);
                   this.segments[bw].push({
-                    discontinuity: true
+                    discontinuity: true,
                   });
                 }
                 if (this.splices[spliceIdx].segments[spliceBw]) {
                   debug(`Inserting ${this.splices[spliceIdx].segments[spliceBw].length} ad segments`);
-                  this.splices[spliceIdx].segments[spliceBw].forEach(v => {
+                  this.splices[spliceIdx].segments[spliceBw].forEach((v) => {
                     let q = {
                       duration: v[0],
                       uri: v[1],
                       timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
-                      discontinuity: false
-                    }
+                      discontinuity: false,
+                    };
 
                     this.segments[bw].push(q);
                     position += q.duration;
-                    timelinePosition += (q.duration * 1000);
+                    timelinePosition += q.duration * 1000;
                   });
                   if (i != m3u.items.PlaylistItem.length - 1) {
                     // Only insert discontinuity after ad segments if this break is not at the end
                     // of the segment list
                     debug(`Inserting discontinuity after ad segments`);
                     this.segments[bw].push({
-                      discontinuity: true
+                      discontinuity: true,
                     });
                   }
                 }
@@ -1207,43 +1435,46 @@ class HLSVod {
               if (this.splices[spliceIdx]) {
                 verbose(`Next splice ${this.splices[spliceIdx].position} <= ${position}`);
               }
-              if (this.splices[spliceIdx] && (this.splices[spliceIdx].position + diff) <= position) {
+              if (this.splices[spliceIdx] && this.splices[spliceIdx].position + diff <= position) {
                 debug(`Next splice is back-to-back, not inserting new segment`);
                 this.splices[spliceIdx].position += diff;
                 this.segments[bw].pop(); // Remove extra disc
                 i--;
               } else {
-                let assetData = playlistItem.get('assetdata');
-                let cueOut = playlistItem.get('cueout');
-                let cueIn = playlistItem.get('cuein');
-                let cueOutCont = playlistItem.get('cont-offset');
+                let assetData = playlistItem.get("assetdata");
+                let cueOut = playlistItem.get("cueout");
+                let cueIn = playlistItem.get("cuein");
+                let cueOutCont = playlistItem.get("cont-offset");
                 let duration = 0;
-                let scteData = playlistItem.get('sctedata');
-                if (typeof cueOut !== 'undefined') {
+                let scteData = playlistItem.get("sctedata");
+                if (typeof cueOut !== "undefined") {
                   duration = cueOut;
-                } else if (typeof cueOutCont !== 'undefined') {
-                  duration = playlistItem.get('cont-dur');
+                } else if (typeof cueOutCont !== "undefined") {
+                  duration = playlistItem.get("cont-dur");
                 }
-                let cue = (cueOut || cueIn || cueOutCont || assetData) ? {
-                  out: (typeof cueOut !== 'undefined'),
-                  cont: (typeof cueOutCont !== 'undefined') ? cueOutCont : null,
-                  scteData: (typeof scteData !== 'undefined') ? scteData : null,
-                  in: cueIn ? true : false,
-                  duration: duration,
-                  assetData: (typeof assetData !== 'undefined') ? assetData: null
-                } : null;
+                let cue =
+                  cueOut || cueIn || cueOutCont || assetData
+                    ? {
+                        out: typeof cueOut !== "undefined",
+                        cont: typeof cueOutCont !== "undefined" ? cueOutCont : null,
+                        scteData: typeof scteData !== "undefined" ? scteData : null,
+                        in: cueIn ? true : false,
+                        duration: duration,
+                        assetData: typeof assetData !== "undefined" ? assetData : null,
+                      }
+                    : null;
                 let q = {
                   duration: playlistItem.properties.duration,
                   timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
-                  cue: cue
-                }
+                  cue: cue,
+                };
                 if (segmentUri) {
                   q.uri = segmentUri;
                 }
                 if (this.segments[bw].length === 0) {
                   // Add daterange metadata if this is the first segment
                   if (this.rangeMetadata) {
-                    q['daterange'] = this.rangeMetadata;                  
+                    q["daterange"] = this.rangeMetadata;
                   }
                 }
                 this.segments[bw].push(q);
@@ -1252,7 +1483,7 @@ class HLSVod {
               }
             }
 
-            this.targetDuration[bw] = Math.ceil(this.segments[bw].map(el => el && el.duration ? el.duration : 0).reduce((max, cur) => Math.max(max, cur), -Infinity));
+            this.targetDuration[bw] = Math.ceil(this.segments[bw].map((el) => (el && el.duration ? el.duration : 0)).reduce((max, cur) => Math.max(max, cur), -Infinity));
             this.segmentsInitiated[bw] = true;
           } else {
             debug(`Segments for ${bw} already initiated, skipping`);
@@ -1264,20 +1495,19 @@ class HLSVod {
       });
 
       if (!_injectMediaManifest) {
-        fetch(mediaManifestUri)
-        .then(res => {
-          if (res.status === 200) {
-	          res.body.pipe(parser);
-          }
-          else {
-          	throw new Error(res.status + ':: status code error trying to retrieve media manifest ' + mediaManifestUri);
-          }          
-        })
-        .catch(reject);
+        fetchWithRetry(mediaManifestUri, null, 5, 1000, 5000, debug)
+          .then((res) => {
+            if (res.status === 200) {
+              res.body.pipe(parser);
+            } else {
+              throw new Error(res.status + ":: status code error trying to retrieve media manifest " + mediaManifestUri);
+            }
+          })
+          .catch(reject);
       } else {
         const stream = _injectMediaManifest(bandwidth);
         stream.pipe(parser);
-        stream.on('error', err => reject(err));
+        stream.on("error", (err) => reject(err));
       }
     });
   }
@@ -1290,7 +1520,7 @@ class HLSVod {
       debug(`Loading audio manifest for lang=${language} of group=${groupId}`);
       debug(`Audio manifest URI: ${audioManifestUri}`);
 
-      parser.on('m3u', m3u => {
+      parser.on("m3u", (m3u) => {
         try {
           if (this.audioSegments[groupId][language]) {
             for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
@@ -1318,7 +1548,7 @@ class HLSVod {
                 });
               }
               let q = {
-                duration: playlistItem.properties.duration
+                duration: playlistItem.properties.duration,
               };
               if (segmentUri) {
                 q.uri = segmentUri;
@@ -1329,48 +1559,56 @@ class HLSVod {
               this.targetAudioDuration[groupId] = {};
             }
             this.targetAudioDuration[groupId][language] = Math.ceil(
-              this.audioSegments[groupId][language]
-                .map((el) => (el ? el.duration : 0))
-                .reduce((max, cur) => Math.max(max, cur), -Infinity)
+              this.audioSegments[groupId][language].map((el) => (el ? el.duration : 0)).reduce((max, cur) => Math.max(max, cur), -Infinity)
             );
           }
           resolve();
-        } catch(exc) {
+        } catch (exc) {
           reject(exc);
         }
       });
 
       if (!_injectAudioManifest) {
-        fetch(audioManifestUri)
-        .then(res => {
-          if (res.status === 200) {
-	          res.body.pipe(parser);
-          } else {
-          	throw new Error(res.status + ':: status code error trying to retrieve audio manifest ' + audioManifestUri);
-          }
-        })
-        .catch(reject);
+        fetchWithRetry(audioManifestUri, null, 5, 1000, 5000, debug)
+          .then((res) => {
+            if (res.status === 200) {
+              res.body.pipe(parser);
+            } else {
+              throw new Error(res.status + ":: status code error trying to retrieve audio manifest " + audioManifestUri);
+            }
+          })
+          .catch(reject);
       } else {
         const stream = _injectAudioManifest(groupId, language);
         stream.pipe(parser);
-        stream.on('error', err => reject(err));
+        stream.on("error", (err) => reject(err));
       }
     });
   }
 
-  _getNearestBandwidthInList(bw, list) {
-    const sorted = list.sort((a, b) => b - a);
-    return sorted.reduce((a, b) => {
-      return Math.abs(b - bw) < Math.abs(a - bw) ? b : a;
-    });
+  _getNearestBandwidthInList(bandwidthToMatch, array) {
+    let bandwidth = bandwidthToMatch;
+    const filteredBandwidths = array;
+    const availableBandwidths = filteredBandwidths.sort((a, b) => a - b);
+
+    const exactMatch = availableBandwidths.find((a) => a == bandwidth);
+    if (exactMatch) {
+      return exactMatch;
+    }
+    for (let i = 0; i < availableBandwidths.length; i++) {
+      if (Number(bandwidth) <= Number(availableBandwidths[i])) {
+        return availableBandwidths[i];
+      }
+    }
+    return availableBandwidths[availableBandwidths.length - 1];
   }
 
   _getNearestBandwidth(bandwidth) {
     if (this.usageProfileMappingRev != null) {
       return this.usageProfileMappingRev[bandwidth];
     }
-    const filteredBandwidths = Object.keys(this.segments).filter(bw => this.segments[bw].length > 0);
-    const availableBandwidths = filteredBandwidths.sort((a,b) => a - b);
+    const filteredBandwidths = Object.keys(this.segments).filter((bw) => this.segments[bw].length > 0);
+    const availableBandwidths = filteredBandwidths.sort((a, b) => a - b);
 
     debug(`Find ${bandwidth} in ${availableBandwidths}`);
     for (let i = 0; i < availableBandwidths.length; i++) {
@@ -1387,8 +1625,10 @@ class HLSVod {
       return this.usageProfileMappingRev[bandwidth];
     }
 
-    const filteredBandwidths = Object.keys(this.segments).filter(bw => this.segments[bw].length > 0).filter(a => this._hasMediaSequences(a));
-    const availableBandwidths = filteredBandwidths.sort((a,b) => b - a);
+    const filteredBandwidths = Object.keys(this.segments)
+      .filter((bw) => this.segments[bw].length > 0)
+      .filter((a) => this._hasMediaSequences(a));
+    const availableBandwidths = filteredBandwidths.sort((a, b) => b - a);
     if (bandwidth > availableBandwidths[0]) {
       // Our bandwidth (needle) is larger than the highest available.
       // Will add this instead of matching
@@ -1409,11 +1649,11 @@ class HLSVod {
 
   _getNearestBandwidthWithInitiatedSegments(bandwidthToMatch) {
     let bandwidth = bandwidthToMatch;
-    const filteredBandwidths = Object.keys(this.segments).filter(bw => this.segmentsInitiated[bw]);
-    const availableBandwidths = filteredBandwidths.sort((a,b) => a - b);
+    const filteredBandwidths = Object.keys(this.segments).filter((bw) => this.segmentsInitiated[bw]);
+    const availableBandwidths = filteredBandwidths.sort((a, b) => a - b);
 
     debug(`Find ${bandwidth} in ${availableBandwidths}`);
-    const exactMatch = availableBandwidths.find(a => a == bandwidth);
+    const exactMatch = availableBandwidths.find((a) => a == bandwidth);
     if (exactMatch) {
       return exactMatch;
     }
@@ -1422,7 +1662,7 @@ class HLSVod {
         return availableBandwidths[i];
       }
     }
-    debug('No match found - using fallback');
+    debug("No match found - using fallback");
     return availableBandwidths[availableBandwidths.length - 1];
   }
 
@@ -1430,8 +1670,8 @@ class HLSVod {
     const availableBandwidths = Object.keys(splice.segments);
     if (this.usageProfileMapping != null && availableBandwidths.length === Object.keys(this.usageProfileMapping).length) {
       let mapping = {};
-      const sortedAvailable = availableBandwidths.sort((a, b) => a -b );
-      const sortedUsageProfile = Object.keys(this.usageProfileMapping).sort((a, b) => a-b);
+      const sortedAvailable = availableBandwidths.sort((a, b) => a - b);
+      const sortedUsageProfile = Object.keys(this.usageProfileMapping).sort((a, b) => a - b);
       for (let i = 0; i < sortedAvailable.length; i++) {
         mapping[sortedUsageProfile[i]] = sortedAvailable[i];
       }
@@ -1464,13 +1704,62 @@ class HLSVod {
   }
 
   _isEmpty(obj) {
-    for(var key in obj) {
-      if(obj.hasOwnProperty(key)) {
+    for (var key in obj) {
+      if (obj.hasOwnProperty(key)) {
         return false;
       }
     }
     return true;
   }
 }
+
+// Utility functions
+const fetchWithRetry = async (uri, opts, maxRetries, retryDelayMs, timeoutMs, debug) => {
+  if (!debug) {
+    var debug = (msg) => {
+      if (process.env.ENVIRONMENT === "development") {
+        console.log(msg);
+      }
+    };
+  }
+  let tryFetchCount = 0;
+  const RETRY_LIMIT = maxRetries || 5;
+  const TIMEOUT_LIMIT = timeoutMs || 10 * 1000;
+  const RETRY_DELAY = retryDelayMs || 1000;
+  while (tryFetchCount < RETRY_LIMIT) {
+    tryFetchCount++;
+    debug(`Fetching URI -> ${uri}, attempt ${tryFetchCount} of ${maxRetries}`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      `Request Timeout after (${TIMEOUT_LIMIT})ms @ ${uri}`;
+      controller.abort();
+    }, TIMEOUT_LIMIT);
+    try {
+      const fetchOpts = Object.assign({ signal: controller.signal }, opts);
+      const response = await fetch(uri, fetchOpts);
+
+      if (response.status >= 400 && response.status < 600) {
+        const msg = `Bad response from URI: ${uri}\nReturned Status Code: ${response.status}`;
+        debug(msg);
+        if (tryFetchCount === maxRetries) {
+          return Promise.resolve(response);
+        }
+        debug(`Going to try fetch again in ${RETRY_DELAY}ms`);
+        await timer(RETRY_DELAY);
+        continue;
+      }
+      // Return Good response
+      return Promise.resolve(response);
+    } catch (err) {
+      debug(`Node-Fetch Error on URI: ${uri}\nFull Error -> ${err}`);
+      if (tryFetchCount === maxRetries) {
+        return Promise.reject(err);
+      }
+      continue;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+};
 
 module.exports = HLSVod;
