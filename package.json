@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 {
   "name": "@eyevinn/hls-vodtolive",
   "version": "2.0.0",
@@ -45,3 +46,51 @@
     "node-fetch": "2.6.2"
   }
 }
+=======
+{
+  "name": "@eyevinn/hls-vodtolive",
+  "version": "1.17.1",
+  "description": "NPM library to generate HLS Live from HLS VOD",
+  "main": "index.js",
+  "scripts": {
+    "test": "$(npm bin)/jasmine",
+    "doc": "$(npm bin)/jsdoc2md index.js > API.md",
+    "prebuild": "npm test",
+    "build": "npm run doc",
+    "version": "npm run build && git add API.md",
+    "postversion": "git push && git push --tags",
+    "coverage": "nyc npm test && nyc report",
+    "coveralls": "nyc npm test && nyc report --reporter=text-lcov | coveralls"
+  },
+  "author": "Eyevinn Technology <work@eyevinn.se>",
+  "contributors": [
+    "Jonas Rydholm Birmé <jonas.birme@eyevinn.se> (Eyevinn Technology AB)",
+    "Alan Allard <alan.allard@eyevinn.se> (Eyevinn Technology AB)"
+  ],
+  "keywords": [
+    "hls",
+    "m3u8",
+    "vodtolive"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Eyevinn/hls-vodtolive"
+  },
+  "bugs": {
+    "url": "https://github.com/Eyevinn/hls-vodtolive/issues"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "coveralls": "^3.0.11",
+    "jasmine": "^3.5.0",
+    "jsdoc-to-markdown": "^5.0.3",
+    "nyc": "^15.0.1",
+    "minimist": ">=0.2.1"
+  },
+  "dependencies": {
+    "@eyevinn/m3u8": "^0.4.1",
+    "debug": "^4.1.1",
+    "node-fetch": "2.6.2"
+  }
+}
+>>>>>>> Stashed changes
