@@ -2736,10 +2736,8 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
   });
 
   it("set to true, will never create media sequences that have the same last segment", (done) => {
-    let uri =
-      "https://virtual-channels-functions-alb.b17g-dev.net/stitch/master.m3u8?payload=eyJ1cmkiOiJodHRwczovL2xicy11c3AtaGxzLXZvZC5jbW9yZS5zZS92b2QvYmFjZmUvQ2hlcnJpZV9jbGVhbjI0OWZfMTM3MjQ3KDEzNzI0NzQ0X0lTTVVTUCkuaXNtL0NoZXJyaWVfY2xlYW4yNDlmXzEzNzI0NygxMzcyNDc0NF9JU01VU1ApLm0zdTg/aGxzX25vX211bHRpcGxleD1mYWxzZSZmaWx0ZXI9KHR5cGUhPVwidGV4dHN0cmVhbVwiKSIsImJyZWFrcyI6W119:0";
-    mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: 1 });
-    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: 1 });
+    mockVod = new HLSVod(uri, null, 0, 0, null, { sequenceAlwaysContainNewSegments: 1 });
+    mockVod2 = new HLSVod(uri, null, 0, 0, null, { sequenceAlwaysContainNewSegments: 1 });
     mockVod3 = new HLSVod("http://mock.com/mock3.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: 1 });
     mockVod
       .load(mock1_MasterManifest, mock1_MediaManifest, mock1_AudioManifest)
