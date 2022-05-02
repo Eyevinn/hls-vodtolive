@@ -888,17 +888,11 @@ class HLSVod {
       let totalRemovedDiscTags = 0;
       let totalRemovedSegments = 0;
       let totalSeqDurVideo = 0;
-      let totalSeqDurAudio = 0;
       let duration = 0;
       const bw = this._getFirstBwWithSegments();
+      const audioGroupId = this._getFirstAudioGroupWithSegments();
       let sequence = {};
       let audioSequence = {};
-
-      const audioGroupId = this._getFirstAudioGroupWithSegments();
-      let audioLang = null;
-      if (audioGroupId) {
-        audioLang = this._getFirstAudioLanguageWithSegments(audioGroupId);
-      }
 
       // Remove all double discontinuities (video)
       const bandwidths = Object.keys(this.segments);
@@ -968,7 +962,11 @@ class HLSVod {
                 reject("Internal datastructure error");
                 return;
               }
-              sequence[bwIdx].push(this.segments[bwIdx][segIdx]);
+              let seg = this.segments[bwIdx][segIdx];
+              if (!seg) {
+                debug(segIdx, `WARNING! The sequence[bw=${bwIdx}] pushed seg=${seg}`);
+              }
+              sequence[bwIdx].push(seg);
             }
             if (audioGroupId) {
               const audioGroupIds = Object.keys(this.audioSegments);
@@ -983,7 +981,11 @@ class HLSVod {
                   if (!audioSequence[audioGroupId][audioLang]) {
                     audioSequence[audioGroupId][audioLang] = [];
                   }
-                  audioSequence[audioGroupId][audioLang].push(this.audioSegments[audioGroupId][audioLang][segIdx]);
+                  let seg = this.audioSegments[audioGroupId][audioLang][segIdx];
+                  if (!seg) {
+                    debug(segIdx, `WARNING! The audioSequence[id=${audioGroupId}][lang=${audioLang}] pushed seg=${seg}`);
+                  }
+                  audioSequence[audioGroupId][audioLang].push(seg);
                 }
               }
             }
@@ -1032,13 +1034,13 @@ class HLSVod {
         const videoSequences = [];
         const audioSequences = [];
         let segIdxVideo = 0;
-        let segIdxAudio = 0;
         const SIZE = this.segments[bw].length;
         // Process Video Segments
-        while (this.segments[bw][segIdxVideo] && segIdxVideo != SIZE) {
+        while (this.segments[bw][segIdxVideo] && segIdxVideo < SIZE) {
           try {
             totalSeqDurVideo = 0;
             const _sequence = JSON.parse(JSON.stringify(sequence));
+            const _audioSequence = JSON.parse(JSON.stringify(audioSequence));
             if (_sequence[bw] && _sequence[bw].length > 0) {
               let temp = 0;
               _sequence[bw].forEach((seg) => {
@@ -1048,51 +1050,144 @@ class HLSVod {
               });
               totalSeqDurVideo = temp;
             }
-            let prevTotalSeqDurVideo = totalSeqDurVideo;
-            let prevSegIdx = segIdxVideo;
-            // 1 - Add new segments until we overflow (per variant)
-            bandwidths.forEach((_bw) => {
-              segIdxVideo = prevSegIdx;
-              totalSeqDurVideo = prevTotalSeqDurVideo;
-              if (!_sequence[_bw]) {
-                _sequence[_bw] = [];
-              }
-              while (totalSeqDurVideo < this.SEQUENCE_DURATION && segIdxVideo != SIZE) {
-                // Push segment...
-                const seg = this.segments[_bw][segIdxVideo];
-                if (seg && seg.duration) {
-                  totalSeqDurVideo += seg.duration;
+            if (segIdxVideo === 0) {
+              // Create the very first sequence. (No need to remove any segments)
+              let seqDur = 0;
+              while (seqDur < this.SEQUENCE_DURATION && segIdxVideo < SIZE) {
+                bandwidths.forEach((_bw) => {
+                  if (!_sequence[_bw]) {
+                    _sequence[_bw] = [];
+                  }
+                  const seg = this.segments[_bw][segIdxVideo];
+                  if (seg && seg.duration && _bw === bw) {
+                    seqDur += seg.duration;
+                  }
+                  if (seqDur < this.SEQUENCE_DURATION) {
+                    if (!seg) {
+                      debug(segIdxVideo, `WARNING! The _sequence[bw=${_bw}] pushed seg=${seg}`);
+                    }
+                    _sequence[_bw].push(seg);
+                  }
+                });
+                if (audioGroupId) {
+                  const audioGroupIds = Object.keys(this.audioSegments);
+                  audioGroupIds.forEach((groupId) => {
+                    if (!_audioSequence[groupId]) {
+                      _audioSequence[groupId] = {};
+                    }
+                    const audioLangs = Object.keys(this.audioSegments[groupId]);
+                    audioLangs.forEach((lang) => {
+                      if (!_audioSequence[groupId][lang]) {
+                        _audioSequence[groupId][lang] = [];
+                      }
+                      const seq_seg = this.audioSegments[groupId][lang][segIdxVideo];
+                      if (seqDur < this.SEQUENCE_DURATION) {
+                        if (!seq_seg) {
+                          debug(segIdxVideo, `WARNING! The _audioSequence[id=${groupId}][lang=${lang}] pushed seg=${seq_seg}`);
+                        }
+                        _audioSequence[groupId][lang].push(seq_seg);
+                      }
+                    });
+                  });
                 }
-                _sequence[_bw].push(seg);
+                if (seqDur < this.SEQUENCE_DURATION) {
+                  segIdxVideo++;
+                }
+              }
+            } else {
+              // Creating the rest of the sequences
+              // 1 - Add new segments until we overflow (per variant)
+              while (totalSeqDurVideo < this.SEQUENCE_DURATION && segIdxVideo < SIZE) {
+                bandwidths.forEach((_bw) => {
+                  if (!_sequence[_bw]) {
+                    _sequence[_bw] = [];
+                  }
+                  const seg = this.segments[_bw][segIdxVideo];
+                  if (seg && seg.duration && _bw === bw) {
+                    totalSeqDurVideo += seg.duration;
+                  }
+                  if (!seg) {
+                    debug(segIdxVideo, `WARNING! The _sequence[bw=${_bw}] pushed seg=${seg}`);
+                  }
+                  _sequence[_bw].push(seg);
+                });
+                if (audioGroupId) {
+                  const audioGroupIds = Object.keys(this.audioSegments);
+                  audioGroupIds.forEach((groupId) => {
+                    if (!_audioSequence[groupId]) {
+                      _audioSequence[groupId] = {};
+                    }
+                    const audioLangs = Object.keys(this.audioSegments[groupId]);
+                    audioLangs.forEach((lang) => {
+                      if (!_audioSequence[groupId][lang]) {
+                        _audioSequence[groupId][lang] = [];
+                      }
+                      const seq_seg = this.audioSegments[groupId][lang][segIdxVideo];
+                      if (!seq_seg) {
+                        debug(segIdxVideo, `WARNING! The _audioSequence[id=${groupId}][lang=${lang}] pushed seg=${seq_seg}`);
+                      }
+                      _audioSequence[groupId][lang].push(seq_seg);
+                    });
+                  });
+                }
                 segIdxVideo++;
               }
-            });
-            // 2 - Shift excess segments and keep count of what has been removed (per variant)
-            while (totalSeqDurVideo >= this.SEQUENCE_DURATION) {
-              let timeToRemove = 0;
-              let incrementDiscSeqCount = false;
-
-              bandwidths.forEach((bw) => {
-                let seg = _sequence[bw].shift();
-                while (!seg || !seg.duration) {
-                  incrementDiscSeqCount = true;
-                  seg = _sequence[bw].shift();
+              let shiftOnce = true;
+              // 2 - Shift excess segments and keep count of what has been removed (per variant)
+              while (totalSeqDurVideo >= this.SEQUENCE_DURATION || (shiftOnce && segIdxVideo !== 0)) {
+                shiftOnce = false;
+                let timeToRemove = 0;
+                let incrementDiscSeqCount = false;
+                bandwidths.forEach((bw) => {
+                  let seg = _sequence[bw].shift();
+                  if (!seg) {
+                    // Should not happen, debug
+                    debug(`WARNING! The _sequence[bw=${bw}] shifted seg=${seg}`);
+                  } else {
+                    while (seg && !seg.duration && _sequence[bw].length > 0) {
+                      incrementDiscSeqCount = true;
+                      seg = _sequence[bw].shift();
+                    }
+                  }
+                  if (seg && seg.duration) {
+                    timeToRemove = seg.duration;
+                  }
+                });
+                if (audioGroupId) {
+                  const audioGroupIds = Object.keys(this.audioSegments);
+                  audioGroupIds.forEach((groupId) => {
+                    if (!_audioSequence[groupId]) {
+                      _audioSequence[groupId] = {};
+                    }
+                    const audioLangs = Object.keys(this.audioSegments[groupId]);
+                    audioLangs.forEach((lang) => {
+                      if (!_audioSequence[groupId][lang]) {
+                        _audioSequence[groupId][lang] = [];
+                      }
+                      let seg = _audioSequence[groupId][lang].shift();
+                      if (!seg) {
+                        // Should not happen, debug
+                        debug(`WARNING! The _audioSequence[id=${groupId}][lang=${lang}] shifted seg=${seg}`);
+                      } else {
+                        while (seg && !seg.duration && _audioSequence[groupId][lang].length > 0) {
+                          seg = _audioSequence[groupId][lang].shift();
+                        }
+                      }
+                    });
+                  });
                 }
-                if (seg && seg.duration) {
-                  timeToRemove = seg.duration;
+                if (timeToRemove) {
+                  totalSeqDurVideo -= timeToRemove;
+                  totalRemovedSegments++;
                 }
-              });
-
-              if (timeToRemove) {
-                totalSeqDurVideo -= timeToRemove;
-                totalRemovedSegments++;
-              }
-              if (incrementDiscSeqCount) {
-                totalRemovedDiscTags++;
+                if (incrementDiscSeqCount) {
+                  totalRemovedDiscTags++;
+                }
               }
             }
 
             videoSequences.push(_sequence);
+            audioSequences.push(_audioSequence);
 
             this.mediaSequenceValues[seqIndex] = totalRemovedSegments;
             if (seqIndex === 0) {
@@ -1102,103 +1197,21 @@ class HLSVod {
             }
             this.discontinuities[seqIndex] = totalRemovedDiscTags;
             sequence = _sequence;
+            audioSequence = _audioSequence;
             seqIndex++;
           } catch (err) {
             console.error(err);
           }
         }
-
-        if (audioGroupId) {
-          // Process Audio Segments
-          while (this.audioSegments[audioGroupId][audioLang][segIdxAudio] && segIdxAudio != SIZE) {
-            totalSeqDurAudio = 0;
-            const _audioSequence = JSON.parse(JSON.stringify(audioSequence));
-            if (_audioSequence[audioGroupId] && _audioSequence[audioGroupId][audioLang] && _audioSequence[audioGroupId][audioLang].length > 0) {
-              let temp = 0;
-              _audioSequence[audioGroupId][audioLang].forEach((seg) => {
-                if (seg && seg.duration) {
-                  temp += seg.duration;
-                }
-              });
-              totalSeqDurAudio = temp;
-            }
-            let prevTotalSeqDur = totalSeqDurAudio;
-            let prevSegIdx = segIdxAudio;
-            // 1 - Add new segments until we overflow (per variant)
-            const audioGroupIds = Object.keys(this.audioSegments);
-            audioGroupIds.forEach((groupId) => {
-              if (!_audioSequence[groupId]) {
-                _audioSequence[groupId] = {};
-              }
-              const audioLangs = Object.keys(this.audioSegments[groupId]);
-              audioLangs.forEach((lang) => {
-                if (!_audioSequence[groupId][lang]) {
-                  _audioSequence[groupId][lang] = [];
-                }
-                segIdxAudio = prevSegIdx;
-                totalSeqDurAudio = prevTotalSeqDur;
-                while (totalSeqDurAudio < this.SEQUENCE_DURATION && segIdxAudio != SIZE) {
-                  // Push segment...
-                  const seg = this.audioSegments[groupId][lang][segIdxAudio];
-                  if (seg && seg.duration) {
-                    totalSeqDurAudio += seg.duration;
-                  }
-                  _audioSequence[groupId][lang].push(seg);
-                  segIdxAudio++;
-                }
-              });
-            });
-            // 2 - Shift excess segments and keep count of what has been removed (per variant)
-            while (totalSeqDurAudio >= this.SEQUENCE_DURATION) {
-              let timeToRemove = 0;
-              const audioGroupIds = Object.keys(this.audioSegments);
-
-              audioGroupIds.forEach((_group) => {
-                const audioLangs = Object.keys(this.audioSegments[_group]);
-                audioLangs.forEach((_lang) => {
-                  let seg = _audioSequence[_group][_lang].shift();
-                  while (!seg || !seg.duration) {
-                    seg = _audioSequence[_group][_lang].shift();
-                  }
-                  if (seg && seg.duration) {
-                    timeToRemove = seg.duration;
-                  }
-                });
-              });
-
-              if (timeToRemove) {
-                totalSeqDurAudio -= timeToRemove;
-              }
-            }
-
-            audioSequences.push(_audioSequence);
-            audioSequence = _audioSequence;
-          }
-        }
-        // Transfer all generated sequences to 'this.mediaSequences'
-        this.mediaSequences = videoSequences.map((videoSeq, index) => {
-          let audioSeq = {};
-          if (audioSequences.length > 0 && audioSequences[index]) {
-            audioSeq = audioSequences[index];
-          }
+        // Append newly generated video/audio sequences
+        for (let i = 0; i < videoSequences.length; i++) {
+          const vseq = videoSequences[i];
+          const aseq = audioSequences[i];
           const mseq = {
-            segments: videoSeq,
-            audioSegments: audioSeq,
+            segments: vseq,
+            audioSegments: aseq,
           };
-          return mseq;
-        });
-
-        if (totalSeqDurVideo < this.SEQUENCE_DURATION) {
-          // We are out of segments but have not reached the full duration of a sequence
-          totalSeqDurVideo = 0;
-          this.mediaSequences.push({
-            segments: sequence,
-            audioSegments: audioSequence,
-          });
-          this.mediaSequenceValues[seqIndex] = totalRemovedSegments;
-          this.discontinuities[seqIndex] = totalRemovedDiscTags;
-          sequence = {};
-          audioSequence = {};
+          this.mediaSequences.push(mseq);
         }
       }
 
