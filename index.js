@@ -1062,7 +1062,6 @@ class HLSVod {
                   if (seg && seg.duration && _bw === bw) {
                     seqDur += seg.duration;
                   }
-
                   if (seqDur < this.SEQUENCE_DURATION) {
                     if (!seg) {
                       debug(segIdxVideo, `WARNING! The _sequence[bw=${_bw}] pushed seg=${seg}`);
@@ -1150,7 +1149,6 @@ class HLSVod {
                       seg = _sequence[bw].shift();
                     }
                   }
-
                   if (seg && seg.duration) {
                     timeToRemove = seg.duration;
                   }

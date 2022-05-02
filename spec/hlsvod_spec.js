@@ -1,7 +1,6 @@
 const HLSVod = require("../index.js");
 const fs = require("fs");
 const m3u8 = require("@eyevinn/m3u8");
-const { ConsoleReporter } = require("jasmine");
 const Readable = require("stream").Readable;
 
 describe("HLSVod standalone", () => {
