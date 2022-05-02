@@ -962,7 +962,11 @@ class HLSVod {
                 reject("Internal datastructure error");
                 return;
               }
-              sequence[bwIdx].push(this.segments[bwIdx][segIdx]);
+              let seg = this.segments[bwIdx][segIdx];
+              if (!seg) {
+                debug(segIdx, `WARNING! The sequence[bw=${bwIdx}] pushed seg=${seg}`);
+              }
+              sequence[bwIdx].push(seg);
             }
             if (audioGroupId) {
               const audioGroupIds = Object.keys(this.audioSegments);
@@ -977,7 +981,11 @@ class HLSVod {
                   if (!audioSequence[audioGroupId][audioLang]) {
                     audioSequence[audioGroupId][audioLang] = [];
                   }
-                  audioSequence[audioGroupId][audioLang].push(this.audioSegments[audioGroupId][audioLang][segIdx]);
+                  let seg = this.audioSegments[audioGroupId][audioLang][segIdx];
+                  if (!seg) {
+                    debug(segIdx, `WARNING! The audioSequence[id=${audioGroupId}][lang=${audioLang}] pushed seg=${seg}`);
+                  }
+                  audioSequence[audioGroupId][audioLang].push(seg);
                 }
               }
             }
@@ -1056,6 +1064,9 @@ class HLSVod {
                   }
 
                   if (seqDur < this.SEQUENCE_DURATION) {
+                    if (!seg) {
+                      debug(segIdxVideo, `WARNING! The _sequence[bw=${_bw}] pushed seg=${seg}`);
+                    }
                     _sequence[_bw].push(seg);
                   }
                 });
@@ -1072,6 +1083,9 @@ class HLSVod {
                       }
                       const seq_seg = this.audioSegments[groupId][lang][segIdxVideo];
                       if (seqDur < this.SEQUENCE_DURATION) {
+                        if (!seq_seg) {
+                          debug(segIdxVideo, `WARNING! The _audioSequence[id=${groupId}][lang=${lang}] pushed seg=${seq_seg}`);
+                        }
                         _audioSequence[groupId][lang].push(seq_seg);
                       }
                     });
@@ -1093,6 +1107,9 @@ class HLSVod {
                   if (seg && seg.duration && _bw === bw) {
                     totalSeqDurVideo += seg.duration;
                   }
+                  if (!seg) {
+                    debug(segIdxVideo, `WARNING! The _sequence[bw=${_bw}] pushed seg=${seg}`);
+                  }
                   _sequence[_bw].push(seg);
                 });
                 if (audioGroupId) {
@@ -1107,6 +1124,9 @@ class HLSVod {
                         _audioSequence[groupId][lang] = [];
                       }
                       const seq_seg = this.audioSegments[groupId][lang][segIdxVideo];
+                      if (!seq_seg) {
+                        debug(segIdxVideo, `WARNING! The _audioSequence[id=${groupId}][lang=${lang}] pushed seg=${seq_seg}`);
+                      }
                       _audioSequence[groupId][lang].push(seq_seg);
                     });
                   });
@@ -1123,9 +1143,9 @@ class HLSVod {
                   let seg = _sequence[bw].shift();
                   if (!seg) {
                     // Should not happen, debug
-                    console.error(`The _sequence[bw=${bw}] shifted seg=${seg}`);
+                    debug(`WARNING! The _sequence[bw=${bw}] shifted seg=${seg}`);
                   } else {
-                    while (!seg.duration && _sequence[bw].length > 0) {
+                    while (seg && !seg.duration && _sequence[bw].length > 0) {
                       incrementDiscSeqCount = true;
                       seg = _sequence[bw].shift();
                     }
@@ -1149,9 +1169,9 @@ class HLSVod {
                       let seg = _audioSequence[groupId][lang].shift();
                       if (!seg) {
                         // Should not happen, debug
-                        console.error(`error! The _audioSequence[id=${groupId}][lang=${lang}] shifted seg=${seg}`);
+                        debug(`WARNING! The _audioSequence[id=${groupId}][lang=${lang}] shifted seg=${seg}`);
                       } else {
-                        while (!seg.duration && _audioSequence[groupId][lang].length > 0) {
+                        while (seg && !seg.duration && _audioSequence[groupId][lang].length > 0) {
                           seg = _audioSequence[groupId][lang].shift();
                         }
                       }
