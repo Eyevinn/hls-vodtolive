@@ -1077,7 +1077,9 @@ class HLSVod {
                     });
                   });
                 }
-                segIdxVideo++;
+                if (seqDur < this.SEQUENCE_DURATION) {
+                  segIdxVideo++;
+                }
               }
             } else {
               // Creating the rest of the sequences
@@ -1150,7 +1152,6 @@ class HLSVod {
                         console.error(`error! The _audioSequence[id=${groupId}][lang=${lang}] shifted seg=${seg}`);
                       } else {
                         while (!seg.duration && _audioSequence[groupId][lang].length > 0) {
-                          incrementDiscSeqCount = true;
                           seg = _audioSequence[groupId][lang].shift();
                         }
                       }
@@ -1171,6 +1172,11 @@ class HLSVod {
             audioSequences.push(_audioSequence);
 
             this.mediaSequenceValues[seqIndex] = totalRemovedSegments;
+            if (seqIndex === 0) {
+              // Compensate for hlsvod loaded after another.
+              totalRemovedSegments++;
+              this.mediaSequenceValues[seqIndex] = totalRemovedSegments;
+            }
             this.discontinuities[seqIndex] = totalRemovedDiscTags;
             sequence = _sequence;
             audioSequence = _audioSequence;
