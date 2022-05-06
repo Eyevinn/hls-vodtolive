@@ -2264,10 +2264,12 @@ describe("HLSVod reload media sequences", () => {
       })
       .then(() => {
         mockVod2.load(mockMasterManifest2, mockMediaManifest2).then(() => {
-          let topSegmentPreReload = mockVod2.getLiveMediaSequenceSegments(6)["401000"][0];
+          const seqSegs = mockVod2.getLiveMediaSequenceSegments(6)["401000"];
+          let bottomSegmentPreReload = mockVod2.getLiveMediaSequenceSegments(6)["401000"][mockVod2.getLiveMediaSequenceSegments(6)["401000"].length - 1];
           mockVod2.reload(6, vod1segments, null).then(() => {
             let size = mockVod2.getLiveMediaSequenceSegments(1)["401000"].length;
-            expect(mockVod2.getLiveMediaSequenceSegments(1)["401000"][size - 1]).toEqual(topSegmentPreReload);
+            const seqSegs = mockVod2.getLiveMediaSequenceSegments(1)["401000"];
+            expect(mockVod2.getLiveMediaSequenceSegments(1)["401000"][size - 1]).toEqual(bottomSegmentPreReload);
             done();
           });
         });
@@ -2287,8 +2289,10 @@ describe("HLSVod reload media sequences", () => {
       })
       .then(() => {
         mockVod2.load(mockMasterManifest2, mockMediaManifest2).then(() => {
-          let size = mockVod2.getLiveMediaSequenceSegments(7)["401000"].length;
-          let bottomSegmentPreReload = mockVod2.getLiveMediaSequenceSegments(7)["401000"][size - 1];
+          const currentSeq = 7;
+          let size = mockVod2.getLiveMediaSequenceSegments(currentSeq)["401000"].length;
+          let seqSegs = mockVod2.getLiveMediaSequenceSegments(currentSeq)["401000"];
+          let bottomSegmentPreReload = seqSegs[size - 1];
           mockVod2.reload(7, vod1segments, null, true).then(() => {
             expect(mockVod2.getLiveMediaSequenceSegments(mockVod2.getLiveMediaSequencesCount() - 2)["401000"][0]).toEqual(bottomSegmentPreReload);
             done();
@@ -2310,10 +2314,12 @@ describe("HLSVod reload media sequences", () => {
       })
       .then(() => {
         mockVod2.load(mockMasterManifest2, mockMediaManifest2).then(() => {
-          let topSegmentPreReload = mockVod2.getLiveMediaSequenceSegments(12)["401000"][0];
-          mockVod2.reload(12, vod1segments, null).then(() => {
+          const finalSeqIdx = mockVod2.getLiveMediaSequencesCount() - 1;
+          const finalSeqSegs = mockVod2.getLiveMediaSequenceSegments(mockVod2.getLiveMediaSequencesCount(finalSeqIdx) - 1)["401000"];
+          const bottomSegmentPreReload = finalSeqSegs[finalSeqSegs.length - 1];
+          mockVod2.reload(finalSeqIdx, vod1segments, null).then(() => {
             let size = mockVod2.getLiveMediaSequenceSegments(1)["401000"].length;
-            expect(mockVod2.getLiveMediaSequenceSegments(1)["401000"][size - 1]).toEqual(topSegmentPreReload);
+            expect(mockVod2.getLiveMediaSequenceSegments(1)["401000"][size - 1]).toEqual(bottomSegmentPreReload);
             done();
           });
         });
@@ -2458,9 +2464,17 @@ describe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
   });
 
   it("set to true, will never create media sequences that have the same last segment", (done) => {
+    const getDur = (list) => {
+      let t = 0;
+      list.forEach((i) => {
+        if (i.duration) {
+          t += i.duration;
+        }
+      });
+      return t;
+    };
     mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: true });
     mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: true });
-    mockVod3 = new HLSVod("http://mock.com/mock3.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: true });
     mockVod
       .load(mock1_MasterManifest, mock1_MediaManifest)
       .then(() => {
@@ -2477,18 +2491,18 @@ describe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
         const expectedMseqVals = {
           0: 1,
           1: 2,
-          2: 4,
-          3: 5,
-          4: 6,
-          5: 7,
-          6: 8,
-          7: 9,
-          8: 10,
-          9: 11,
-          10: 12,
-          11: 13,
-          12: 14,
-          13: 15,
+          2: 3,
+          3: 4,
+          4: 5,
+          5: 6,
+          6: 7,
+          7: 8,
+          8: 9,
+          9: 10,
+          10: 11,
+          11: 12,
+          12: 13,
+          13: 14,
         };
         const expectedDseqVals = {
           0: 0,
@@ -2507,7 +2521,7 @@ describe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
           13: 1,
         };
         const expectedLastMseqTopAndBottomSegURI = {
-          top: "http://mock.com/level0/seg_44.ts",
+          top: "http://mock.com/level0/seg_43.ts",
           bottom: "http://mock.com/level0/seg_52.ts",
         };
         expect(mseqs).toEqual(expectedMseqVals);
@@ -2526,7 +2540,7 @@ describe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
         const topAndBottomSegURIList = [];
         topAndBottomSegURIList.push({
           top: mseq_0[0].uri,
-          bottom: mseq_0[mseq_0.length - 1].uri,
+          bottom: mseq_0[mseq_0.length - 1 - 1].uri,
         });
         topAndBottomSegURIList.push({
           top: mseq_1[0].uri,
@@ -2537,54 +2551,22 @@ describe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
           bottom: mseq_2[mseq_2.length - 1].uri,
         });
 
-        const expectedMseqVals = {
-          0: 1,
-          1: 2,
-          2: 4,
-          3: 6,
-          4: 8,
-          5: 10,
-          6: 11,
-          7: 12,
-        };
-        const expectedDseqVals = {
-          0: 0,
-          1: 0,
-          2: 0,
-          3: 0,
-          4: 0,
-          5: 1,
-          6: 2,
-          7: 2,
-        };
+        const expectedMseqVals = { 0: 1, 1: 3, 2: 5, 3: 7, 4: 11, 5: 12, 6: 13 };
+        const expectedDseqVals = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 1, 5: 2, 6: 2 };
         const expectedTopAndBottomSegURIList = [
           {
-            top: "http://mock.com/level0/seg_45.ts",
-            bottom: "https://maitv-vod.lab.eyevinn.technology/ads/apotea-15s.mp4/level0/2000-00000.ts",
-          },
-          {
-            top: "http://mock.com/level0/seg_46.ts",
+            top: "http://mock.com/level0/seg_44.ts",
             bottom: "https://maitv-vod.lab.eyevinn.technology/ads/apotea-15s.mp4/level0/2000-00001.ts",
           },
           {
-            top: "http://mock.com/level0/seg_48.ts",
+            top: "http://mock.com/level0/seg_46.ts",
             bottom: "http://mock.com/level0/seg_0000.ts",
           },
+          {
+            top: "http://mock.com/level0/seg_48.ts",
+            bottom: "http://mock.com/level0/seg_0001.ts",
+          },
         ];
-        const gd = (list) => {
-          let t = 0;
-          list.forEach((i) => {
-            if (i.duration) {
-              t += i.duration;
-            }
-          });
-          return t;
-        };
-        // To Verify
-        // console.log(mseqs);
-        // mockVod2.mediaSequences.forEach((seq, idx) => {
-        //   console.log(idx, seq["segments"][someBW], gd(seq["segments"][someBW]));
-        // });
         expect(mseqs).toEqual(expectedMseqVals);
         expect(dseqs).toEqual(expectedDseqVals);
         expect(topAndBottomSegURIList).toEqual(expectedTopAndBottomSegURIList);
@@ -2595,7 +2577,6 @@ describe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
   it("set to false, may create media sequences that have the same last segment, and always steps a mseq by 1", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: false });
     mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: false });
-    mockVod3 = new HLSVod("http://mock.com/mock3.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: false });
     mockVod
       .load(mock1_MasterManifest, mock1_MediaManifest)
       .then(() => {
@@ -2608,7 +2589,7 @@ describe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
           bottom: lastMseq[lastMseq.length - 1].uri,
         };
         // Assert
-        const expectedMseqVals = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, 11: 11, 12: 12, 13: 13, 14: 14 };
+        const expectedMseqVals = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, 11: 11, 12: 12 };
         const expectedDseqVals = {
           0: 0,
           1: 0,
@@ -2623,11 +2604,9 @@ describe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
           10: 1,
           11: 1,
           12: 1,
-          13: 1,
-          14: 1,
         };
         const expectedLastMseqTopAndBottomSegURI = {
-          top: "http://mock.com/level0/seg_44.ts",
+          top: "http://mock.com/level0/seg_42.ts",
           bottom: "http://mock.com/level0/seg_52.ts",
         };
         expect(mseqs).toEqual(expectedMseqVals);
@@ -2648,7 +2627,7 @@ describe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
         const topAndBottomSegURIList = [];
         topAndBottomSegURIList.push({
           top: mseq_0[0].uri,
-          bottom: mseq_0[mseq_0.length - 1].uri,
+          bottom: undefined,
         });
         topAndBottomSegURIList.push({
           top: mseq_1[0].uri,
@@ -2667,7 +2646,7 @@ describe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
           bottom: mseq_4[mseq_4.length - 1].uri,
         });
         // Assert
-        const expectedMseqVals = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, 11: 11 };
+        const expectedMseqVals = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, 11: 11, 12: 12, 13: 13 };
         const expectedDseqVals = {
           0: 0,
           1: 0,
@@ -2677,32 +2656,34 @@ describe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
           5: 0,
           6: 0,
           7: 0,
-          8: 1,
-          9: 1,
-          10: 2,
-          11: 2,
+          8: 0,
+          9: 0,
+          10: 1,
+          11: 1,
+          12: 2,
+          13: 2,
         };
         const sameSegment1 = "https://maitv-vod.lab.eyevinn.technology/ads/apotea-15s.mp4/level0/2000-00001.ts";
         const sameSegment2 = "http://mock.com/level0/seg_0000.ts";
         const expectedTopAndBottomSegURIList = [
           {
+            top: "http://mock.com/level0/seg_43.ts",
+            bottom: undefined,
+          },
+          {
+            top: "http://mock.com/level0/seg_44.ts",
+            bottom: sameSegment1,
+          },
+          {
             top: "http://mock.com/level0/seg_45.ts",
-            bottom: "https://maitv-vod.lab.eyevinn.technology/ads/apotea-15s.mp4/level0/2000-00000.ts",
+            bottom: sameSegment1,
           },
           {
             top: "http://mock.com/level0/seg_46.ts",
-            bottom: sameSegment1,
-          },
-          {
-            top: "http://mock.com/level0/seg_47.ts",
-            bottom: sameSegment1,
-          },
-          {
-            top: "http://mock.com/level0/seg_48.ts",
             bottom: sameSegment2,
           },
           {
-            top: "http://mock.com/level0/seg_49.ts",
+            top: "http://mock.com/level0/seg_47.ts",
             bottom: sameSegment2,
           },
         ];
@@ -2777,18 +2758,19 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
         const expectedMseqVals = {
           0: 1,
           1: 2,
-          2: 4,
-          3: 5,
-          4: 6,
-          5: 7,
-          6: 8,
-          7: 9,
-          8: 10,
-          9: 11,
-          10: 12,
-          11: 13,
-          12: 14,
-          13: 15,
+          2: 3,
+          3: 4,
+          4: 5,
+          5: 6,
+          6: 7,
+          7: 8,
+          8: 9,
+          9: 10,
+          10: 11,
+          11: 12,
+          12: 13,
+          13: 14,
+          14: 15,
         };
         const expectedDseqVals = {
           0: 0,
@@ -2805,6 +2787,7 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
           11: 1,
           12: 1,
           13: 1,
+          14: 1,
         };
         const expectedLastMseqTopAndBottomSegURI = {
           top: "http://mock.com/level0/seg_44.ts",
@@ -2870,7 +2853,7 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
           4: 8,
           5: 10,
           6: 11,
-          7: 12
+          7: 12,
         };
         const expectedDseqVals = {
           0: 0,
@@ -2880,7 +2863,7 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
           4: 0,
           5: 1,
           6: 2,
-          7: 2
+          7: 2,
         };
         const expectedTopAndBottomSegURIList = [
           {
@@ -3259,7 +3242,6 @@ describe("HLSVod when loading mux vod after demux vod, with set option-> sequenc
     let bool = 1;
     mockVod = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: bool });
     mockVod2 = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: bool });
-    mockVod3 = new HLSVod("http://mock.com/mock3.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: bool });
     mockVod
       .load(mock2_MasterManifest, mock2_MediaManifest, mock2_AudioManifest)
       .then(() => {
@@ -3267,6 +3249,7 @@ describe("HLSVod when loading mux vod after demux vod, with set option-> sequenc
       })
       .then(() => {
         const expectedSeqAudioSegs = [
+          { duration: 6.006, uri: "http://mock.com/audio/seg_en_47.ts" },
           { duration: 6.006, uri: "http://mock.com/audio/seg_en_48.ts" },
           { duration: 6.006, uri: "http://mock.com/audio/seg_en_49.ts" },
           { duration: 6.006, uri: "http://mock.com/audio/seg_en_50.ts" },
@@ -3275,10 +3258,15 @@ describe("HLSVod when loading mux vod after demux vod, with set option-> sequenc
           null,
           null,
           null,
-          null,
           undefined,
         ];
         const expectedSeqVideoSegs = [
+          {
+            duration: 6.006,
+            timelinePosition: null,
+            cue: null,
+            uri: "http://mock.com/level0/seg_43.ts",
+          },
           {
             duration: 6.006,
             timelinePosition: null,
@@ -3326,12 +3314,6 @@ describe("HLSVod when loading mux vod after demux vod, with set option-> sequenc
             timelinePosition: null,
             cue: null,
             uri: "http://mock.com/level0/seg_51.ts",
-          },
-          {
-            duration: 6.006,
-            timelinePosition: null,
-            cue: null,
-            uri: "http://mock.com/level0/seg_52.ts",
           },
         ];
         let sq = 17;
@@ -3565,6 +3547,148 @@ describe("HLSVod when loading mux vod after demux vod, with set option-> sequenc
         const seqVideoSegments = mockVod2.mediaSequences[sq].segments[_bw];
         expect(seqVideoSegments).toEqual(expectedSeqVideoSegs);
         expect(seqAudioSegments).toEqual(expectedSeqAudioSegs);
+        done();
+      });
+  });
+});
+
+describe("HLSVod delta time and positions", () => {
+  let mockMasterManifest;
+  let mockMediaManifest;
+
+  beforeEach(() => {
+    mockMasterManifest = function () {
+      return fs.createReadStream("testvectors/hls_deltatimes/master.m3u8");
+    };
+
+    mockMediaManifest = function (bandwidth) {
+      return fs.createReadStream("testvectors/hls_deltatimes/" + bandwidth + ".m3u8");
+    };
+  });
+
+  it("with option-> sequenceAlwaysContainNewSegments set to true, are calculated and available for each media sequence", (done) => {
+    let bool = 1;
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: bool });
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: bool });
+    mockVod
+      .load(mockMasterManifest, mockMediaManifest)
+      .then(() => {
+        return mockVod2.loadAfter(mockVod, mockMasterManifest, mockMediaManifest);
+      })
+      .then(() => {
+        const getDur = (list) => {
+          let tot = 0;
+          list.forEach((seg) => {
+            if (seg.duration) {
+              tot += seg.duration;
+            }
+          });
+          return tot;
+        };
+        const playheadPositions = mockVod2.getPlayheadPositions();
+        const deltaTimes = mockVod2.getDeltaTimes();
+        let bw_ = mockVod2.getBandwidths()[0];
+        // let seqA = 43
+        // let seqB = 44
+        // console.log(mockVod2.mediaSequences[seqA].segments[bw_], getDur(mockVod2.mediaSequences[seqA].segments[bw_]));
+        // console.log(mockVod2.mediaSequences[seqB].segments[bw_], getDur(mockVod2.mediaSequences[seqB].segments[bw_]));
+        let seqWithNoNewSegmentCount = 0;
+        mockVod2.mediaSequences.forEach((seq, index) => {
+          if (index + 1 < mockVod2.mediaSequences.length) {
+            let nextseqsegs = mockVod2.mediaSequences[index + 1].segments[bw_];
+            let nextLast = nextseqsegs[nextseqsegs.length - 1];
+            let seqsegs = seq.segments[bw_];
+            let last = seqsegs[seqsegs.length - 1];
+            if (last.uri && nextLast.uri) {
+              if (last.uri === nextLast.uri) {
+                seqWithNoNewSegmentCount++;
+              }
+            }
+          }
+        });
+        let allsegs = mockVod2.segments[bw_];
+        const secondVodDuration = getDur(allsegs) - getDur(mockVod2.mediaSequences[0].segments[bw_]) + 3 + 3;
+        const expectedPlayheadPositions = [
+          0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 49.5, 53.5, 57.5, 61.5, 65.5, 69.5, 72.5, 76.5, 80.5, 84.5, 88.5, 92.5, 96.5, 100.5, 104.5, 108.5, 112.5,
+          116.5, 120.5, 124.5, 128.5, 132.5, 136.5, 140.5, 146.5, 149.5, 152.5, 158.5, 161.5, 164.5, 170.5, 173.5, 176.5, 182.5, 185.5, 188.5, 194.5, 196,
+        ];
+        const expectedDeltaTimes = [
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1.5, 3.5, 0, 0, 0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3,
+          -1.5,
+        ];
+        const expectedSeqcount = 55;
+        const expectedVodSegmentsCount = 87;
+        const expectedVodDuration = 202;
+        const expectedSeqWithNoNewSegmentCount = 0;
+
+        expect(playheadPositions).toEqual(expectedPlayheadPositions);
+        expect(deltaTimes).toEqual(expectedDeltaTimes);
+        expect(mockVod2.mediaSequences.length).toEqual(expectedSeqcount);
+        expect(mockVod2.segments[bw_].length).toEqual(expectedVodSegmentsCount);
+        expect(secondVodDuration).toEqual(expectedVodDuration);
+        expect(seqWithNoNewSegmentCount).toEqual(expectedSeqWithNoNewSegmentCount);
+
+        done();
+      });
+  });
+  it("with option-> sequenceAlwaysContainNewSegments set to false, are calculated the original way and available for each media sequence", (done) => {
+    let bool = 0;
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: bool });
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: bool });
+    mockVod
+      .load(mockMasterManifest, mockMediaManifest)
+      .then(() => {
+        return mockVod2.loadAfter(mockVod, mockMasterManifest, mockMediaManifest);
+      })
+      .then(() => {
+        const getDur = (list) => {
+          let tot = 0;
+          list.forEach((seg) => {
+            if (seg.duration) {
+              tot += seg.duration;
+            }
+          });
+          return tot;
+        };
+        const playheadPositions = mockVod2.getPlayheadPositions();
+        const deltaTimes = mockVod2.getDeltaTimes();
+        let bw_ = mockVod2.getBandwidths()[0];
+        let seqWithNoNewSegmentCount = 0;
+        mockVod2.mediaSequences.forEach((seq, index) => {
+          if (index + 1 < mockVod2.mediaSequences.length) {
+            let nextseqsegs = mockVod2.mediaSequences[index + 1].segments[bw_];
+            let nextLast = nextseqsegs[nextseqsegs.length - 1];
+            let seqsegs = seq.segments[bw_];
+            let last = seqsegs[seqsegs.length - 1];
+            if (last.uri && nextLast.uri) {
+              if (last.uri === nextLast.uri) {
+                seqWithNoNewSegmentCount++;
+              }
+            }
+          }
+        });
+        let allsegs = mockVod2.segments[bw_];
+        const secondVodDuration = getDur(allsegs) - getDur(mockVod2.mediaSequences[0].segments[bw_]) + 3 + 3;
+        const expectedPlayheadPositions = [
+          0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 49, 49.5, 50, 54, 58, 62, 66, 70, 74, 78, 81, 85, 89, 93, 97, 101, 105, 109, 113, 117, 121, 125, 129, 133,
+          137, 141, 145, 149, 153, 157, 161, 165, 168, 171, 174, 177, 180, 183, 186, 189, 192, 195, 198, 201, 204, 204.5,
+        ];
+        const expectedDeltaTimes = [
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -2, -0.5, 0, 3.5, 0, 0, 0, 0, 0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0, 0, -2.5,
+        ];
+        const expectedSeqcount = 63;
+        const expectedVodSegmentsCount = 89;
+        const expectedVodDuration = 205;
+        const expectedSeqWithNoNewSegmentCount = 7;
+
+        expect(playheadPositions).toEqual(expectedPlayheadPositions);
+        expect(deltaTimes).toEqual(expectedDeltaTimes);
+        expect(mockVod2.mediaSequences.length).toEqual(expectedSeqcount);
+        expect(mockVod2.segments[bw_].length).toEqual(expectedVodSegmentsCount);
+        expect(secondVodDuration).toEqual(expectedVodDuration);
+        expect(seqWithNoNewSegmentCount).toEqual(expectedSeqWithNoNewSegmentCount);
+
         done();
       });
   });
