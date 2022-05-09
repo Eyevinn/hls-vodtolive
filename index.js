@@ -336,7 +336,15 @@ class HLSVod {
       if (!insertAfter) {
         // If there is anything to slice
         if (mediaSeqNo > 0) {
-          let targetUri = this.mediaSequences[mediaSeqNo].segments[allBandwidths[0]][0].uri;
+          let targetUri = "";
+          let size = this.mediaSequences[mediaSeqNo].segments[allBandwidths[0]].length;
+          for (let idx = size - 1; idx >= 0; idx--) {
+            const segItem = this.mediaSequences[mediaSeqNo].segments[allBandwidths[0]][idx];
+            if (segItem.uri) {
+              targetUri = segItem.uri;
+              break;
+            }  
+          }
           let targetPos = 0;
           for (let i = mediaSeqNo; i < this.segments[allBandwidths[0]].length; i++) {
             if (this.segments[allBandwidths[0]][i].uri === targetUri) {
@@ -803,9 +811,9 @@ class HLSVod {
     if (!this.segments[destBw]) {
       this.segments[destBw] = [];
     }
-    if (lastMediaSequence) {
+    if (lastMediaSequence && lastMediaSequence.length > 0) {
       let start = 1;
-      if (lastMediaSequence[0].discontinuity) {
+      if (lastMediaSequence[0] && lastMediaSequence[0].discontinuity) {
         start = 2;
       }
       for (let idx = start; idx < lastMediaSequence.length; idx++) {
@@ -849,8 +857,12 @@ class HLSVod {
           if (!this.audioSegments[audioGroupId][audioLang]) {
             this.audioSegments[audioGroupId][audioLang] = [];
           }
-          if (lastMediaAudioSequence.length > 0) {
-            for (let idx = 1; idx < lastMediaAudioSequence.length; idx++) {
+          if (lastMediaAudioSequence && lastMediaAudioSequence.length > 0) {
+            let start = 1;
+            if (lastMediaAudioSequence[0] && lastMediaAudioSequence[0].discontinuity) {
+              start = 2 ;
+            }
+            for (let idx = start; idx < lastMediaAudioSequence.length; idx++) {
               let q = lastMediaAudioSequence[idx];
               this.audioSegments[audioGroupId][audioLang].push(q);
             }
@@ -1096,6 +1108,7 @@ class HLSVod {
               }
             } else {
               // Creating the rest of the sequences
+              let newPushedSegmentsCount = 0;
               // 1 - Add new segments until we overflow (per variant)
               while (totalSeqDurVideo < this.SEQUENCE_DURATION && segIdxVideo < SIZE) {
                 bandwidths.forEach((_bw) => {
@@ -1110,6 +1123,9 @@ class HLSVod {
                     debug(segIdxVideo, `WARNING! The _sequence[bw=${_bw}] pushed seg=${seg}`);
                   }
                   _sequence[_bw].push(seg);
+                  if (_bw === bandwidths[0] && seg.duration) {
+                    newPushedSegmentsCount++;
+                  }
                 });
                 if (audioGroupId) {
                   const audioGroupIds = Object.keys(this.audioSegments);
@@ -1133,6 +1149,7 @@ class HLSVod {
                 segIdxVideo++;
               }
               let shiftOnce = true;
+              let shiftedSegmentsCount = 0;
               // 2 - Shift excess segments and keep count of what has been removed (per variant)
               while (totalSeqDurVideo >= this.SEQUENCE_DURATION || (shiftOnce && segIdxVideo !== 0)) {
                 shiftOnce = false;
@@ -1179,9 +1196,38 @@ class HLSVod {
                 if (timeToRemove) {
                   totalSeqDurVideo -= timeToRemove;
                   totalRemovedSegments++;
+                  shiftedSegmentsCount++;
                 }
                 if (incrementDiscSeqCount) {
                   totalRemovedDiscTags++;
+                }
+
+                /*
+                To avoid creating a sequence where we remove 2 segs to add 2 segs.
+                Aim to add and remove as few segments as possible each sequence.
+                */
+                if (segIdxVideo < SIZE && shiftedSegmentsCount === 1 && newPushedSegmentsCount > 1 && totalSeqDurVideo >= this.SEQUENCE_DURATION) {
+                  // pop video...
+                  bandwidths.forEach((_bw) => {
+                    let seg = _sequence[_bw].pop();
+                    if (seg && seg.duration) {
+                      timeToRemove = seg.duration;
+                    }
+                  });
+                  // pop audio...
+                  if (audioGroupId) {
+                    const audioGroupIds = Object.keys(this.audioSegments);
+                    audioGroupIds.forEach((groupId) => {
+                      const audioLangs = Object.keys(this.audioSegments[groupId]);
+                      audioLangs.forEach((lang) => {
+                        _audioSequence[groupId][lang].pop();
+                      });
+                    });
+                  }
+                  // decrement...
+                  newPushedSegmentsCount--;
+                  segIdxVideo--;
+                  totalSeqDurVideo -= timeToRemove;
                 }
               }
             }
@@ -1218,6 +1264,7 @@ class HLSVod {
       if (!this.mediaSequences) {
         reject("Failed to init media sequences");
       } else {
+        let prevLastSegmentUri = null;
         let discSeqNo = 0;
         this.deltaTimes.push({
           interval: 0,
@@ -1233,30 +1280,76 @@ class HLSVod {
             discSeqNo++;
             debug(`Increasing discont sequence ${discSeqNo}`);
           }
-          if (!this.sequenceAlwaysContainNewSegments) {
-            this.discontinuities[seqNo] = discSeqNo;
-          } else {
+          if (this.sequenceAlwaysContainNewSegments) {
             this.discontinuities[seqNo] += discSeqNo;
             discSeqNo = 0;
+          } else {
+            this.discontinuities[seqNo] = discSeqNo;
           }
-          if (seqNo > 0) {
-            const positionIncrement = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].discontinuity
-              ? mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2].duration
-              : mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].duration;
-            const interval = positionIncrement - lastPositionIncrement;
-            this.deltaTimes.push({
-              interval: interval,
-              position: positionIncrement ? lastPosition + positionIncrement : lastPosition,
-            });
-            if (positionIncrement) {
-              lastPosition += positionIncrement;
-              lastPositionIncrement = positionIncrement;
+          if (this.sequenceAlwaysContainNewSegments) {
+            if (seqNo > 0) {
+              let tpi = 0; // Total Position Increment (total newly added content in seconds)
+              const prevLastSegIdx = findIndexReversed(mseq.segments[bwIdx], (seg) => {
+                if (seg.uri) {
+                  return seg.uri === prevLastSegmentUri;
+                }
+                return false;
+              });
+              for (let i = prevLastSegIdx + 1; i < mseq.segments[bwIdx].length; i++) {
+                const seg = mseq.segments[bwIdx][i];
+                if (seg && seg.duration) {
+                  tpi += seg.duration;
+                }
+              }
+              let lastSegment = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1];
+              if (lastSegment && lastSegment.discontinuity) {
+                lastSegment = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2];
+              }
+              const positionIncrement = lastSegment.duration;
+              const interval = tpi - lastPositionIncrement;
+              this.deltaTimes.push({
+                interval: interval,
+                position: positionIncrement ? lastPosition + tpi : lastPosition,
+              });
+              if (positionIncrement) {
+                lastPosition += tpi;
+                lastPositionIncrement = positionIncrement;
+              }
+              if (lastSegment && lastSegment.uri) {
+                prevLastSegmentUri = lastSegment.uri;
+              }
+            } else {
+              if (mseq.segments[bwIdx]) {
+                let lastSegment = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1];
+                if (lastSegment && lastSegment.discontinuity) {
+                  lastSegment = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2];
+                }
+                if (lastSegment && lastSegment.uri) {
+                  prevLastSegmentUri = lastSegment.uri;
+                }
+                lastPositionIncrement = lastSegment.duration;
+              }
             }
           } else {
-            if (mseq.segments[bwIdx]) {
-              lastPositionIncrement = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].discontinuity
+            if (seqNo > 0) {
+              const positionIncrement = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].discontinuity
                 ? mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2].duration
                 : mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].duration;
+              const interval = positionIncrement - lastPositionIncrement;
+              this.deltaTimes.push({
+                interval: interval,
+                position: positionIncrement ? lastPosition + positionIncrement : lastPosition,
+              });
+              if (positionIncrement) {
+                lastPosition += positionIncrement;
+                lastPositionIncrement = positionIncrement;
+              }
+            } else {
+              if (mseq.segments[bwIdx]) {
+                lastPositionIncrement = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].discontinuity
+                  ? mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2].duration
+                  : mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].duration;
+              }
             }
           }
         }
@@ -1773,6 +1866,18 @@ const fetchWithRetry = async (uri, opts, maxRetries, retryDelayMs, timeoutMs, de
       clearTimeout(timeout);
     }
   }
+};
+
+const findIndexReversed = (arr, fn) => {
+  const size = arr.length;
+  for (let i = size - 1; i >= 0; i--) {
+    const item = arr[i];
+    const verdict = fn(item);
+    if (verdict) {
+      return i;
+    }
+  }
+  return -1;
 };
 
 module.exports = HLSVod;
