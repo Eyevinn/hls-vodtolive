@@ -126,7 +126,7 @@ This project was started as vod-to-live.js in 2018 by Eyevinn Technology.
 
 ## Contributors
 
-- Jonas Rydholm Birmé (jonas.birme@eyevinn.se)
+- Jonas Birmé (jonas.birme@eyevinn.se)
 - Alan Allard (alan.allard@eyevinn.se)
 
 ## Attributions
@@ -146,6 +146,16 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# Support
+
+Join our [community on Slack](http://slack.streamingtech.se) where you can post any questions regarding any of our open source projects. Eyevinn's consulting business can also offer you:
+
+- Further development of this component
+- Customization and integration of this component into your platform
+- Support and maintenance agreement
+
+Contact [sales@eyevinn.se](mailto:sales@eyevinn.se) if you are interested.
 
 # About Eyevinn Technology
 
