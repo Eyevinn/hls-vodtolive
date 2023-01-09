@@ -481,6 +481,33 @@ class HLSVod {
   }
 
   /**
+   * Get all audio segments (duration, uri) for a specific media sequence
+   *
+   * @param {string} SubtitleGroupId - audio group Id
+   * @param {string} subtitleLanguage - audio language
+   * @param {number} seqIdx - media sequence index (first is 0)
+   */
+   getLiveMediaSequenceSubtitleSegments(SubtitleGroupId, subtitleLanguage, seqIdx) {
+    try {
+      // # When language not found, return segments from first language.
+      if (!this.mediaSequences[seqIdx].audioSegments[SubtitleGroupId]) {
+        SubtitleGroupId = this._getFirstAudioGroupWithSegments();
+        if (!SubtitleGroupId) {
+          return [];
+        }
+      }
+      if (!this.mediaSequences[seqIdx].audioSegments[SubtitleGroupId][subtitleLanguage]) {
+        const fallbackLang = this._getFirstAudioLanguageWithSegments(SubtitleGroupId);
+        return this.mediaSequences[seqIdx].audioSegments[SubtitleGroupId][fallbackLang];
+      }
+      return this.mediaSequences[seqIdx].audioSegments[SubtitleGroupId][subtitleLanguage];
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  }
+
+  /**
    * Get the available bandwidths for this VOD
    */
   getBandwidths() {
@@ -709,6 +736,101 @@ class HLSVod {
             m3u8 += "#EXT-X-DISCONTINUITY\n";
           }
           if (v.daterange && i != mediaSeqAudioSegments.length - 1) {
+            const dateRangeAttributes = Object.keys(v.daterange)
+              .map((key) => daterangeAttribute(key, v.daterange[key]))
+              .join(",");
+            m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
+          }
+        }
+        previousSegment = v;
+      }
+    }
+
+    return m3u8;
+  }
+
+
+  /**
+   * Gets a hls/makes m3u8-file with all of the correct subtitle segments
+   * belonging to a given groupID & language for a particular sequence.
+   */
+   getLiveMediaSubtitleSequences(offset, subtitleGroupId, subtitleLanguage, seqIdx, discOffset, padding, forceTargetDuration) {
+    debug(`Get live subtitle media sequence [${seqIdx}] for subGroup=${subtitleGroupId}`);
+    const mediaSeqSubtitleSegments = this.getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage, seqIdx);
+
+    // # If failed to find segments for given language,
+    // # return null rather than an error.
+    if (!mediaSeqSubtitleSegments) {
+      return null;
+    }
+
+    let targetDuration = this._determineTargetDuration(mediaSeqSubtitleSegments);
+    if (padding) {
+      targetDuration += padding;
+    }
+    if (forceTargetDuration) {
+      targetDuration = forceTargetDuration;
+    }
+
+    let m3u8 = "#EXTM3U\n";
+    m3u8 += "#EXT-X-VERSION:6\n";
+    if (this.header) {
+      m3u8 += this.header;
+    }
+    const seqStep = this.mediaSequenceValues[seqIdx];
+    m3u8 += "#EXT-X-INDEPENDENT-SEGMENTS\n";
+    m3u8 += "#EXT-X-TARGETDURATION:" + targetDuration + "\n";
+    m3u8 += "#EXT-X-MEDIA-SEQUENCE:" + (offset + seqStep) + "\n";
+    let discInOffset = discOffset;
+    if (discInOffset == null) {
+      discInOffset = 0;
+    }
+    m3u8 += "#EXT-X-DISCONTINUITY-SEQUENCE:" + (discInOffset + this.discontinuities[seqIdx]) + "\n";
+
+    let previousSegment = null;
+    for (let i = 0; i < mediaSeqSubtitleSegments.length; i++) {
+      const v = mediaSeqSubtitleSegments[i];
+      if (v) {
+        if (previousSegment != null) {
+          if (previousSegment.discontinuity && v.timelinePosition) {
+            const d = new Date(v.timelinePosition);
+            m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + d.toISOString() + "\n";
+          }
+        }
+
+        if (!v.discontinuity) {
+          if (v.daterange) {
+            const dateRangeAttributes = Object.keys(v.daterange)
+              .map((key) => daterangeAttribute(key, v.daterange[key]))
+              .join(",");
+            m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
+          }
+          if (v.cue && v.cue.out) {
+            m3u8 += "#EXT-X-CUE-OUT:DURATION=" + v.cue.duration + "\n";
+          }
+          if (v.cue && v.cue.cont) {
+            m3u8 += "#EXT-X-CUE-OUT-CONT:" + v.cue.cont + "/" + v.cue.duration + "\n";
+          }
+          if (v.uri) {
+            m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
+            m3u8 += v.uri + "\n";
+          }
+          if (v.cue && v.cue.in) {
+            if (
+              this.mediaSequences[seqIdx].segments[bw][i + 1] &&
+              this.mediaSequences[seqIdx].segments[bw][i + 1].discontinuity &&
+              i + 1 == this.mediaSequences[seqIdx].segments[bw].length - 1
+            ) {
+              // Do not add a closing cue-in if next is not a segment and last one in the list
+            } else {
+              m3u8 += "#EXT-X-CUE-IN" + "\n";
+            }
+          }
+        } else {
+          if (i != 0 && i != mediaSeqSubtitleSegments.length - 1) {
+            m3u8 += "#EXT-X-DISCONTINUITY\n";
+          }
+          if (v.daterange && i != mediaSeqSubtitleSegments.length - 1) {
             const dateRangeAttributes = Object.keys(v.daterange)
               .map((key) => daterangeAttribute(key, v.daterange[key]))
               .join(",");
@@ -1365,6 +1487,7 @@ class HLSVod {
     this.previousVod = null;
     this.segments = {};
     this.audioSegments = {};
+    this.subtitleSegments = {};
     this.mediaSequences = [];
     this.targetDuration = {};
     this.targetAudioDuration = {};
@@ -1393,7 +1516,7 @@ class HLSVod {
   _getFirstAudioGroupWithSegments() {
     // # Looks for first audio group with segments by checking if any language
     // # track belonging to the group has segments.
-    const audioGroupIds = Object.keys(this.audioSegments).filter((id) => {
+    const audioGroupIds = Object.keys(this.audioS§egments).filter((id) => {
       let idLangs = Object.keys(this.audioSegments[id]).filter((lang) => {
         return this.audioSegments[id][lang].length > 0;
       });
@@ -1408,6 +1531,19 @@ class HLSVod {
 
   _getFirstAudioLanguageWithSegments(groupId) {
     // # Looks for first audio language in group with segments by checking if any language
+    // # track belonging to the group has segments.
+    const LangsWithSegments = Object.keys(this.audioSegments[groupId]).filter((lang) => {
+      return this.audioSegments[groupId][lang].length > 0;
+    });
+    if (LangsWithSegments.length > 0) {
+      return LangsWithSegments[0];
+    } else {
+      return null;
+    }
+  }
+
+  _getFirstSubtitleLanguageWithSegments(groupId) {
+    // # Looks for first subtitle  language in group with segments by checking if any language
     // # track belonging to the group has segments.
     const LangsWithSegments = Object.keys(this.audioSegments[groupId]).filter((lang) => {
       return this.audioSegments[groupId][lang].length > 0;
