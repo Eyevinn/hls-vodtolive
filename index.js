@@ -754,95 +754,27 @@ class HLSVod {
    * Gets a hls/makes m3u8-file with all of the correct subtitle segments
    * belonging to a given groupID & language for a particular sequence.
    */
-   getLiveMediaSubtitleSequences(offset, subtitleGroupId, subtitleLanguage, seqIdx, discOffset, padding, forceTargetDuration) {
-    debug(`Get live subtitle media sequence [${seqIdx}] for subGroup=${subtitleGroupId}`);
-    const mediaSeqSubtitleSegments = this.getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage, seqIdx);
+   getLiveMediaSubtitleSequences(offset, subtitleGroupId, subtitleLanguage, seqIdx, targetDuration, forceTargetDuration) {
 
-    // # If failed to find segments for given language,
-    // # return null rather than an error.
-    if (!mediaSeqSubtitleSegments) {
-      return null;
-    }
+    debug(`Get live subtitle media sequence [${seqIdx}] for subtitleGroupId=${audioGroupId}`);
+    const mediaSeqAudioSegments = this.getLiveMediaSequenceAudioSegments(subtitleGroupId, subtitleLanguage, seqIdx); // NOT YET COMPLEATLY IMPLEMENTED
 
-    let targetDuration = this._determineTargetDuration(mediaSeqSubtitleSegments);
-    if (padding) {
-      targetDuration += padding;
-    }
-    if (forceTargetDuration) {
-      targetDuration = forceTargetDuration;
-    }
 
+
+    const duration = forceTargetDuration ? forceTargetDuration : targetDuration;
     let m3u8 = "#EXTM3U\n";
     m3u8 += "#EXT-X-VERSION:6\n";
-    if (this.header) {
-      m3u8 += this.header;
-    }
-    const seqStep = this.mediaSequenceValues[seqIdx];
-    m3u8 += "#EXT-X-INDEPENDENT-SEGMENTS\n";
-    m3u8 += "#EXT-X-TARGETDURATION:" + targetDuration + "\n";
-    m3u8 += "#EXT-X-MEDIA-SEQUENCE:" + (offset + seqStep) + "\n";
-    let discInOffset = discOffset;
-    if (discInOffset == null) {
-      discInOffset = 0;
-    }
-    m3u8 += "#EXT-X-DISCONTINUITY-SEQUENCE:" + (discInOffset + this.discontinuities[seqIdx]) + "\n";
+    m3u8 += "#EXT-X-TARGETDURATION:" + duration +  "\n";
+    const mediaSeq = (offset + seqIdx);
+    msu8 += "#EXT-X-MEDIA-SEQUENCE:" +  +"\n";
+    for (let i  = 0; i < 5; i++) {
 
-    let previousSegment = null;
-    for (let i = 0; i < mediaSeqSubtitleSegments.length; i++) {
-      const v = mediaSeqSubtitleSegments[i];
-      if (v) {
-        if (previousSegment != null) {
-          if (previousSegment.discontinuity && v.timelinePosition) {
-            const d = new Date(v.timelinePosition);
-            m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + d.toISOString() + "\n";
-          }
-        }
-
-        if (!v.discontinuity) {
-          if (v.daterange) {
-            const dateRangeAttributes = Object.keys(v.daterange)
-              .map((key) => daterangeAttribute(key, v.daterange[key]))
-              .join(",");
-            m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
-          }
-          if (v.cue && v.cue.out) {
-            m3u8 += "#EXT-X-CUE-OUT:DURATION=" + v.cue.duration + "\n";
-          }
-          if (v.cue && v.cue.cont) {
-            m3u8 += "#EXT-X-CUE-OUT-CONT:" + v.cue.cont + "/" + v.cue.duration + "\n";
-          }
-          if (v.uri) {
-            m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
-            m3u8 += v.uri + "\n";
-          }
-          if (v.cue && v.cue.in) {
-            if (
-              this.mediaSequences[seqIdx].segments[bw][i + 1] &&
-              this.mediaSequences[seqIdx].segments[bw][i + 1].discontinuity &&
-              i + 1 == this.mediaSequences[seqIdx].segments[bw].length - 1
-            ) {
-              // Do not add a closing cue-in if next is not a segment and last one in the list
-            } else {
-              m3u8 += "#EXT-X-CUE-IN" + "\n";
-            }
-          }
-        } else {
-          if (i != 0 && i != mediaSeqSubtitleSegments.length - 1) {
-            m3u8 += "#EXT-X-DISCONTINUITY\n";
-          }
-          if (v.daterange && i != mediaSeqSubtitleSegments.length - 1) {
-            const dateRangeAttributes = Object.keys(v.daterange)
-              .map((key) => daterangeAttribute(key, v.daterange[key]))
-              .join(",");
-            m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
-          }
-        }
-        previousSegment = v;
-      }
+      // DISCONTINUITY NEEDS TO BE ADDED AS WELL
+      m3u8 += "#EXTINF:" + duration +",\n";
+      m3u8 += "LINK TO URL FROM ENV??\n" ;
     }
-
     return m3u8;
-  }
+   }
 
   /**
    * Get the usage profile for this VOD
