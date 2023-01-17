@@ -1152,6 +1152,62 @@ describe("HLSVod with not equal usage profiles", () => {
       });
   });
 });
+
+describe("HLSVod with subtitles", () => {
+  beforeEach(() => {
+    mockMasterManifest = function () {
+      return fs.createReadStream("testvectors/hls_subs/master.m3u8");
+    };
+
+    mockMediaManifest = function () {
+      return fs.createReadStream("testvectors/hls_subs/b2962000-video.m3u8");
+    };
+  });
+
+  mockSubtitleManifest = function (lang) {
+    if (lang) {
+      return fs.createReadStream(`testvectors/hls_subs/${lang}-ed.m3u8`);
+    } else {
+      return fs.createReadStream(`testvectors/hls_subs/french-ed.m3u8`);
+    }
+  };
+  mockAudioManifest = function () {
+      return fs.createReadStream(`testvectors/hls_subs/b160000.english.m3u8`);
+  };
+
+  it("returns the correct number of bandwidths", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest, mockSubtitleManifest).then(() => {
+      expect(mockVod.getBandwidths().length).toBe(1);
+      expect(mockVod.getBandwidths()).toEqual(["2962000"]);
+      done();
+    });
+  });
+  it("returns the correct number of bandwidths", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest, mockSubtitleManifest).then(() => {
+      const seqSubtitleSegments = mockVod.getLiveMediaSubtitleSequences("audio-aacl-96", "en", 0);      
+      const result = `#EXTM3U\n
+      #EXT-X-VERSION:6\n
+      #EXT-X-TARGETDURATION:6\n
+      #EXT-X-MEDIA-SEQUENCE:1\n
+      #EXTINF:6 ,\n"
+      LINK TO URL FROM ENV??\n
+      #EXTINF:6 ,\n"
+      LINK TO URL FROM ENV??\n
+      #EXTINF:6 ,\n"
+      LINK TO URL FROM ENV??\n
+      #EXTINF:6 ,\n";
+      LINK TO URL FROM ENV??\n
+      #EXTINF:6 ,\n";
+      LINK TO URL FROM ENV??\n`
+      expect(seqSubtitleSegments.toEqual(result))
+      done();
+    });
+  });
+});
+
+
 /**
  *  Changes:
  *  - Read from new mock manifests and

@@ -766,7 +766,7 @@ class HLSVod {
     m3u8 += "#EXT-X-VERSION:6\n";
     m3u8 += "#EXT-X-TARGETDURATION:" + duration +  "\n";
     const mediaSeq = (offset + seqIdx);
-    msu8 += "#EXT-X-MEDIA-SEQUENCE:" +  +"\n";
+    m3u8 += "#EXT-X-MEDIA-SEQUENCE:" +  +"\n";
     for (let i  = 0; i < 5; i++) {
 
       // DISCONTINUITY NEEDS TO BE ADDED AS WELL
@@ -1448,7 +1448,7 @@ class HLSVod {
   _getFirstAudioGroupWithSegments() {
     // # Looks for first audio group with segments by checking if any language
     // # track belonging to the group has segments.
-    const audioGroupIds = Object.keys(this.audioS§egments).filter((id) => {
+    const audioGroupIds = Object.keys(this.audioSegments).filter((id) => {
       let idLangs = Object.keys(this.audioSegments[id]).filter((lang) => {
         return this.audioSegments[id][lang].length > 0;
       });
@@ -1464,7 +1464,7 @@ class HLSVod {
   _getFirstSubtitleGroupWithSegments() {
     // # Looks for first audio group with segments by checking if any language
     // # track belonging to the group has segments.
-    const audioGroupIds = Object.keys(this.audioS§egments).filter((id) => {
+    const audioGroupIds = Object.keys(this.audioSegments).filter((id) => {
       let idLangs = Object.keys(this.audioSegments[id]).filter((lang) => {
         return this.audioSegments[id][lang].length > 0;
       });
