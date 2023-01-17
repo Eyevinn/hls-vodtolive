@@ -491,13 +491,13 @@ class HLSVod {
     try {
       // # When language not found, return segments from first language.
       if (!this.mediaSequences[seqIdx].audioSegments[SubtitleGroupId]) {
-        SubtitleGroupId = this._getFirstAudioGroupWithSegments();
+        SubtitleGroupId = this._getFirstSubtitleGroupWithSegments();
         if (!SubtitleGroupId) {
           return [];
         }
       }
       if (!this.mediaSequences[seqIdx].audioSegments[SubtitleGroupId][subtitleLanguage]) {
-        const fallbackLang = this._getFirstAudioLanguageWithSegments(SubtitleGroupId);
+        const fallbackLang = this._getFirstSubtitleLanguageWithSegments(SubtitleGroupId);
         return this.mediaSequences[seqIdx].audioSegments[SubtitleGroupId][fallbackLang];
       }
       return this.mediaSequences[seqIdx].audioSegments[SubtitleGroupId][subtitleLanguage];
@@ -757,7 +757,7 @@ class HLSVod {
    getLiveMediaSubtitleSequences(offset, subtitleGroupId, subtitleLanguage, seqIdx, targetDuration, forceTargetDuration) {
 
     debug(`Get live subtitle media sequence [${seqIdx}] for subtitleGroupId=${audioGroupId}`);
-    const mediaSeqAudioSegments = this.getLiveMediaSequenceAudioSegments(subtitleGroupId, subtitleLanguage, seqIdx); // NOT YET COMPLEATLY IMPLEMENTED
+    const mediaSeqAudioSegments = this.getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage, seqIdx); // NOT YET COMPLEATLY IMPLEMENTED
 
 
 
@@ -1446,6 +1446,22 @@ class HLSVod {
   }
 
   _getFirstAudioGroupWithSegments() {
+    // # Looks for first audio group with segments by checking if any language
+    // # track belonging to the group has segments.
+    const audioGroupIds = Object.keys(this.audioS§egments).filter((id) => {
+      let idLangs = Object.keys(this.audioSegments[id]).filter((lang) => {
+        return this.audioSegments[id][lang].length > 0;
+      });
+      return idLangs.length > 0;
+    });
+    if (audioGroupIds.length > 0) {
+      return audioGroupIds[0];
+    } else {
+      return null;
+    }
+  }
+
+  _getFirstSubtitleGroupWithSegments() {
     // # Looks for first audio group with segments by checking if any language
     // # track belonging to the group has segments.
     const audioGroupIds = Object.keys(this.audioS§egments).filter((id) => {
