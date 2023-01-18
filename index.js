@@ -116,13 +116,14 @@ class HLSVod {
   /**
    * Load and parse the HLS VOD
    */
-  load(_injectMasterManifest, _injectMediaManifest, _injectAudioManifest) {
+  load(_injectMasterManifest, _injectMediaManifest, _injectAudioManifest, _injectSubtitleManifest) {
     return new Promise((resolve, reject) => {
       const parser = m3u8.createStream();
 
       parser.on("m3u", (m3u) => {
         let mediaManifestPromises = [];
         let audioManifestPromises = [];
+        let subtitleManifestPromises = [];
         let baseUrl;
         const m = this.masterManifestUri.match("^(.*)/.*?$");
         if (m) {
@@ -232,6 +233,96 @@ class HLSVod {
             for (let j = 0; j < audioLanguages.length; j++) {
               let audioLang = audioLanguages[j];
               let audioUri = audioGroupItems[j].attributes.attributes.uri;
+              if (!audioUri) {
+                //# if mediaItems dont have uris
+                let audioVariant = m3u.items.StreamItem.find((item) => {
+                  return !item.attributes.attributes.resolution && item.attributes.attributes["audio"] === audioGroupId;
+                });
+                if (audioVariant) {
+                  audioUri = audioVariant.properties.uri;
+                }
+              }
+              if (audioUri) {
+                let audioManifestUrl = url.resolve(baseUrl, audioUri);
+                if (!audioGroups[audioGroupId]) {
+                  audioGroups[audioGroupId] = {};
+                }
+                // # Prevents 'loading' an audio track with same GroupID and LANG.
+                // # otherwise it just would've loaded OVER the latest occurrent of the LANG in GroupID.
+                if (!audioGroups[audioGroupId][audioLang]) {
+                  audioGroups[audioGroupId][audioLang] = true;
+                  audioManifestPromises.push(this._loadAudioManifest(audioManifestUrl, audioGroupId, audioLang, _injectAudioManifest));
+                } else {
+                  debug(`Audio manifest for language "${audioLang}" from '${audioGroupId}' in already loaded, skipping`);
+                }
+              } else {
+                debug(`No media item for '${audioGroupId}' in "${audioLang}" was found, skipping`);
+              }
+            }
+          }
+          if (streamItem.attributes.attributes["subtitle"]) {
+            let audioGroupId = streamItem.attributes.attributes["subtitle"];
+            if (!this.subtitleSegments[audioGroupId]) {
+              this.subtitleSegments[audioGroupId] = {};
+            }
+            debug(`Lookup media item for '${subtitleGroupId}'`);
+
+            // # Needed for the case when loading after another VOD.
+            const previousVODLanguages = Object.keys(this.subtitleSegments[subtitleGroupId]);
+
+            let subGroupItems = m3u.items.MediaItem.filter((item) => {
+              return item.attributes.attributes.type === "SUBTITLE" && item.attributes.attributes["group-id"] === subtitleGroupId;
+            });
+            // # Find all langs amongst the mediaItems that have this group id.
+            // # It extracts each mediaItems language attribute value.
+            // # ALSO initialize in this.audioSegments a lang. property whos value is an array [{seg1}, {seg2}, ...].
+            let subLanguages = subGroupItems.map((item) => {
+              let itemLang;
+              if (!item.attributes.attributes["language"]) {
+                itemLang = null;
+              } else {
+                itemLang = item.attributes.attributes["language"];
+              }
+              // Initialize lang. in new group.
+              if (!this.subtitleSegments[SubtitleGroupId][itemLang]) {
+                this.subtitleSegments[subtitleGroupId][itemLang] = [];
+              }
+              return (item = itemLang);
+            });
+
+            // # Inject "default" language's segments to every new language relative to previous VOD.
+            // # For the case when this is a VOD following another, every language new or old should
+            // # start with some segments from the previous VOD's last sequence.
+            const newLanguages = subLanguages.filter((lang) => {
+              return !previousVODLanguages.includes(lang);
+            });
+            // # Only inject if there were prior tracks.
+            if (previousVODLanguages.length > 0) {
+              for (let i = 0; i < newLanguages.length; i++) {
+                const newLanguage = newLanguages[i];
+                const defaultLanguage = this._getFirstSubtitleLanguageWithSegments(subtitleGroupId);
+                this.subtitleSegments[subtitleGroupId][newLanguage] = [...this.subtitleSegments[subtitleGroupId][defaultLanguage]];
+              }
+            }
+
+            // # Need to clean up langs. loaded from prev. VOD that current VOD doesn't have.
+            // # Necessary, for the case when getLiveMediaSequenceAudioSegments() tries to
+            // # access an audioGroup's language that the current VOD never had. A False-Positive.
+            let allLangs = Object.keys(this.subtitleSegments[audioGroupId]);
+            let toRemove = [];
+            allLangs.map((junkLang) => {
+              if (!subLanguages.includes(junkLang)) {
+                toRemove.push(junkLang);
+              }
+            });
+            toRemove.map((junkLang) => {
+              delete this.subtitleSegments[subtitleGroupId][junkLang];
+            });
+
+            // # For each lang, find the lang playlist uri and do _loadAudioManifest() on it.
+            for (let j = 0; j < subLanguages.length; j++) {
+              let audioLang = subLanguages[j];
+              let audioUri = subGroupItems[j].attributes.attributes.uri;
               if (!audioUri) {
                 //# if mediaItems dont have uris
                 let audioVariant = m3u.items.StreamItem.find((item) => {
