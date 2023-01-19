@@ -1172,7 +1172,7 @@ describe("HLSVod with subtitles", () => {
     }
   };
   mockAudioManifest = function () {
-      return fs.createReadStream(`testvectors/hls_subs/b160000.english.m3u8`);
+      return fs.createReadStream(`testvectors/hls_subs/b160000-english.m3u8`);
   };
 
   it("returns the correct number of bandwidths", (done) => {
@@ -1186,21 +1186,8 @@ describe("HLSVod with subtitles", () => {
   it("returns the correct number of bandwidths", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8");
     mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest, mockSubtitleManifest).then(() => {
-      const seqSubtitleSegments = mockVod.getLiveMediaSubtitleSequences("audio-aacl-96", "en", 0);      
-      const result = `#EXTM3U\n
-      #EXT-X-VERSION:6\n
-      #EXT-X-TARGETDURATION:6\n
-      #EXT-X-MEDIA-SEQUENCE:1\n
-      #EXTINF:6 ,\n"
-      LINK TO URL FROM ENV??\n
-      #EXTINF:6 ,\n"
-      LINK TO URL FROM ENV??\n
-      #EXTINF:6 ,\n"
-      LINK TO URL FROM ENV??\n
-      #EXTINF:6 ,\n";
-      LINK TO URL FROM ENV??\n
-      #EXTINF:6 ,\n";
-      LINK TO URL FROM ENV??\n`
+      const seqSubtitleSegments = mockVod.getLiveMediaSubtitleSequences(0, "subs", "french", 0);      
+      const result = fs.createReadStream(`testvectors/hls_subs/expectedSubtitleOutput.m3u8`)
       expect(seqSubtitleSegments.toEqual(result))
       done();
     });

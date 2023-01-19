@@ -247,8 +247,7 @@ class HLSVod {
                 if (!audioGroups[audioGroupId]) {
                   audioGroups[audioGroupId] = {};
                 }
-                // # Prevents 'loading' an audio track with same GroupID and LANG.
-                // # otherwise it just would've loaded OVER the latest occurrent of the LANG in GroupID.
+                
                 if (!audioGroups[audioGroupId][audioLang]) {
                   audioGroups[audioGroupId][audioLang] = true;
                   audioManifestPromises.push(this._loadAudioManifest(audioManifestUrl, audioGroupId, audioLang, _injectAudioManifest));
@@ -260,10 +259,12 @@ class HLSVod {
               }
             }
           }
+
+          let subGroups = {};
           if (streamItem.attributes.attributes["subtitle"]) {
-            let audioGroupId = streamItem.attributes.attributes["subtitle"];
-            if (!this.subtitleSegments[audioGroupId]) {
-              this.subtitleSegments[audioGroupId] = {};
+            let subtitleGroupId = streamItem.attributes.attributes["subtitle"];
+            if (!this.subtitleSegments[subtitleGroupId]) {
+              this.subtitleSegments[subtitleSegments] = {};
             }
             debug(`Lookup media item for '${subtitleGroupId}'`);
 
@@ -273,9 +274,6 @@ class HLSVod {
             let subGroupItems = m3u.items.MediaItem.filter((item) => {
               return item.attributes.attributes.type === "SUBTITLE" && item.attributes.attributes["group-id"] === subtitleGroupId;
             });
-            // # Find all langs amongst the mediaItems that have this group id.
-            // # It extracts each mediaItems language attribute value.
-            // # ALSO initialize in this.audioSegments a lang. property whos value is an array [{seg1}, {seg2}, ...].
             let subLanguages = subGroupItems.map((item) => {
               let itemLang;
               if (!item.attributes.attributes["language"]) {
@@ -305,10 +303,7 @@ class HLSVod {
               }
             }
 
-            // # Need to clean up langs. loaded from prev. VOD that current VOD doesn't have.
-            // # Necessary, for the case when getLiveMediaSequenceAudioSegments() tries to
-            // # access an audioGroup's language that the current VOD never had. A False-Positive.
-            let allLangs = Object.keys(this.subtitleSegments[audioGroupId]);
+            let allLangs = Object.keys(this.subtitleSegments[subtitleGroupId]);
             let toRemove = [];
             allLangs.map((junkLang) => {
               if (!subLanguages.includes(junkLang)) {
@@ -319,39 +314,37 @@ class HLSVod {
               delete this.subtitleSegments[subtitleGroupId][junkLang];
             });
 
-            // # For each lang, find the lang playlist uri and do _loadAudioManifest() on it.
+            
             for (let j = 0; j < subLanguages.length; j++) {
-              let audioLang = subLanguages[j];
-              let audioUri = subGroupItems[j].attributes.attributes.uri;
-              if (!audioUri) {
+              let subLang = subLanguages[j];
+              let subUri = subGroupItems[j].attributes.attributes.uri;
+              if (!subUri) {
                 //# if mediaItems dont have uris
-                let audioVariant = m3u.items.StreamItem.find((item) => {
-                  return !item.attributes.attributes.resolution && item.attributes.attributes["audio"] === audioGroupId;
+                let subVariant = m3u.items.StreamItem.find((item) => {
+                  return !item.attributes.attributes.resolution && item.attributes.attributes["SUBTITLES"] === subtitleGroupId;
                 });
-                if (audioVariant) {
-                  audioUri = audioVariant.properties.uri;
+                if (subVariant) {
+                  subUri = subVariant.properties.uri;
                 }
               }
-              if (audioUri) {
-                let audioManifestUrl = url.resolve(baseUrl, audioUri);
-                if (!audioGroups[audioGroupId]) {
-                  audioGroups[audioGroupId] = {};
+              if (subUri) {
+                let subtitleManifestUrl = url.resolve(baseUrl, subUri);
+                if (!subGroups[subtitleGroupId]) {
+                  subGroups[subtitleGroupId] = {};
                 }
-                // # Prevents 'loading' an audio track with same GroupID and LANG.
-                // # otherwise it just would've loaded OVER the latest occurrent of the LANG in GroupID.
-                if (!audioGroups[audioGroupId][audioLang]) {
-                  audioGroups[audioGroupId][audioLang] = true;
-                  audioManifestPromises.push(this._loadAudioManifest(audioManifestUrl, audioGroupId, audioLang, _injectAudioManifest));
+                if (!subGroups[subtitleGroupId][subLang]) {
+                  subGroups[subtitleGroupId][subLang] = true;
+                  subtitleManifestPromises.push(this._loadSubtileManifest(subtitleManifestUrl, subtitleGroupId, subLang, _injectSubtitleManifest));
                 } else {
-                  debug(`Audio manifest for language "${audioLang}" from '${audioGroupId}' in already loaded, skipping`);
+                  debug(`Subtitle manifest for language "${subLang}" from '${subtitleGroupId}' in already loaded, skipping`);
                 }
               } else {
-                debug(`No media item for '${audioGroupId}' in "${audioLang}" was found, skipping`);
+                debug(`No media item for '${subGroupItems}' in "${subLang}" was found, skipping`);
               }
             }
           }
         }
-        Promise.all(mediaManifestPromises.concat(audioManifestPromises))
+        Promise.all(mediaManifestPromises.concat(audioManifestPromises.concat(subtitleManifestPromises)))
           .then(this._cleanupUnused.bind(this))
           .then(this._createMediaSequences.bind(this))
           .then(resolve)
@@ -847,8 +840,8 @@ class HLSVod {
    */
    getLiveMediaSubtitleSequences(offset, subtitleGroupId, subtitleLanguage, seqIdx, targetDuration, forceTargetDuration) {
 
-    debug(`Get live subtitle media sequence [${seqIdx}] for subtitleGroupId=${audioGroupId}`);
-    const mediaSeqAudioSegments = this.getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage, seqIdx); // NOT YET COMPLEATLY IMPLEMENTED
+    debug(`Get live subtitle media sequence [${seqIdx}] for subtitleGroupId=${subtitleGroupId}`);
+    const mediaSeqASubtitleSegments = this.getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage, seqIdx); // NOT YET COMPLEATLY IMPLEMENTED
 
 
 
@@ -857,12 +850,12 @@ class HLSVod {
     m3u8 += "#EXT-X-VERSION:6\n";
     m3u8 += "#EXT-X-TARGETDURATION:" + duration +  "\n";
     const mediaSeq = (offset + seqIdx);
-    m3u8 += "#EXT-X-MEDIA-SEQUENCE:" +  +"\n";
+    m3u8 += "#EXT-X-MEDIA-SEQUENCE:" + mediaSeq +"\n";
     for (let i  = 0; i < 5; i++) {
 
       // DISCONTINUITY NEEDS TO BE ADDED AS WELL
       m3u8 += "#EXTINF:" + duration +",\n";
-      m3u8 += "LINK TO URL FROM ENV??\n" ;
+      m3u8 += "LINK TO URL FROM ENV??\n" ;//?p=mediaSeq
     }
     return m3u8;
    }
