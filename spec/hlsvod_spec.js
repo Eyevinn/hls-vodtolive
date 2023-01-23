@@ -1218,6 +1218,16 @@ describe("HLSVod with subtitles", () => {
       done();
     });
   });
+  it("returns the correct subtitle URL on next chunck", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest).then(() => {
+      const seqSubtitleSegments = mockVod.getLiveMediaSequenceSubtitleSegments("subs", "french", 0);
+      expect(seqSubtitleSegments[4].uri).toEqual("subtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA==_0.webvtt");
+      expect(seqSubtitleSegments[5].uri).toEqual("subtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA==_25.webvtt");
+      done();
+    });
+  });
+
 });
 
 
