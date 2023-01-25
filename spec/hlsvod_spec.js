@@ -1162,18 +1162,19 @@ describe("HLSVod with subtitles", () => {
     mockMediaManifest = function () {
       return fs.createReadStream("testvectors/hls_subs/b2962000-video.m3u8");
     };
-  });
 
-  mockSubtitleManifest = function (lang) {
-    if (lang) {
-      return fs.createReadStream(`testvectors/hls_subs/${lang}-ed.m3u8`);
-    } else {
-      return fs.createReadStream(`testvectors/hls_subs/french-ed.m3u8`);
+
+    mockSubtitleManifest = function (lang) {
+      if (lang) {
+        return fs.createReadStream(`testvectors/hls_subs/${lang}-ed.m3u8`);
+      } else {
+        return fs.createReadStream(`testvectors/hls_subs/french-ed.m3u8`);
+      }
+    };
+    mockAudioManifest = function () {
+        return fs.createReadStream(`testvectors/hls_subs/b160000-english.m3u8`);
     }
-  };
-  mockAudioManifest = function () {
-    return fs.createReadStream(`testvectors/hls_subs/b160000-english.m3u8`);
-  };
+  });
 
   it("returns the correct number of bandwidths", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8");
@@ -1186,7 +1187,7 @@ describe("HLSVod with subtitles", () => {
   it("returns the correct subtitle manifest", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8");
     mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest, mockSubtitleManifest).then(() => {
-      const seqSubtitleSegments = mockVod.getLiveMediaSubtitleSequences(0, "subs", "french", 0);
+      const seqSubtitleSegments = mockVod.getLiveMediaSubtitleSequences(0, "subs", "french", 0, 6);
       const result = fs.createReadStream(`testvectors/hls_subs/expectedSubtitleOutput.m3u8`)
       expect(seqSubtitleSegments.toEqual(result))
       done();
@@ -1195,7 +1196,7 @@ describe("HLSVod with subtitles", () => {
   it("returns the correct first segment", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8");
     mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest, mockSubtitleManifest).then(() => {
-      const m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "french", 0);
+      const m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "french", 0, 6);
       const m = m3u8.match("subtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA==_0.webvtt?p=1");
       expect(m).not.toBeNull();
       done();
@@ -1204,7 +1205,7 @@ describe("HLSVod with subtitles", () => {
   it("returns the correct segment number", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8");
     mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest, mockSubtitleManifest).then(() => {
-      const m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "french", 20);
+      const m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "french", 20, 6);
       const m = m3u8.match("subtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA==_0.webvtt?p=20");
       expect(m).not.toBeNull();
       done();
@@ -1213,7 +1214,7 @@ describe("HLSVod with subtitles", () => {
   it("returns the correct subtitle URL", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8");
     mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest).then(() => {
-      const seqSubtitleSegments = mockVod.getLiveMediaSequenceSubtitleSegments("subs", "french", 0);
+      const seqSubtitleSegments = mockVod.getLiveMediaSequenceSubtitleSegments("subs", "french", 0, 6);
       expect(seqSubtitleSegments[4].uri).toEqual("subtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA==_0.webvtt");
       done();
     });
@@ -1221,7 +1222,7 @@ describe("HLSVod with subtitles", () => {
   it("returns the correct subtitle URL on next chunck", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8");
     mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest).then(() => {
-      const m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "french", 24);
+      const m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "french", 24, 6);
       const m = m3u8.match("subtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA==_0.webvtt?p=24");
       const m2 = m3u8.match("subtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA==_25.webvtt?p=0");
       expect(m).not.toBeNull();
