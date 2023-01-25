@@ -14,11 +14,11 @@ describe("HLSVod CMAF standalone", () => {
     };
 
     mockMediaManifest = function (bandwidth) {
-      return fs.createReadStream("testvectors/hls_cmaf1/test-video=" + bandwidth + ".m3u8");
+      return fs.createReadStream("testvectors/hls_cmaf_1/test-video=" + bandwidth + ".m3u8");
     };
 
     mockAudioManifest = function (bandwidth) {
-      return fs.createReadStream("testvectors/hls_cmaf1/test-audio=" + bandwidth + ".m3u8");
+      return fs.createReadStream("testvectors/hls_cmaf_1/test-audio=" + bandwidth + ".m3u8");
     };    
   });
 
