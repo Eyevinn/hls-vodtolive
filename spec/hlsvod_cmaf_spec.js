@@ -17,12 +17,15 @@ describe("HLSVod CMAF standalone", () => {
       return fs.createReadStream("testvectors/hls_cmaf_1/test-video=" + bandwidth + ".m3u8");
     };
 
-    mockAudioManifest = function (bandwidth) {
-      return fs.createReadStream("testvectors/hls_cmaf_1/test-audio=" + bandwidth + ".m3u8");
+    mockAudioManifest = function (groupId, lang) {
+      const bw = {
+        'audio-aacl-256': '256000'
+      };
+      return fs.createReadStream("testvectors/hls_cmaf_1/test-audio=" + bw[groupId] + ".m3u8");
     };    
   });
 
-  it("passes through the init segment correctly", () => {
+  it("passes through the init segment correctly", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8");
     mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest).then(() => {
       done();
