@@ -38,15 +38,6 @@ describe("HLSVod with subtitles", () => {
         done();
       });
     });
-    /*it("returns the correct subtitle manifest", (done) => {
-      mockVod = new HLSVod("http://mock.com/mock.m3u8");
-      mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest, mockSubtitleManifest).then(() => {
-        const seqSubtitleSegments = mockVod.getLiveMediaSubtitleSequences(0, "subs", "french", 1, 6);
-        const result = fs.readFileSync(`testvectors/hls_subs/expectedSubtitleOutput.m3u8`).toString();
-        expect(seqSubtitleSegments).toEqual(result)
-        done();
-      });
-    });*/
     it("returns the correct first segment", (done) => {
       mockVod = new HLSVod("http://mock.com/mock.m3u8");
       mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest, mockSubtitleManifest).then(() => {
