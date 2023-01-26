@@ -152,6 +152,7 @@ class HLSVod {
         }
 
         let audioGroups = {};
+        let subGroups = {};
 
         for (let i = 0; i < m3u.items.StreamItem.length; i++) {
           const streamItem = m3u.items.StreamItem[i];
@@ -267,19 +268,22 @@ class HLSVod {
             }
           }
 
-          let subGroups = {};
-          if (streamItem.attributes.attributes["subtitle"]) {
-            let subtitleGroupId = streamItem.attributes.attributes["subtitle"];
+          
+          if (streamItem.attributes.attributes["subtitles"]) {
+            let subtitleGroupId = streamItem.attributes.attributes["subtitles"];
+            
             if (!this.subtitleSegments[subtitleGroupId]) {
-              this.subtitleSegments[subtitleSegments] = {};
+              this.subtitleSegments[subtitleGroupId] = {};
+            
             }
-            debug(`Lookup media item for '${subtitleGroupId}'`);
+            //debug(`Lookup media item for '${subtitleGroupId}'`);
+            
 
             // # Needed for the case when loading after another VOD.
             const previousVODLanguages = Object.keys(this.subtitleSegments[subtitleGroupId]);
 
             let subGroupItems = m3u.items.MediaItem.filter((item) => {
-              return item.attributes.attributes.type === "SUBTITLE" && item.attributes.attributes["group-id"] === subtitleGroupId;
+              return item.attributes.attributes.type === "SUBTITLES" && item.attributes.attributes["group-id"] === subtitleGroupId;
             });
             let subLanguages = subGroupItems.map((item) => {
               let itemLang;
@@ -351,7 +355,7 @@ class HLSVod {
             }
           }
         }
-        Promise.all(mediaManifestPromises.concat(audioManifestPromises.concat(subtitleManifestPromises)))
+        Promise.all(mediaManifestPromises.concat(audioManifestPromises).concat(subtitleManifestPromises))
           .then(this._cleanupUnused.bind(this))
           .then(this._createMediaSequences.bind(this))
           .then(resolve)
@@ -578,21 +582,21 @@ class HLSVod {
    * @param {string} subtitleLanguage - audio language
    * @param {number} seqIdx - media sequence index (first is 0)
    */
-   getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage, seqIdx) {
-     console.log(this.mediaSequences)
+   getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage) {
     try {
       // # When language not found, return segments from first language.
-      if (!this.mediaSequences[seqIdx].subtitleSegments[subtitleGroupId]) {
+      this.subtitleSegments
+      if (!this.subtitleSegments[subtitleGroupId]) {
         subtitleGroupId = this._getFirstSubtitleGroupWithSegments();
         if (!subtitleGroupId) {
           return [];
         }
       }
-      if (!this.mediaSequences[seqIdx].subtitleSegments[subtitleGroupId][subtitleLanguage]) {
+      if (!this.subtitleSegments[subtitleGroupId][subtitleLanguage]) {
         const fallbackLang = this._getFirstSubtitleLanguageWithSegments(subtitleGroupId);
-        return this.mediaSequences[seqIdx].subtitleSegments[subtitleGroupId][fallbackLang];
+        return this.subtitleSegments[subtitleGroupId][fallbackLang];
       }
-      return this.mediaSequences[seqIdx].subtitleSegments[subtitleGroupId][subtitleLanguage];
+      return this.subtitleSegments[subtitleGroupId][subtitleLanguage];
     } catch (err) {
       console.error(err);
       return [];
@@ -855,7 +859,7 @@ class HLSVod {
    * belonging to a given groupID & language for a particular sequence.
    */
    getLiveMediaSubtitleSequences(offset, subtitleGroupId, subtitleLanguage, seqIdx, targetDuration, forceTargetDuration) {
-
+    const bw = this.getBandwidths()[0]
     debug(`Get live subtitle media sequence [${seqIdx}] for subtitleGroupId=${subtitleGroupId}`);
     const mediaSeqSubtitleSegments = this.getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage, seqIdx); // NOT YET COMPLEATLY IMPLEMENTED
 
@@ -865,13 +869,10 @@ class HLSVod {
     m3u8 += "#EXT-X-TARGETDURATION:" + duration +  "\n";
     const mediaSeq = (offset + seqIdx);
     m3u8 += "#EXT-X-MEDIA-SEQUENCE:" + mediaSeq +"\n";
-    //const part = mediaSeq % (duration/mediaSeqSubtitleSegments[0].cue.duration)
-    //const indexToOfSegment = mediaSeq/(duration/mediaSeqSubtitleSegments[0].cue.duration)
-    console.log(mediaSeqSubtitleSegments)
-    for (let i = 0; i < mediaSeqSubtitleSegments.length; i++) {
-      const part = mediaSeq % (duration/mediaSeqSubtitleSegments[i].cue.duration)
-    const indexToOfSegment = mediaSeq/(duration/mediaSeqSubtitleSegments[i].cue.duration)
-    
+    const targetSubDuration = this._determineTargetDuration(mediaSeqSubtitleSegments)
+    for (let i = 0; i < this.mediaSequences[seqIdx].segments[bw].length; i++) {
+      const part = (mediaSeq + i) % (targetSubDuration/duration)  
+      const indexToOfSegment = Math.floor((mediaSeq + i)/(targetSubDuration/duration));
       const v = mediaSeqSubtitleSegments[indexToOfSegment];
       if (v) {
         if (!v.discontinuity) {
@@ -1070,10 +1071,8 @@ class HLSVod {
       let duration = 0;
       const bw = this._getFirstBwWithSegments();
       const audioGroupId = this._getFirstAudioGroupWithSegments();
-      const subtitleGroupId = this._getFirstSubtitleGroupWithSegments();
       let sequence = {};
       let audioSequence = {};
-      let subtitleSequence = {};
 
       // Remove all double discontinuities (video)
       const bandwidths = Object.keys(this.segments);
@@ -1122,7 +1121,6 @@ class HLSVod {
           if (this.segments[bw][segIdx].uri) {
             duration += this.segments[bw][segIdx].duration;
           }
-          //console.log(segIdx, this.segments[bw][segIdx], duration, this.segments[bw].length);
           if (duration < this.SEQUENCE_DURATION) {
             const bandwidths = Object.keys(this.segments);
             for (let i = 0; i < bandwidths.length; i++) {
@@ -1170,28 +1168,6 @@ class HLSVod {
                 }
               }
             }
-            if (subtitleGroupId) {
-              const subtitleGroupIds = Object.keys(this.subtitleSegments);
-              for (let i = 0; i < subtitleGroupIds.length; i++) {
-                const subtitleGroupId = subtitleGroupIds[i];
-                if (!subtitleSequence[subtitleGroupId]) {
-                  subtitleSequence[subtitleGroupId] = {};
-                }
-                const subtitleLangs = Object.keys(this.subtitleSegments[subtitleGroupId]);
-                for (let k = 0; k < subtitleLangs.length; k++) {
-                  const subtitleLang = subtitleLangs[k];
-                  if (!subtitleSequence[subtitleGroupId][subtitleLang]) {
-                    subtitleSequence[subtitleGroupId][subtitleLang] = [];
-                  }
-                  let seg = this.subtitleSegments[subtitleGroupId][subtitleLang][segIdx];
-                  if (!seg) {
-                    debug(segIdx, `WARNING! The subtitleSequence[id=${subtitleGroupId}][lang=${subtitleLang}] pushed seg=${seg}`);
-                  }
-                  subtitleSequence[subtitleGroupId][subtitleLang].push(seg);
-                }
-              }
-            }
-            
             segIdx++;
           } else {
             //debug(`Pushing seq=${this.mediaSequences.length} firstSeg=${sequence[Object.keys(this.segments)[0]][0].uri}, length=${sequence[Object.keys(this.segments)[0]].length}, duration=${duration} < ${this.SEQUENCE_DURATION}`);
@@ -1204,7 +1180,6 @@ class HLSVod {
             this.mediaSequences.push({
               segments: sequence,
               audioSegments: audioSequence,
-              subtitleSegments: subtitleSequence,
             });
             this.mediaSequenceValues[seqIndex] = seqIndex;
             seqIndex++;
@@ -1221,7 +1196,6 @@ class HLSVod {
           this.mediaSequences.push({
             segments: sequence,
             audioSegments: audioSequence,
-            subtitleSegments: subtitleSequence,
           });
           this.mediaSequenceValues[seqIndex] = seqIndex;
           sequence = {};
@@ -1238,7 +1212,6 @@ class HLSVod {
          */
         const videoSequences = [];
         const audioSequences = [];
-        const subtitleSequences = [];
         let segIdxVideo = 0;
         const SIZE = this.segments[bw].length;
         // Process Video Segments
@@ -1418,6 +1391,7 @@ class HLSVod {
                       });
                     });
                   }
+
                   // decrement...
                   newPushedSegmentsCount--;
                   segIdxVideo--;
@@ -1447,11 +1421,9 @@ class HLSVod {
         for (let i = 0; i < videoSequences.length; i++) {
           const vseq = videoSequences[i];
           const aseq = audioSequences[i];
-          const aseq = audioSequences[i];
           const mseq = {
             segments: vseq,
             audioSegments: aseq,
-            subtitleSegments: subtitleSequence
           };
           this.mediaSequences.push(mseq);
         }
@@ -1560,7 +1532,7 @@ class HLSVod {
     }
     this.previousVod = null;
     this.segments = {};
-    this.subtitleSegments = {};
+    this.audioSegments = {};
     this.subtitleSegments = {};
     this.mediaSequences = [];
     this.targetDuration = {};
@@ -1917,7 +1889,7 @@ class HLSVod {
       }
     });
   }
-  _loadSubtitleManifest(subtitleManifestUri, groupId, language, _injectSybtitleManifest) {
+  _loadSubtitleManifest(subtitleManifestUri, groupId, language, _injectSubtitleManifest) {
     // # Updated so that segment objects are pushed to Language array instead.
     // # Updated input args for _injectSubtitleManifest().
     return new Promise((resolve, reject) => {
@@ -1973,18 +1945,18 @@ class HLSVod {
         }
       });
 
-      if (!_injectSybtitleManifest) {
+      if (!_injectSubtitleManifest) {
         fetchWithRetry(subtitleManifestUri, null, 5, 1000, 5000, debug)
           .then((res) => {
             if (res.status === 200) {
               res.body.pipe(parser);
             } else {
-              throw new Error(res.status + ":: status code error trying to retrieve audio manifest " + subtitleManifestUri);
+              throw new Error(res.status + ":: status code error trying to retrieve subtitle manifest " + subtitleManifestUri);
             }
           })
           .catch(reject);
       } else {
-        const stream = _injectSybtitleManifest(groupId, language);
+        const stream = _injectSubtitleManifest(groupId, language);
         stream.pipe(parser);
         stream.on("error", (err) => reject(err));
       }
