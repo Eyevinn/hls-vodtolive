@@ -41,7 +41,7 @@ describe("HLSVod with subtitles", () => {
     it("returns the correct first segment", (done) => {
       mockVod = new HLSVod("http://mock.com/mock.m3u8");
       mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest, mockSubtitleManifest).then(() => {
-        const m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "fr", 1, 6);
+        const m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "fr", 1);
         const subStrings = m3u8.split("\n")
         expect(subStrings[5]).toEqual("http://mock.com/subtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA==_0.webvtt?p=1");
         done();
@@ -59,17 +59,17 @@ describe("HLSVod with subtitles", () => {
     it("returns the correct subtitle URL on next chunck", (done) => {
       mockVod = new HLSVod("http://mock.com/mock.m3u8");
       mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest, mockSubtitleManifest).then(() => {
-        let m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "fr", 24, 6);
+        let m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "fr", 24);
         let subStrings = m3u8.split("\n");
         expect(subStrings[5]).toEqual("http://mock.com/subtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA==_0.webvtt?p=24");
         expect(subStrings[7]).toEqual("http://mock.com/subtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA==_25.webvtt?p=0");
   
-        m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "fr", 25, 6);
+        m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "fr", 25);
         subStrings = m3u8.split("\n");
         expect(subStrings[5]).toEqual("http://mock.com/subtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA==_25.webvtt?p=0");
         expect(subStrings[7]).toEqual("http://mock.com/subtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA==_25.webvtt?p=1");
         done();
-        m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "fr", 49, 6);
+        m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "fr", 49);
         subStrings = m3u8.split("\n");
         expect(subStrings[5]).toEqual("http://mock.com/subtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA==_25.webvtt?p=24");
         done();
@@ -78,7 +78,7 @@ describe("HLSVod with subtitles", () => {
     it("returns the correct segment number", (done) => {
       mockVod = new HLSVod("http://mock.com/mock.m3u8");
       mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest, mockSubtitleManifest).then(() => {
-        const m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "fr", 20, 6);
+        const m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "fr", 20);
         const subStrings = m3u8.split("\n")
         expect(subStrings[5]).toEqual("http://mock.com/subtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA==_0.webvtt?p=20");
         done();

@@ -858,21 +858,22 @@ class HLSVod {
    * Gets a hls/makes m3u8-file with all of the correct subtitle segments
    * belonging to a given groupID & language for a particular sequence.
    */
-   getLiveMediaSubtitleSequences(offset, subtitleGroupId, subtitleLanguage, seqIdx, targetDuration, forceTargetDuration) {
+   getLiveMediaSubtitleSequences(offset, subtitleGroupId, subtitleLanguage, seqIdx, forceTargetDuration) {
     const bw = this.getBandwidths()[0]
     debug(`Get live subtitle media sequence [${seqIdx}] for subtitleGroupId=${subtitleGroupId}`);
     const mediaSeqSubtitleSegments = this.getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage, seqIdx); // NOT YET COMPLEATLY IMPLEMENTED
 
+    let targetDuration = this._determineTargetDuration(this.mediaSequences[seqIdx].segments[bw]);
     const duration = forceTargetDuration ? forceTargetDuration : targetDuration;
     let m3u8 = "#EXTM3U\n";
     m3u8 += "#EXT-X-VERSION:6\n";
     m3u8 += "#EXT-X-TARGETDURATION:" + duration +  "\n";
     const mediaSeq = (offset + seqIdx);
     m3u8 += "#EXT-X-MEDIA-SEQUENCE:" + mediaSeq +"\n";
-    const targetSubDuration = this._determineTargetDuration(mediaSeqSubtitleSegments)
+    const subDuration = this._determineTargetDuration(mediaSeqSubtitleSegments)
     for (let i = 0; i < this.mediaSequences[seqIdx].segments[bw].length; i++) {
-      const part = (mediaSeq + i) % (targetSubDuration/duration)  
-      const indexToOfSegment = Math.floor((mediaSeq + i)/(targetSubDuration/duration));
+      const part = (mediaSeq + i) % (subDuration/duration)  
+      const indexToOfSegment = Math.floor((mediaSeq + i)/(subDuration/duration));
       const v = mediaSeqSubtitleSegments[indexToOfSegment];
       if (v) {
         if (!v.discontinuity) {
