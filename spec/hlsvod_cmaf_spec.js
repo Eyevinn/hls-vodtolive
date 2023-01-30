@@ -52,7 +52,7 @@ describe("HLSVod CMAF standalone", () => {
     });
   });
 
-  fit("can handle audio group without LANGUAGE attribute", (done) => {
+  it("can handle audio group without LANGUAGE attribute", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8");
     mockVod.load(mockMasterManifestNoLang, mockMediaManifest, mockAudioManifest).then(() => {
       let m3u8 = mockVod.getLiveMediaAudioSequences(0, "audio-aacl-256", "sv", 0);
