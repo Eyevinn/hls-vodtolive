@@ -8,9 +8,14 @@ describe("HLSVod CMAF standalone", () => {
   let mockMasterManifest;
   let mockMediaManifest;
   let mockAudioManifest;
+  let mockMasterManifestNoLang;
   beforeEach(() => {
     mockMasterManifest = function () {
       return fs.createReadStream("testvectors/hls_cmaf_1/master.m3u8");
+    };
+
+    mockMasterManifestNoLang = function () {
+      return fs.createReadStream("testvectors/hls_cmaf_1/master_nolang.m3u8");
     };
 
     mockMediaManifest = function (bandwidth) {
@@ -44,6 +49,16 @@ describe("HLSVod CMAF standalone", () => {
       done();
     }).catch(err => {
       done(err);
+    });
+  });
+
+  fit("can handle audio group without LANGUAGE attribute", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod.load(mockMasterManifestNoLang, mockMediaManifest, mockAudioManifest).then(() => {
+      let m3u8 = mockVod.getLiveMediaAudioSequences(0, "audio-aacl-256", "sv", 0);
+      let lines = m3u8.split("\n");
+      expect(lines[6]).toEqual('#EXT-X-MAP:URI="http://mock.com/test-audio=256000.m4s"');
+      done();
     });
   });
 });

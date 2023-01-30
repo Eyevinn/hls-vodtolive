@@ -188,7 +188,7 @@ class HLSVod {
             let audioLanguages = audioGroupItems.map((item) => {
               let itemLang;
               if (!item.attributes.attributes["language"]) {
-                itemLang = null;
+                itemLang = item.attributes.attributes["name"];
               } else {
                 itemLang = item.attributes.attributes["language"];
               }
@@ -691,7 +691,7 @@ class HLSVod {
             }
           }
         }
-        
+
         if (i === 0) {
           if (v.initSegment) {
             m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"\n`;
