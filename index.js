@@ -563,9 +563,20 @@ class HLSVod {
       const v = this.mediaSequences[seqIdx].segments[bw][i];
       if (v) {
         if (previousSegment != null) {
-          if (previousSegment.discontinuity && v.timelinePosition) {
-            const d = new Date(v.timelinePosition);
-            m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + d.toISOString() + "\n";
+          if (previousSegment.discontinuity) {
+            if (v.initSegment) {
+              m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"\n`;
+            }
+            if (v.timelinePosition) {
+              const d = new Date(v.timelinePosition);
+              m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + d.toISOString() + "\n";  
+            }
+          }
+        }
+
+        if (i === 0) {
+          if (v.initSegment) {
+            m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"\n`;
           }
         }
 
@@ -1452,6 +1463,20 @@ class HLSVod {
 
       parser.on("m3u", (m3u) => {
         try {
+          let initSegment = undefined;
+          if(m3u.get('EXT-X-MAP')) {
+            const m = m3u.get('EXT-X-MAP').match(/URI=\"(.*)\"/);
+            if (m) {
+              initSegment = m[1];
+              if (!initSegment.match("^http")) {
+                const n = mediaManifestUri.match("^(.*)/.*?$");
+                if (n) {
+                  initSegment = url.resolve(n[1] + "/", initSegment);
+                }  
+              }
+            }
+          }
+
           if (!this.segmentsInitiated[bw]) {
             let position = 0;
             let nextSplicePosition = null;
@@ -1574,6 +1599,9 @@ class HLSVod {
                   timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                   cue: cue,
                 };
+                if (initSegment) {
+                  q.initSegment = initSegment;
+                }
                 if (segmentUri) {
                   q.uri = segmentUri;
                 }
