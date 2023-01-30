@@ -394,12 +394,12 @@ class HLSVod {
    *
    * @param {HLSVod} previousVod - the previous VOD to concatenate to
    */
-  loadAfter(previousVod, _injectMasterManifest, _injectMediaManifest, _injectAudioManifest) {
+  loadAfter(previousVod, _injectMasterManifest, _injectMediaManifest, _injectAudioManifest, _injectSubtitleManifest) {
     return new Promise((resolve, reject) => {
       this.previousVod = previousVod;
       try {
         this._loadPrevious();
-        this.load(_injectMasterManifest, _injectMediaManifest, _injectAudioManifest)
+        this.load(_injectMasterManifest, _injectMediaManifest, _injectAudioManifest,_injectSubtitleManifest)
           .then(() => {
             previousVod.releasePreviousVod();
             resolve();
@@ -580,7 +580,6 @@ class HLSVod {
    *
    * @param {string} subtitleGroupId - audio group Id
    * @param {string} subtitleLanguage - audio language
-   * @param {number} seqIdx - media sequence index (first is 0)
    */
    getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage) {
     try {
@@ -859,30 +858,46 @@ class HLSVod {
    * belonging to a given groupID & language for a particular sequence.
    */
    getLiveMediaSubtitleSequences(offset, subtitleGroupId, subtitleLanguage, seqIdx, forceTargetDuration) {
-    const bw = this.getBandwidths()[0]
-    debug(`Get live subtitle media sequence [${seqIdx}] for subtitleGroupId=${subtitleGroupId}`);
-    const mediaSeqSubtitleSegments = this.getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage, seqIdx); // NOT YET COMPLEATLY IMPLEMENTED
+    
 
-    let targetDuration = this._determineTargetDuration(this.mediaSequences[seqIdx].segments[bw]);
+    debug(`Get live subtitle media sequence [${seqIdx}] for subtitleGroupId=${subtitleGroupId}`);
+    const mediaSeqSubtitleSegments = this.getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage);
+
+    if (!mediaSeqSubtitleSegments) {
+      return null;
+    }
+    /** 
+     * Gets the media sequence for the sequence index by using the first available bandwidth 
+     * since it is not relevant what it is. 
+     * We use the media sequence to determine what the duration of the segments should be. 
+     */
+    const bw = this.getBandwidths()[0];
+    const mediaSequence = this.mediaSequences[seqIdx].segments[bw];
+    let targetDuration = this._determineTargetDuration(mediaSequence);
+    
     const duration = forceTargetDuration ? forceTargetDuration : targetDuration;
+   
     let m3u8 = "#EXTM3U\n";
     m3u8 += "#EXT-X-VERSION:6\n";
     m3u8 += "#EXT-X-TARGETDURATION:" + duration +  "\n";
     const mediaSeq = (offset + seqIdx);
     m3u8 += "#EXT-X-MEDIA-SEQUENCE:" + mediaSeq +"\n";
     const subDuration = this._determineTargetDuration(mediaSeqSubtitleSegments)
-    for (let i = 0; i < this.mediaSequences[seqIdx].segments[bw].length; i++) {
+    for (let i = 0; i < mediaSequence.length; i++) {
+
+      /**
+       * Here we need to determine which file the text is in and which part number it should have.
+       */
       const part = (mediaSeq + i) % (subDuration/duration)  
       const indexToOfSegment = Math.floor((mediaSeq + i)/(subDuration/duration));
       const v = mediaSeqSubtitleSegments[indexToOfSegment];
       if (v) {
         if (!v.discontinuity) {
-          
             m3u8 += "#EXTINF:" + duration + ",\n";
             m3u8 += v.uri + "?p=" + part + "\n";
           
         } else {
-          if (i != 0 && i != mediaSeqSubtitleSegments.length - 1) {
+          if (i != 0 && i != mediaSequence.length - 1) {
             m3u8 += "#EXT-X-DISCONTINUITY\n";
           }
         }
