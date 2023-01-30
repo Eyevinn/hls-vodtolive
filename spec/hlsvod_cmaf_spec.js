@@ -35,8 +35,12 @@ describe("HLSVod CMAF standalone", () => {
       expect(seqSegments['3500000'][1].initSegment).toEqual("http://mock.com/test-video=3500000.m4s");
 
       let m3u8 = mockVod.getLiveMediaSequences(0, "2500000", 0);
-      const lines = m3u8.split("\n");
+      let lines = m3u8.split("\n");
       expect(lines[6]).toEqual('#EXT-X-MAP:URI="http://mock.com/test-video=2500000.m4s"');
+
+      m3u8 = mockVod.getLiveMediaAudioSequences(0, "audio-aacl-256", "sv", 0);
+      lines = m3u8.split("\n");
+      expect(lines[6]).toEqual('#EXT-X-MAP:URI="http://mock.com/test-audio=256000.m4s"');
       done();
     }).catch(err => {
       done(err);
@@ -75,8 +79,13 @@ describe("HLSVod CMAF after another CMAF VOD", () => {
       })
       .then(() => {
         let m3u8 = mockVod2.getLiveMediaSequences(0, "2500000", 10);
-        const lines = m3u8.split("\n");
+        let lines = m3u8.split("\n");
         expect(lines[26]).toEqual('#EXT-X-MAP:URI="http://mock.com/test-video=2500000.m4s"');
+
+        m3u8 = mockVod2.getLiveMediaAudioSequences(0, "audio-aacl-256", "sv", 10);
+        lines = m3u8.split("\n");
+        expect(lines[26]).toEqual('#EXT-X-MAP:URI="http://mock.com/test-audio=256000.m4s"');
+  
         done();
       });
   });

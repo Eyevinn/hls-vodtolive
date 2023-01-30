@@ -681,9 +681,20 @@ class HLSVod {
       const v = mediaSeqAudioSegments[i];
       if (v) {
         if (previousSegment != null) {
-          if (previousSegment.discontinuity && v.timelinePosition) {
-            const d = new Date(v.timelinePosition);
-            m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + d.toISOString() + "\n";
+          if (previousSegment.discontinuity) {
+            if (v.initSegment) {
+              m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"\n`;
+            }
+            if (v.timelinePosition) {
+              const d = new Date(v.timelinePosition);
+              m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + d.toISOString() + "\n";  
+            }
+          }
+        }
+        
+        if (i === 0) {
+          if (v.initSegment) {
+            m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"\n`;
           }
         }
 
@@ -1656,16 +1667,27 @@ class HLSVod {
 
       parser.on("m3u", (m3u) => {
         try {
+          let baseUrl;
+          const m = audioManifestUri.match("^(.*)/.*?$");
+          if (m) {
+            baseUrl = m[1] + "/";
+          }
+
           if (this.audioSegments[groupId][language]) {
+            let initSegment = undefined;
+            if(m3u.get('EXT-X-MAP')) {
+              const m = m3u.get('EXT-X-MAP').match(/URI=\"(.*)\"/);
+              if (m) {
+                initSegment = m[1];
+                if (!initSegment.match("^http")) {
+                  initSegment = url.resolve(baseUrl, initSegment);
+                }
+              }
+            }    
+  
             for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
               const playlistItem = m3u.items.PlaylistItem[i];
               let segmentUri;
-              let baseUrl;
-
-              const m = audioManifestUri.match("^(.*)/.*?$");
-              if (m) {
-                baseUrl = m[1] + "/";
-              }
 
               // some items such as CUE-IN parse as a PlaylistItem
               // but have no URI
@@ -1686,6 +1708,9 @@ class HLSVod {
               };
               if (segmentUri) {
                 q.uri = segmentUri;
+              }
+              if (initSegment) {
+                q.initSegment = initSegment;
               }
               this.audioSegments[groupId][language].push(q);
             }
