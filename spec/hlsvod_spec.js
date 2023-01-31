@@ -1196,7 +1196,7 @@ describe("HLSVod with separate audio variants", () => {
         "audio-aacl-96": "audio-96000",
         "audio-aacl-97": "audio-96000",
       };
-      if (groupId && lang) {
+      if (groupId && lang !== "audio") {
         return fs.createReadStream(`testvectors/hls_multiaudiotracks/${fname[groupId]}-${lang}.m3u8`);
       } else {
         return fs.createReadStream(`testvectors/hls_multiaudiotracks/${fname[groupId]}.m3u8`);
