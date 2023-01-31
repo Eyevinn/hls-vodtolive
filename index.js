@@ -188,7 +188,7 @@ class HLSVod {
             let audioLanguages = audioGroupItems.map((item) => {
               let itemLang;
               if (!item.attributes.attributes["language"]) {
-                itemLang = null;
+                itemLang = item.attributes.attributes["name"];
               } else {
                 itemLang = item.attributes.attributes["language"];
               }
