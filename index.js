@@ -887,7 +887,9 @@ class HLSVod {
        */
       const part = (mediaSeq + i) % (subDuration/duration)  
       const indexToOfSegment = Math.floor((mediaSeq + i)/(subDuration/duration));
-      const v = mediaSeqSubtitleSegments[indexToOfSegment];
+      const v = mediaSeqSubtitleSegments[i];
+      console.log(mediaSeqSubtitleSegments)
+      console.log(v)
       if (v) {
         if (!v.discontinuity) {
             m3u8 += "#EXTINF:" + duration + ",\n";
@@ -1214,11 +1216,15 @@ class HLSVod {
                   if (!subtitleSequence[subtitleGroupId][subLang]) {
                     subtitleSequence[subtitleGroupId][subLang] = [];
                   }
-                  const subDuration = this._determineTargetDuration(this.subtitleSegments[subtitleGroupId][subLang][0])
+                  
+                  const subDuration = this._determineTargetDuration(this.subtitleSegments[subtitleGroupId][subLang] )
                   const part = (segIdx) % (subDuration/duration)  
-                  const indexToOfSegment = Math.floor((segIdx)/(subDuration/duration));
+                  let indexToOfSegment = Math.floor((segIdx)/(subDuration/duration));
+                  if (indexToOfSegment >= this.subtitleSegments[subtitleGroupId][subLang].length) {
+                    indexToOfSegment = this.subtitleSegments[subtitleGroupId][subLang].length-1
+                  }
                   let seg = this.subtitleSegments[subtitleGroupId][subLang][indexToOfSegment];
-                  seg.uri += "?p=" + part;
+                  seg.uri = seg.uri + "?p=" + part;
                   if (!seg) {
                     debug(segIdx, `WARNING! The subtitleSequence[id=${subtitleGroupId}][lang=${subLang}] pushed seg=${seg}`);
                   }
@@ -1342,11 +1348,11 @@ class HLSVod {
                       if (!_subtitleSequence[groupId][lang]) {
                         _subtitleSequence[groupId][lang] = [];
                       }
-                      const subDuration = this._determineTargetDuration(subtitleSegments[subtitleGroupId][subLang][0])
+                      const subDuration = this._determineTargetDuration(this.subtitleSegments[subtitleGroupId][subLang])
                       const part = (segIdxVideo) % (subDuration/duration)  
                       const indexToOfSegment = Math.floor((segIdxVideo)/(subDuration/duration));
                       const seq_seg = this.subtitleSegments[groupId][lang][indexToOfSegment];
-                      seq_seg.uri += "?p=" + part
+                      seq_seg.uri = seq_seg.uri + "?p=" + part
                       if (seqDur < this.SEQUENCE_DURATION) {
                         if (!seq_seg) {
                           debug(segIdxVideo, `WARNING! The _subtitleSequence[id=${groupId}][lang=${lang}] pushed seg=${seq_seg}`);
@@ -1411,11 +1417,11 @@ class HLSVod {
                       if (!_subtitleSequence[groupId][lang]) {
                         _subtitleSequence[groupId][lang] = [];
                       }
-                      const subDuration = this._determineTargetDuration(subtitleSegments[subtitleGroupId][subLang][0])
+                      const subDuration = this._determineTargetDuration(this.subtitleSegments[subtitleGroupId][subLang])
                       const part = (segIdxVideo) % (subDuration/duration)  
                       const indexToOfSegment = Math.floor((segIdxVideo)/(subDuration/duration));
                       const seq_seg = this.subtitleSegments[groupId][lang][indexToOfSegment];
-                      seq_seg.uri += "?p=" + part;
+                      seq_seg.uri =  seq_seg.uri + "?p=" + part;
                       if (!seq_seg) {
                         debug(segIdxVideo, `WARNING! The _subtitleSequence[id=${groupId}][lang=${lang}] pushed seg=${seq_seg}`);
                       }
