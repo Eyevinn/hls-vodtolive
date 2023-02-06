@@ -584,18 +584,17 @@ class HLSVod {
    getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage) {
     try {
       // # When language not found, return segments from first language.
-      this.subtitleSegments
-      if (!this.subtitleSegments[subtitleGroupId]) {
+      if (!this.mediaSequences[subtitleGroupId]) {
         subtitleGroupId = this._getFirstSubtitleGroupWithSegments();
         if (!subtitleGroupId) {
           return [];
         }
       }
-      if (!this.subtitleSegments[subtitleGroupId][subtitleLanguage]) {
+      if (!this.mediaSequences[subtitleGroupId][subtitleLanguage]) {
         const fallbackLang = this._getFirstSubtitleLanguageWithSegments(subtitleGroupId);
-        return this.subtitleSegments[subtitleGroupId][fallbackLang];
+        return this.mediaSequences[subtitleGroupId][fallbackLang];
       }
-      return this.subtitleSegments[subtitleGroupId][subtitleLanguage];
+      return this.mediaSequences[subtitleGroupId][subtitleLanguage];
     } catch (err) {
       console.error(err);
       return [];
@@ -858,8 +857,6 @@ class HLSVod {
    * belonging to a given groupID & language for a particular sequence.
    */
    getLiveMediaSubtitleSequences(offset, subtitleGroupId, subtitleLanguage, seqIdx, forceTargetDuration) {
-    
-
     debug(`Get live subtitle media sequence [${seqIdx}] for subtitleGroupId=${subtitleGroupId}`);
     const mediaSeqSubtitleSegments = this.getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage);
 
@@ -883,7 +880,7 @@ class HLSVod {
     const mediaSeq = (offset + seqIdx);
     m3u8 += "#EXT-X-MEDIA-SEQUENCE:" + mediaSeq +"\n";
     const subDuration = this._determineTargetDuration(mediaSeqSubtitleSegments)
-    for (let i = 0; i < mediaSequence.length; i++) {
+    for (let i = 0; i < mediaSeqSubtitleSegments.length; i++) {
 
       /**
        * Here we need to determine which file the text is in and which part number it should have.
@@ -894,7 +891,7 @@ class HLSVod {
       if (v) {
         if (!v.discontinuity) {
             m3u8 += "#EXTINF:" + duration + ",\n";
-            m3u8 += v.uri + "?p=" + part + "\n";
+            m3u8 += v.uri + "\n";
           
         } else {
           if (i != 0 && i != mediaSequence.length - 1) {
@@ -1087,8 +1084,10 @@ class HLSVod {
       let duration = 0;
       const bw = this._getFirstBwWithSegments();
       const audioGroupId = this._getFirstAudioGroupWithSegments();
+      const subtitleGroupId = this._getFirstSubtitleGroupWithSegments();
       let sequence = {};
       let audioSequence = {};
+      let subtitleSequence = {};
 
       // Remove all double discontinuities (video)
       const bandwidths = Object.keys(this.segments);
@@ -1113,6 +1112,24 @@ class HLSVod {
           for (let k = 0; k < audioLangs.length; k++) {
             const audioLang = audioLangs[k];
             this.audioSegments[audioGroupId][audioLang] = this.audioSegments[audioGroupId][audioLang].filter((elem, idx, arr) => {
+              if (idx > 0 && arr[idx - 1] && arr[idx]) {
+                if (arr[idx - 1].discontinuity && arr[idx].discontinuity) {
+                  return false;
+                }
+              }
+              return true;
+            });
+          }
+        }
+      }
+      if (subtitleGroupId) {
+        const subtitleGroupIds = Object.keys(this.subtitleSegments);
+        for (let i = 0; i < subtitleGroupIds.length; i++) {
+          const subtitleGroupId = subtitleGroupIds[i];
+          const subtitleLangs = Object.keys(this.subtitleSegments[subtitleGroupId]);
+          for (let k = 0; k < subtitleLangs.length; k++) {
+            const subtitleLang = subtitleLangs[k];
+            this.subtitleSegments[subtitleGroupId][subtitleLang] = this.subtitleSegments[subtitleGroupId][subtitleLang].filter((elem, idx, arr) => {
               if (idx > 0 && arr[idx - 1] && arr[idx]) {
                 if (arr[idx - 1].discontinuity && arr[idx].discontinuity) {
                   return false;
@@ -1184,6 +1201,31 @@ class HLSVod {
                 }
               }
             }
+            if (subtitleGroupId) {
+              const subtitleGroupIds = Object.keys(this.subtitleSegments);
+              for (let i = 0; i < subtitleGroupIds.length; i++) {
+                const subtitleGroupId = subtitleGroupIds[i];
+                if (!subtitleSequence[subtitleGroupId]) {
+                  subtitleSequence[subtitleGroupId] = {};
+                }
+                const subLangs = Object.keys(this.subtitleSegments[subtitleGroupId]);
+                for (let k = 0; k < subLangs.length; k++) {
+                  const subLang = subLangs[k];
+                  if (!subtitleSequence[subtitleGroupId][subLang]) {
+                    subtitleSequence[subtitleGroupId][subLang] = [];
+                  }
+                  const subDuration = this._determineTargetDuration(this.subtitleSegments[subtitleGroupId][subLang][0])
+                  const part = (segIdx) % (subDuration/duration)  
+                  const indexToOfSegment = Math.floor((segIdx)/(subDuration/duration));
+                  let seg = this.subtitleSegments[subtitleGroupId][subLang][indexToOfSegment];
+                  seg.uri += "?p=" + part;
+                  if (!seg) {
+                    debug(segIdx, `WARNING! The subtitleSequence[id=${subtitleGroupId}][lang=${subLang}] pushed seg=${seg}`);
+                  }
+                  subtitleSequence[subtitleGroupId][subLang].push(seg);
+                }
+              }
+            }
             segIdx++;
           } else {
             //debug(`Pushing seq=${this.mediaSequences.length} firstSeg=${sequence[Object.keys(this.segments)[0]][0].uri}, length=${sequence[Object.keys(this.segments)[0]].length}, duration=${duration} < ${this.SEQUENCE_DURATION}`);
@@ -1196,6 +1238,7 @@ class HLSVod {
             this.mediaSequences.push({
               segments: sequence,
               audioSegments: audioSequence,
+              subtitleSegments: subtitleSequence,
             });
             this.mediaSequenceValues[seqIndex] = seqIndex;
             seqIndex++;
@@ -1212,6 +1255,7 @@ class HLSVod {
           this.mediaSequences.push({
             segments: sequence,
             audioSegments: audioSequence,
+            subtitleSegments: subtitleSequence,
           });
           this.mediaSequenceValues[seqIndex] = seqIndex;
           sequence = {};
@@ -1228,6 +1272,7 @@ class HLSVod {
          */
         const videoSequences = [];
         const audioSequences = [];
+        const subtitleSequences = [];
         let segIdxVideo = 0;
         const SIZE = this.segments[bw].length;
         // Process Video Segments
@@ -1236,6 +1281,7 @@ class HLSVod {
             totalSeqDurVideo = 0;
             const _sequence = JSON.parse(JSON.stringify(sequence));
             const _audioSequence = JSON.parse(JSON.stringify(audioSequence));
+            const _subtitleSequence = JSON.parse(JSON.stringify(subtitleSequence));
             if (_sequence[bw] && _sequence[bw].length > 0) {
               let temp = 0;
               _sequence[bw].forEach((seg) => {
@@ -1285,6 +1331,31 @@ class HLSVod {
                     });
                   });
                 }
+                if (subtitleGroupId) {
+                  const subtitleGroupIds = Object.keys(this.subtitleSegments);
+                  subtitleGroupIds.forEach((groupId) => {
+                    if (!_subtitleSequence[groupId]) {
+                      _subtitleSequence[groupId] = {};
+                    }
+                    const subtitleLangs = Object.keys(this.subtitleSegments[groupId]);
+                    subtitleLangs.forEach((lang) => {
+                      if (!_subtitleSequence[groupId][lang]) {
+                        _subtitleSequence[groupId][lang] = [];
+                      }
+                      const subDuration = this._determineTargetDuration(subtitleSegments[subtitleGroupId][subLang][0])
+                      const part = (segIdxVideo) % (subDuration/duration)  
+                      const indexToOfSegment = Math.floor((segIdxVideo)/(subDuration/duration));
+                      const seq_seg = this.subtitleSegments[groupId][lang][indexToOfSegment];
+                      seq_seg.uri += "?p=" + part
+                      if (seqDur < this.SEQUENCE_DURATION) {
+                        if (!seq_seg) {
+                          debug(segIdxVideo, `WARNING! The _subtitleSequence[id=${groupId}][lang=${lang}] pushed seg=${seq_seg}`);
+                        }
+                        _subtitleSequence[groupId][lang].push(seq_seg);
+                      }
+                    });
+                  });
+                }
                 if (seqDur < this.SEQUENCE_DURATION) {
                   segIdxVideo++;
                 }
@@ -1326,6 +1397,29 @@ class HLSVod {
                         debug(segIdxVideo, `WARNING! The _audioSequence[id=${groupId}][lang=${lang}] pushed seg=${seq_seg}`);
                       }
                       _audioSequence[groupId][lang].push(seq_seg);
+                    });
+                  });
+                }
+                if (subtitleGroupId) {
+                  const subtitleGroupIds = Object.keys(this.subtitleSegments);
+                  subtitleGroupIds.forEach((groupId) => {
+                    if (!_subtitleSequence[groupId]) {
+                      _subtitleSequence[groupId] = {};
+                    }
+                    const subLangs = Object.keys(this.subtitleSegments[groupId]);
+                    subLangs.forEach((lang) => {
+                      if (!_subtitleSequence[groupId][lang]) {
+                        _subtitleSequence[groupId][lang] = [];
+                      }
+                      const subDuration = this._determineTargetDuration(subtitleSegments[subtitleGroupId][subLang][0])
+                      const part = (segIdxVideo) % (subDuration/duration)  
+                      const indexToOfSegment = Math.floor((segIdxVideo)/(subDuration/duration));
+                      const seq_seg = this.subtitleSegments[groupId][lang][indexToOfSegment];
+                      seq_seg.uri += "?p=" + part;
+                      if (!seq_seg) {
+                        debug(segIdxVideo, `WARNING! The _subtitleSequence[id=${groupId}][lang=${lang}] pushed seg=${seq_seg}`);
+                      }
+                      _subtitleSequence[groupId][lang].push(seq_seg);
                     });
                   });
                 }
@@ -1376,6 +1470,29 @@ class HLSVod {
                     });
                   });
                 }
+                if (subtitleGroupId) {
+                  const subtitleGroupIds = Object.keys(this.subtitleSegments);
+                  subtitleGroupIds.forEach((groupId) => {
+                    if (!_subtitleSequence[groupId]) {
+                      _subtitleSequence[groupId] = {};
+                    }
+                    const subtitleLangs = Object.keys(this.audioSegments[groupId]);
+                    subtitleLangs.forEach((lang) => {
+                      if (!_subtitleSequence[groupId][lang]) {
+                        _subtitleSequence[groupId][lang] = [];
+                      }
+                      let seg = _subtitleSequence[groupId][lang].shift();
+                      if (!seg) {
+                        // Should not happen, debug
+                        debug(`WARNING! The _audioSequence[id=${groupId}][lang=${lang}] shifted seg=${seg}`);
+                      } else {
+                        while (seg && !seg.duration && _subtitleSequence[groupId][lang].length > 0) {
+                          seg = _subtitleSequence[groupId][lang].shift();
+                        }
+                      }
+                    });
+                  });
+                }
                 if (timeToRemove) {
                   totalSeqDurVideo -= timeToRemove;
                   totalRemovedSegments++;
@@ -1404,6 +1521,15 @@ class HLSVod {
                       const audioLangs = Object.keys(this.audioSegments[groupId]);
                       audioLangs.forEach((lang) => {
                         _audioSequence[groupId][lang].pop();
+                      });
+                    });
+                  }
+                  if (subtitleGroupId) {
+                    const subtitleGroupIds = Object.keys(this.subtitleSegments);
+                    subtitleGroupIds.forEach((groupId) => {
+                      const subLangs = Object.keys(this.subtitleSegments[groupId]);
+                      subLangs.forEach((lang) => {
+                        _subtitleSequence[groupId][lang].pop();
                       });
                     });
                   }
@@ -1437,9 +1563,11 @@ class HLSVod {
         for (let i = 0; i < videoSequences.length; i++) {
           const vseq = videoSequences[i];
           const aseq = audioSequences[i];
+          const sseq = subtitleSequences[i];
           const mseq = {
             segments: vseq,
             audioSegments: aseq,
+            subtitleSegments: sseq,
           };
           this.mediaSequences.push(mseq);
         }
