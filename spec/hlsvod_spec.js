@@ -1525,7 +1525,7 @@ describe("HLSVod with discontinuites in the source", () => {
         expect(m).not.toBeNull();
         expect(mockVod2.getLastDiscontinuity()).toEqual(4);
         i = c + mockVod2.getLiveMediaSequencesCount();
-        return //mockVod3.loadAfter(mockVod2, mockMasterManifest, mockMediaManifest, mockAudioManifest);
+        return mockVod3.loadAfter(mockVod2, mockMasterManifest, mockMediaManifest, mockAudioManifest);
       })
       .then(() => {
         let j = mockVod2.getLastDiscontinuity();
