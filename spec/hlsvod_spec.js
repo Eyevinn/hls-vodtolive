@@ -1499,20 +1499,9 @@ describe("HLSVod with discontinuites in the source", () => {
     mockVod
       .load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
       .then(() => {
-        let oc = 0;
-        let vi = 0;
-        mockVod.mediaSequences[mockVod.mediaSequences.length - 1].audioSegments['aac']['en'].map(seg => seg.duration ? oc+= seg.duration : oc+=0)
-        mockVod.mediaSequences[mockVod.mediaSequences.length - 1].segments['401000'].map(seg => seg.duration ? vi+= seg.duration : vi+=0)
-        //console.log(JSON.stringify(mockVod.mediaSequences[mockVod.mediaSequences.length - 1],null,2), 2424, oc, vi)
         return mockVod2.loadAfter(mockVod, mockMasterManifest2, mockMediaManifest2, mockAudioManifest2);
       })
       .then(() => {
-        //console.log(JSON.stringify(mockVod2.mediaSequences,null,2), ":::mockVod2")
-        vi = 0;
-        oc= 0;
-        mockVod.mediaSequences[1].audioSegments['aac']['en'].map(seg => seg.duration ? oc+= seg.duration : oc+=0)
-        mockVod.mediaSequences[1].segments['401000'].map(seg => seg.duration ? vi+= seg.duration : vi+=0)
-        //console.log(2424, oc, vi)
         let m3u8 = mockVod.getLiveMediaSequences(0, "401000", 1, 0);
         let m = m3u8.match("#EXT-X-DISCONTINUITY-SEQUENCE:0");
         expect(m).not.toBeNull();
@@ -1541,7 +1530,6 @@ describe("HLSVod with discontinuites in the source", () => {
       .then(() => {
         let j = mockVod2.getLastDiscontinuity();
         let m3u8 = mockVod3.getLiveMediaSequences(i, "401000", 0, j);
-        //console.log(mockVod3.mediaSequences[0])
         m = m3u8.match("#EXT-X-DISCONTINUITY-SEQUENCE:4");
         expect(mockVod3.getLastUsedDiscSeq()).toEqual(4);
         expect(m).not.toBeNull();
