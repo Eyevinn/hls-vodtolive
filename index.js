@@ -1053,14 +1053,10 @@ class HLSVod {
         }
         // Audio Version
         while (firstLanguage && this.audioSegments[audioGroupId][firstLanguage][segIdxAudio] && segIdxAudio != a_length) {
-          let addAllSegments = false;
-          if (audio_sequence_list.length === video_sequence_list.length) {
-            addAllSegments = true;
-          }
           if (this.audioSegments[audioGroupId][firstLanguage][segIdxAudio].uri) {
             audio_duration += this.audioSegments[audioGroupId][firstLanguage][segIdxAudio].duration;
           }
-          if (audio_duration < this.SEQUENCE_DURATION || addAllSegments) {
+          if (audio_duration < this.SEQUENCE_DURATION) {
             if (audioGroupId) {
               const audioGroupIds = Object.keys(this.audioSegments);
               for (let i = 0; i < audioGroupIds.length; i++) {

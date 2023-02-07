@@ -84,7 +84,7 @@ describe("HLSVod CMAF after another CMAF VOD", () => {
     };    
   });
 
-  fit("inserts init segment after discontinuity", (done) => {
+  it("inserts init segment after discontinuity", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8");
     mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
     mockVod
@@ -99,7 +99,6 @@ describe("HLSVod CMAF after another CMAF VOD", () => {
 
         m3u8 = mockVod2.getLiveMediaAudioSequences(0, "audio-aacl-256", "sv", 10);
         lines = m3u8.split("\n");
-        console.log(lines)
         expect(lines[48]).toEqual('#EXT-X-MAP:URI="http://mock.com/test-audio=256000.m4s"');
   
         done();

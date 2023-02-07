@@ -1539,16 +1539,16 @@ describe("HLSVod with discontinuites in the source", () => {
         return //mockVod3.loadAfter(mockVod2, mockMasterManifest, mockMediaManifest, mockAudioManifest);
       })
       .then(() => {
-        // let j = mockVod2.getLastDiscontinuity();
-        // let m3u8 = mockVod3.getLiveMediaSequences(i, "401000", 0, j);
-        // console.log(mockVod3.mediaSequences[0])
-        // m = m3u8.match("#EXT-X-DISCONTINUITY-SEQUENCE:4");
-        // expect(mockVod3.getLastUsedDiscSeq()).toEqual(4);
-        // expect(m).not.toBeNull();
-        // m3u8 = mockVod3.getLiveMediaSequences(i, "401000", 14, j);
-        // m = m3u8.match("#EXT-X-DISCONTINUITY-SEQUENCE:5");
-        // expect(mockVod3.getLastUsedDiscSeq()).toEqual(5);
-        // expect(m).not.toBeNull();
+        let j = mockVod2.getLastDiscontinuity();
+        let m3u8 = mockVod3.getLiveMediaSequences(i, "401000", 0, j);
+        //console.log(mockVod3.mediaSequences[0])
+        m = m3u8.match("#EXT-X-DISCONTINUITY-SEQUENCE:4");
+        expect(mockVod3.getLastUsedDiscSeq()).toEqual(4);
+        expect(m).not.toBeNull();
+        m3u8 = mockVod3.getLiveMediaSequences(i, "401000", 14, j);
+        m = m3u8.match("#EXT-X-DISCONTINUITY-SEQUENCE:5");
+        expect(mockVod3.getLastUsedDiscSeq()).toEqual(5);
+        expect(m).not.toBeNull();
         done();
       })
   });
