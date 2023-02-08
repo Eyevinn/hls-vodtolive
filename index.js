@@ -1163,10 +1163,10 @@ class HLSVod {
               audioSegments: audio_sequence_list[i] ? audio_sequence_list[i] : {},
             });
           }
-          console.log({
-            video_sequence_list: video_sequence_list.length,
-            audio_sequence_list: audio_sequence_list.length
-          })
+          // console.log({
+          //   video_sequence_list: video_sequence_list.length,
+          //   audio_sequence_list: audio_sequence_list.length
+          // })
           //console.log(this.mediaSequences[i], "##4")
         }
 
