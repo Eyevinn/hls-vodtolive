@@ -1125,8 +1125,8 @@ class HLSVod {
             videoSegIdx++;
 
             segIdxAudio = segOffsetAudio;
-            console.log(this.audioSegments[audioGroupId][firstLanguage][segIdxAudio].uri ? this.audioSegments[audioGroupId][firstLanguage][segIdxAudio].uri.slice(-8) :
-            console.log('') , 2006);
+            // console.log(this.audioSegments[audioGroupId][firstLanguage][segIdxAudio].uri ? this.audioSegments[audioGroupId][firstLanguage][segIdxAudio].uri.slice(-8) :
+            // console.log('') , 2006);
           }
         }
 
