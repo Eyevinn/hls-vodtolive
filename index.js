@@ -942,12 +942,16 @@ class HLSVod {
   _createMediaSequences() {
     return new Promise((resolve, reject) => {
       let segOffset = 0;
+      let extra = 0;
       let segIdx = 0;
       let seqIndex = 0;
+      let videoSegIdx = 0;
       let segOffsetAudio = 0;
       let segIdxAudio = 0;
       let seqIndexAudio = 0;
+      let storedDiff = 0;
       let totalRemovedDiscTags = 0;
+      let totalRemovedAudioDiscTags = 0;
       let totalRemovedSegments = 0;
       let totalSeqDurVideo = 0;
       let video_duration = 0;
@@ -1081,19 +1085,48 @@ class HLSVod {
             segIdxAudio++;
           } else {
             //debug(`Pushing seq=${this.mediaSequences.length} firstSeg=${sequence[Object.keys(this.segments)[0]][0].uri}, length=${sequence[Object.keys(this.segments)[0]].length}, duration=${duration} < ${this.SEQUENCE_DURATION}`);
+            if (videoSegIdx > this.segments[bw].length - 1) {
+              videoSegIdx = this.segments[bw].length -1;
+            }
+            if (!this.segments[bw][videoSegIdx].uri) {
+              videoSegIdx++;
+            }
+            let vidDur = this.segments[bw][videoSegIdx].duration;
+            let audioDur = this.audioSegments[audioGroupId][firstLanguage][segOffsetAudio].duration;
+            let diff = vidDur - audioDur;
+            if (Math.abs(diff) > 0.5) {
+              if (storedDiff < diff) {
+                segOffsetAudio++;
+                extra++;
+               /* console.log("extra is:", extra)
+                console.log("seqIndexAudio is:", seqIndexAudio)
+                console.log("This Seq gets val:", seqIndexAudio + extra)*/
+                storedDiff += diff;
+              } else {
+                storedDiff -= diff;
+              }
+            }
             if (!audioSequence[audioGroupId][firstLanguage][0].uri) {
               // If first element in the sequence is a discontinuity or a cue tag we need to 'skip' the following element that
               // contains the segment uri and is the actual playlist item to roll over the top.
               segOffsetAudio++;
             }
+            //console.log(`audio_duration=${audio_duration};segIdxAudio=${segIdxAudio},a_length=${a_length}`,2003)
             audio_duration = 0;
             audio_sequence_list.push(audioSequence);
 
-            this.mediaSequenceValuesAudio[seqIndexAudio] = seqIndexAudio;
+            /*console.log("extra2 is:", extra)
+            console.log("seqIndexAudio2 is:", seqIndexAudio)
+            console.log("This Seq2 gets val:", seqIndexAudio + extra)*/
+            this.mediaSequenceValuesAudio[seqIndexAudio] = seqIndexAudio + extra;
             seqIndexAudio++;
             audioSequence = {};
             segOffsetAudio++;
+            videoSegIdx++;
+
             segIdxAudio = segOffsetAudio;
+            console.log(this.audioSegments[audioGroupId][firstLanguage][segIdxAudio].uri ? this.audioSegments[audioGroupId][firstLanguage][segIdxAudio].uri.slice(-8) :
+            console.log('') , 2006);
           }
         }
 
@@ -1110,24 +1143,33 @@ class HLSVod {
           // We are out of segments but have not reached the full duration of a sequence
           audio_duration = 0;
           audio_sequence_list.push(audioSequence);
-          this.mediaSequenceValuesAudio[seqIndexAudio] = seqIndexAudio;
+          this.mediaSequenceValuesAudio[seqIndexAudio] = seqIndexAudio + extra;
           audioSequence = {};
         }
-
-        console.log(
-          stringify({
-            video_sequence_list: video_sequence_list.length,
-            audio_sequence_list: audio_sequence_list.length,
-          }),
-          ":::debug"
-        );
 
         video_sequence_list.map((_, index) => {
           this.mediaSequences.push({
             segments: video_sequence_list[index],
-            audioSegments: audio_sequence_list[index] ? audio_sequence_list[index] : {},
+            audioSegments: {},
           });
         });
+        for (let i = 0; i < audio_sequence_list.length; i++) {
+          //console.log(this.mediaSequences[i], "##3")
+          if (i < this.mediaSequences.length) {
+            this.mediaSequences[i].audioSegments = audio_sequence_list[i] ? audio_sequence_list[i] : {};
+          } else {
+            this.mediaSequences.push({
+              segments: {},
+              audioSegments: audio_sequence_list[i] ? audio_sequence_list[i] : {},
+            });
+          }
+          console.log({
+            video_sequence_list: video_sequence_list.length,
+            audio_sequence_list: audio_sequence_list.length
+          })
+          //console.log(this.mediaSequences[i], "##4")
+        }
+
       } else {
         /*---------------------------------------------.
          * Generate Sequences out of segments (type-B) |
@@ -1249,6 +1291,7 @@ class HLSVod {
                 shiftOnce = false;
                 let timeToRemove = 0;
                 let incrementDiscSeqCount = false;
+                let incrementAudioDiscSeqCount = false;
                 bandwidths.forEach((bw) => {
                   let seg = _sequence[bw].shift();
                   if (!seg) {
@@ -1281,6 +1324,7 @@ class HLSVod {
                         debug(`WARNING! The _audioSequence[id=${groupId}][lang=${lang}] shifted seg=${seg}`);
                       } else {
                         while (seg && !seg.duration && _audioSequence[groupId][lang].length > 0) {
+                          incrementAudioDiscSeqCount = true;
                           seg = _audioSequence[groupId][lang].shift();
                         }
                       }
@@ -1294,6 +1338,9 @@ class HLSVod {
                 }
                 if (incrementDiscSeqCount) {
                   totalRemovedDiscTags++;
+                }
+                if (incrementAudioDiscSeqCount) {
+                  totalRemovedAudioDiscTags++;
                 }
 
                 /*
@@ -1341,6 +1388,7 @@ class HLSVod {
               this.mediaSequenceValues[seqIndex] = totalRemovedSegments;
             }
             this.discontinuities[seqIndex] = totalRemovedDiscTags;
+            this.discontinuitiesAudio[seqIndex] = totalRemovedAudioDiscTags;
             sequence = _sequence;
             audioSequence = _audioSequence;
             seqIndex++;
@@ -1359,6 +1407,31 @@ class HLSVod {
           this.mediaSequences.push(mseq);
         }
       }
+      if (this.mediaSequences) {
+        for (let seqNo = 0; seqNo < this.mediaSequences.length; seqNo++) {
+          const mseq = this.mediaSequences[seqNo];
+          const agid = Object.keys(mseq.audioSegments)[0];
+          if (!agid) {
+            continue;
+          }
+          const alang = Object.keys(mseq.audioSegments[agid])[0];
+          if (!alang) {
+            continue;
+          }
+          let discSeqNo = 0;
+          if (mseq.audioSegments[agid][alang] && mseq.audioSegments[agid][alang][0] && mseq.audioSegments[agid][alang][0].discontinuity) {
+            debug(`Discontinuity in first segment of media seq ${seqNo}`);
+            discSeqNo++;
+            debug(`Increasing discont sequence ${discSeqNo}`);
+          }
+          if (this.sequenceAlwaysContainNewSegments) {
+            this.discontinuitiesAudio[seqNo] += discSeqNo;
+            discSeqNo = 0;
+          } else {
+            this.discontinuitiesAudio[seqNo] = discSeqNo;
+          }
+        }
+      }
 
       if (!this.mediaSequences) {
         reject("Failed to init media sequences");
@@ -1373,6 +1446,11 @@ class HLSVod {
         let lastPositionIncrement = 0;
         for (let seqNo = 0; seqNo < this.mediaSequences.length; seqNo++) {
           const mseq = this.mediaSequences[seqNo];
+          if (!Object.keys(mseq.segments).length) {
+            continue;
+          }
+          //console.log("mseq", mseq)
+
           const bwIdx = Object.keys(mseq.segments)[0];
           if (mseq.segments[bwIdx] && mseq.segments[bwIdx][0] && mseq.segments[bwIdx][0].discontinuity) {
             debug(`Discontinuity in first segment of media seq ${seqNo}`);
@@ -1453,6 +1531,10 @@ class HLSVod {
           }
         }
         resolve();
+      }
+      for (let i = 0; i < 3; i++) {
+        console.log(` - on idx_${i} mseq value_${this.mediaSequenceValuesAudio[i]}`,2007)
+        console.log(`- on idx_${i} mseq ${JSON.stringify(this.mediaSequence[i].audioSegments, null,2)}`,2007)
       }
     });
   }
@@ -1675,13 +1757,13 @@ class HLSVod {
                 let cue =
                   cueOut || cueIn || cueOutCont || assetData
                     ? {
-                        out: typeof cueOut !== "undefined",
-                        cont: typeof cueOutCont !== "undefined" ? cueOutCont : null,
-                        scteData: typeof scteData !== "undefined" ? scteData : null,
-                        in: cueIn ? true : false,
-                        duration: duration,
-                        assetData: typeof assetData !== "undefined" ? assetData : null,
-                      }
+                      out: typeof cueOut !== "undefined",
+                      cont: typeof cueOutCont !== "undefined" ? cueOutCont : null,
+                      scteData: typeof scteData !== "undefined" ? scteData : null,
+                      in: cueIn ? true : false,
+                      duration: duration,
+                      assetData: typeof assetData !== "undefined" ? assetData : null,
+                    }
                     : null;
                 let q = {
                   duration: playlistItem.properties.duration,

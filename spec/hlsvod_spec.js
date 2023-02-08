@@ -1294,7 +1294,7 @@ describe("HLSVod with separate audio variants", () => {
       .then(() => {
         const seqSegments1 = mockVod.getLiveMediaSequenceSegments(0);
         const seqSegments2 = mockVod2.getLiveMediaSequenceSegments(0);
-
+        console.log(JSON.stringify(mockVod2.mediaSequences.map(seq => Object.keys(seq.audioSegments).length),null,2), 2002)
         expect(seqSegments1["354000"][0].uri).toEqual("http://mock.com/1woxvooiidb(11186147_ISMUSP)-video=241929-1.ts");
         expect(seqSegments2["354000"][seqSegments2["354000"].length - 1 - 1].discontinuity).toBe(true);
         expect(seqSegments2["354000"][seqSegments2["354000"].length - 1].uri).toEqual("http://mock.com/1woxvooiidb(11186147_ISMUSP)-video=241929-1.ts");
@@ -2439,7 +2439,7 @@ describe("HLSVod error handling", () => {
   });
 });
 
-xdescribe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
+describe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
   let mock1_MasterManifest;
   let mock1_MediaManifest;
   let mock2_MasterManifest;
@@ -2695,7 +2695,7 @@ xdescribe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
   });
 });
 
-xdescribe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSegments", () => {
+describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSegments", () => {
   let mock1_MasterManifest;
   let mock1_MediaManifest;
   let mock1_AudioManifest;
@@ -2745,6 +2745,7 @@ xdescribe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewS
         const someLang = Object.keys(mockVod.audioSegments[someGroupId])[0];
         const mseqs = mockVod.mediaSequenceValues;
         const dseqs = mockVod.discontinuities;
+        const daseqs = mockVod.discontinuitiesAudio;
         const lastMseq = mockVod.mediaSequences[mockVod.mediaSequences.length - 1]["segments"][someBW];
         const lastMseqTopAndBottomSegURI = {
           top: lastMseq[0].uri,
@@ -2799,6 +2800,7 @@ xdescribe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewS
         };
         expect(mseqs).toEqual(expectedMseqVals);
         expect(dseqs).toEqual(expectedDseqVals);
+        expect(daseqs).toEqual(expectedDseqVals);
         expect(lastMseqTopAndBottomSegURI).toEqual(expectedLastMseqTopAndBottomSegURI);
         expect(lastMseqTopAndBottomSegURIAudio).toEqual(expectedLastMseqTopAndBottomSegURIAudio);
 
@@ -3092,7 +3094,7 @@ xdescribe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewS
   });
 });
 
-xdescribe("HLSVod when loading mux vod after demux vod, with set option-> sequenceAlwaysContainNewSegments", () => {
+describe("HLSVod when loading mux vod after demux vod, with set option-> sequenceAlwaysContainNewSegments", () => {
   let mock1_MasterManifest;
   let mock1_MediaManifest;
   let mock1_AudioManifest;
@@ -3327,7 +3329,7 @@ xdescribe("HLSVod when loading mux vod after demux vod, with set option-> sequen
   });
 });
 
-xdescribe("HLSVod when loading mux vod after demux vod, with set option-> sequenceAlwaysContainNewSegments", () => {
+describe("HLSVod when loading mux vod after demux vod, with set option-> sequenceAlwaysContainNewSegments", () => {
   let mock1_MasterManifest;
   let mock1_MediaManifest;
   let mock1_AudioManifest;
@@ -3456,6 +3458,11 @@ xdescribe("HLSVod when loading mux vod after demux vod, with set option-> sequen
         ];
         let sq = 3;
         let _bw = Object.keys(mockVod2.mediaSequences[sq].segments)[0];
+        console.log(mockVod2.mediaSequences[0])
+        console.log(mockVod2.mediaSequences[1])
+        console.log(mockVod2.mediaSequences[2])
+        console.log(mockVod2.mediaSequences[3])
+        console.log(JSON.stringify(mockVod2.audioSegments, null ,2));
         const seqAudioSegments = mockVod2.mediaSequences[sq].audioSegments["aac"]["en"];
         const seqVideoSegments = mockVod2.mediaSequences[sq].segments[_bw];
         expect(seqVideoSegments).toEqual(expectedSeqVideoSegs);
