@@ -1086,7 +1086,7 @@ class HLSVod {
           } else {
             //debug(`Pushing seq=${this.mediaSequences.length} firstSeg=${sequence[Object.keys(this.segments)[0]][0].uri}, length=${sequence[Object.keys(this.segments)[0]].length}, duration=${duration} < ${this.SEQUENCE_DURATION}`);
             if (videoSegIdx > this.segments[bw].length - 1) {
-              videoSegIdx = this.segments[bw].length -1;
+              videoSegIdx = this.segments[bw].length - 1;
             }
             if (!this.segments[bw][videoSegIdx].uri) {
               videoSegIdx++;
@@ -1094,11 +1094,13 @@ class HLSVod {
             let vidDur = this.segments[bw][videoSegIdx].duration;
             let audioDur = this.audioSegments[audioGroupId][firstLanguage][segOffsetAudio].duration;
             let diff = vidDur - audioDur;
+            let prevExtra = extra;
             if (Math.abs(diff) > 0.5) {
               if (storedDiff < diff) {
                 segOffsetAudio++;
                 extra++;
-               /* console.log("extra is:", extra)
+                prevExtra = extra;
+                /* console.log("extra is:", extra)
                 console.log("seqIndexAudio is:", seqIndexAudio)
                 console.log("This Seq gets val:", seqIndexAudio + extra)*/
                 storedDiff += diff;
@@ -1118,7 +1120,12 @@ class HLSVod {
             /*console.log("extra2 is:", extra)
             console.log("seqIndexAudio2 is:", seqIndexAudio)
             console.log("This Seq2 gets val:", seqIndexAudio + extra)*/
-            this.mediaSequenceValuesAudio[seqIndexAudio] = seqIndexAudio + extra;
+            if (prevExtra === extra) {
+              this.mediaSequenceValuesAudio[seqIndexAudio - 1] = seqIndexAudio + extra;
+            } else {
+              this.mediaSequenceValuesAudio[seqIndexAudio] = seqIndexAudio;
+            }
+
             seqIndexAudio++;
             audioSequence = {};
             segOffsetAudio++;
@@ -1169,7 +1176,6 @@ class HLSVod {
           // })
           //console.log(this.mediaSequences[i], "##4")
         }
-
       } else {
         /*---------------------------------------------.
          * Generate Sequences out of segments (type-B) |
@@ -1533,8 +1539,8 @@ class HLSVod {
         resolve();
       }
       for (let i = 0; i < 3; i++) {
-        console.log(` - on idx_${i} mseq value_${this.mediaSequenceValuesAudio[i]}`,2007)
-        console.log(`- on idx_${i} mseq ${JSON.stringify(this.mediaSequence[i].audioSegments, null,2)}`,2007)
+        console.log(` - on idx_${i} mseq value_${this.mediaSequenceValuesAudio[i]}`, 2007);
+        console.log(`- on idx_${i} mseq ${JSON.stringify(this.mediaSequence[i].audioSegments, null, 2)}`, 2007);
       }
     });
   }
@@ -1757,13 +1763,13 @@ class HLSVod {
                 let cue =
                   cueOut || cueIn || cueOutCont || assetData
                     ? {
-                      out: typeof cueOut !== "undefined",
-                      cont: typeof cueOutCont !== "undefined" ? cueOutCont : null,
-                      scteData: typeof scteData !== "undefined" ? scteData : null,
-                      in: cueIn ? true : false,
-                      duration: duration,
-                      assetData: typeof assetData !== "undefined" ? assetData : null,
-                    }
+                        out: typeof cueOut !== "undefined",
+                        cont: typeof cueOutCont !== "undefined" ? cueOutCont : null,
+                        scteData: typeof scteData !== "undefined" ? scteData : null,
+                        in: cueIn ? true : false,
+                        duration: duration,
+                        assetData: typeof assetData !== "undefined" ? assetData : null,
+                      }
                     : null;
                 let q = {
                   duration: playlistItem.properties.duration,

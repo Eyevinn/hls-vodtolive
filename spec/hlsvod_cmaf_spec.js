@@ -106,6 +106,7 @@ describe("HLSVod CMAF after another CMAF VOD", () => {
         console.log(JSON.stringify(mockVod2.mediaSequences[0].audioSegments["audio-aacl-256"]["sv"][0], null, 2), "mseq:", 0);
         console.log(JSON.stringify(mockVod2.mediaSequences[1].audioSegments["audio-aacl-256"]["sv"][0], null, 2), "mseq:", 1);
         console.log(JSON.stringify(mockVod2.mediaSequences[2].audioSegments["audio-aacl-256"]["sv"][0], null, 2), "mseq:", 2);
+        console.log(JSON.stringify(mockVod2.mediaSequences[3].audioSegments["audio-aacl-256"]["sv"][0], null, 2), "mseq:", 2);
         done();
       });
   });
