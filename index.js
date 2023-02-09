@@ -945,11 +945,9 @@ class HLSVod {
       let extra = 0;
       let segIdx = 0;
       let seqIndex = 0;
-      let videoSegIdx = 0;
       let segOffsetAudio = 0;
       let segIdxAudio = 0;
       let seqIndexAudio = 0;
-      let storedDiff = 0;
       let totalRemovedDiscTags = 0;
       let totalRemovedAudioDiscTags = 0;
       let totalRemovedSegments = 0;
@@ -1084,30 +1082,6 @@ class HLSVod {
             }
             segIdxAudio++;
           } else {
-            //debug(`Pushing seq=${this.mediaSequences.length} firstSeg=${sequence[Object.keys(this.segments)[0]][0].uri}, length=${sequence[Object.keys(this.segments)[0]].length}, duration=${duration} < ${this.SEQUENCE_DURATION}`);
-            if (videoSegIdx > this.segments[bw].length - 1) {
-              videoSegIdx = this.segments[bw].length - 1;
-            }
-            if (!this.segments[bw][videoSegIdx].uri) {
-              videoSegIdx++;
-            }
-            let vidDur = this.segments[bw][videoSegIdx].duration;
-            let audioDur = this.audioSegments[audioGroupId][firstLanguage][segOffsetAudio].duration;
-            let diff = vidDur - audioDur;
-            let prevExtra = extra;
-            if (Math.abs(diff) > 0.5) {
-              if (storedDiff < diff) {
-                segOffsetAudio++;
-                extra++;
-                prevExtra = extra;
-                /* console.log("extra is:", extra)
-                console.log("seqIndexAudio is:", seqIndexAudio)
-                console.log("This Seq gets val:", seqIndexAudio + extra)*/
-                storedDiff += diff;
-              } else {
-                storedDiff -= diff;
-              }
-            }
             if (!audioSequence[audioGroupId][firstLanguage][0].uri) {
               // If first element in the sequence is a discontinuity or a cue tag we need to 'skip' the following element that
               // contains the segment uri and is the actual playlist item to roll over the top.
@@ -1117,19 +1091,9 @@ class HLSVod {
             audio_duration = 0;
             audio_sequence_list.push(audioSequence);
 
-            /*console.log("extra2 is:", extra)
-            console.log("seqIndexAudio2 is:", seqIndexAudio)
-            console.log("This Seq2 gets val:", seqIndexAudio + extra)*/
-            if (prevExtra === extra) {
-              this.mediaSequenceValuesAudio[seqIndexAudio - 1] = seqIndexAudio + extra;
-            } else {
-              this.mediaSequenceValuesAudio[seqIndexAudio] = seqIndexAudio;
-            }
-
             seqIndexAudio++;
             audioSequence = {};
             segOffsetAudio++;
-            videoSegIdx++;
 
             segIdxAudio = segOffsetAudio;
             // console.log(this.audioSegments[audioGroupId][firstLanguage][segIdxAudio].uri ? this.audioSegments[audioGroupId][firstLanguage][segIdxAudio].uri.slice(-8) :
