@@ -785,14 +785,14 @@ class HLSVod {
    * Get the last discontinuity sequence number
    */
   getLastDiscontinuity() {
-    return this.discontinuities[this.mediaSequences.length - 1];
+    return this.discontinuities[this.videoSequencesCount - 1];
   }
 
   /**
    * Get the last audio discontinuity sequence number
    */
   getLastDiscontinuityAudio() {
-    return this.discontinuitiesAudio[this.mediaSequences.length - 1];
+    return this.discontinuitiesAudio[this.audioSequencesCount - 1];
   }
 
   /**
@@ -1393,31 +1393,6 @@ class HLSVod {
           this.mediaSequences.push(mseq);
         }
       }
-      if (this.mediaSequences) {
-        for (let seqNo = 0; seqNo < this.mediaSequences.length; seqNo++) {
-          const mseq = this.mediaSequences[seqNo];
-          const agid = Object.keys(mseq.audioSegments)[0];
-          if (!agid) {
-            continue;
-          }
-          const alang = Object.keys(mseq.audioSegments[agid])[0];
-          if (!alang) {
-            continue;
-          }
-          let discSeqNo = 0;
-          if (mseq.audioSegments[agid][alang] && mseq.audioSegments[agid][alang][0] && mseq.audioSegments[agid][alang][0].discontinuity) {
-            debug(`Discontinuity in first segment of media seq ${seqNo}`);
-            discSeqNo++;
-            debug(`Increasing discont sequence ${discSeqNo}`);
-          }
-          if (this.sequenceAlwaysContainNewSegments) {
-            this.discontinuitiesAudio[seqNo] += discSeqNo;
-            discSeqNo = 0;
-          } else {
-            this.discontinuitiesAudio[seqNo] = discSeqNo;
-          }
-        }
-      }
 
       if (!this.mediaSequences) {
         reject("Failed to init media sequences");
@@ -1430,7 +1405,7 @@ class HLSVod {
         });
         let lastPosition = 0;
         let lastPositionIncrement = 0;
-        for (let seqNo = 0; seqNo < this.mediaSequences.length; seqNo++) {
+        for (let seqNo = 0; seqNo < this.videoSequencesCount; seqNo++) {
           const mseq = this.mediaSequences[seqNo];
           if (!Object.keys(mseq.segments).length) {
             continue;
@@ -1516,11 +1491,110 @@ class HLSVod {
             }
           }
         }
-        resolve();
+        // Audio Version
+        if (this.mediaSequences[0].audioSegments) {
+          let prevLastSegmentUri = null;
+          let discSeqNo = 0;
+          this.deltaTimesAudio.push({
+            interval: 0,
+            position: 0,
+          });
+          let lastPosition = 0;
+          let lastPositionIncrement = 0;
+          for (let seqNo = 0; seqNo < this.audioSequencesCount; seqNo++) {
+            const mseq = this.mediaSequences[seqNo];
+            const agid = Object.keys(mseq.audioSegments)[0];
+            if (!agid) {
+              continue;
+            }
+            const alang = Object.keys(mseq.audioSegments[agid])[0];
+            if (!alang) {
+              continue;
+            }
+            
+            if (mseq.audioSegments[agid][alang] && mseq.audioSegments[agid][alang][0] && mseq.audioSegments[agid][alang][0].discontinuity) {
+              debug(`Discontinuity in first segment of media seq ${seqNo}`);
+              discSeqNo++;
+              debug(`Increasing discont sequence ${discSeqNo}`);
+            }
+            if (this.sequenceAlwaysContainNewSegments) {
+              this.discontinuitiesAudio[seqNo] += discSeqNo;
+              discSeqNo = 0;
+            } else {
+              this.discontinuitiesAudio[seqNo] = discSeqNo;
+            }
+
+          // audiofiera allt här under 
+          if (this.sequenceAlwaysContainNewSegments) {
+            reject("Audio Implementation NOT Finished")
+            // if (seqNo > 0) {
+            //   let tpi = 0; // Total Position Increment (total newly added content in seconds)
+            //   const prevLastSegIdx = findIndexReversed(mseq.segments[bwIdx], (seg) => {
+            //     if (seg.uri) {
+            //       return seg.uri === prevLastSegmentUri;
+            //     }
+            //     return false;
+            //   });
+            //   for (let i = prevLastSegIdx + 1; i < mseq.segments[bwIdx].length; i++) {
+            //     const seg = mseq.segments[bwIdx][i];
+            //     if (seg && seg.duration) {
+            //       tpi += seg.duration;
+            //     }
+            //   }
+            //   let lastSegment = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1];
+            //   if (lastSegment && lastSegment.discontinuity) {
+            //     lastSegment = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2];
+            //   }
+            //   const positionIncrement = lastSegment.duration;
+            //   const interval = tpi - lastPositionIncrement;
+            //   this.deltaTimes.push({
+            //     interval: interval,
+            //     position: positionIncrement ? lastPosition + tpi : lastPosition,
+            //   });
+            //   if (positionIncrement) {
+            //     lastPosition += tpi;
+            //     lastPositionIncrement = positionIncrement;
+            //   }
+            //   if (lastSegment && lastSegment.uri) {
+            //     prevLastSegmentUri = lastSegment.uri;
+            //   }
+            // } else {
+            //   if (mseq.audioSegments[agid][alang]) {
+            //     let lastSegment = mseq.audioSegments[agid][alang][mseq.audioSegments[agid][alang].length - 1];
+            //     if (lastSegment && lastSegment.discontinuity) {
+            //       lastSegment = mseq.audioSegments[agid][alang][mseq.audioSegments[agid][alang].length - 2];
+            //     }
+            //     if (lastSegment && lastSegment.uri) {
+            //       prevLastSegmentUri = lastSegment.uri;
+            //     }
+            //     lastPositionIncrement = lastSegment.duration;
+            //   }
+            // }
+          } else {
+            if (seqNo > 0) {
+              const positionIncrement = mseq.audioSegments[agid][alang][mseq.audioSegments[agid][alang].length - 1].discontinuity
+                ? mseq.audioSegments[agid][alang][mseq.audioSegments[agid][alang].length - 2].duration
+                : mseq.audioSegments[agid][alang][mseq.audioSegments[agid][alang].length - 1].duration;
+              const interval = positionIncrement - lastPositionIncrement;
+              this.deltaTimesAudio.push({
+                interval: interval,
+                position: positionIncrement ? lastPosition + positionIncrement : lastPosition,
+              });
+              if (positionIncrement) {
+                lastPosition += positionIncrement;
+                lastPositionIncrement = positionIncrement;
+              }
+            } else {
+              if (mseq.audioSegments[agid][alang]) {
+                lastPositionIncrement = mseq.audioSegments[agid][alang][mseq.audioSegments[agid][alang].length - 1].discontinuity
+                  ? mseq.audioSegments[agid][alang][mseq.audioSegments[agid][alang].length - 2].duration
+                  : mseq.audioSegments[agid][alang][mseq.audioSegments[agid][alang].length - 1].duration;
+              }
+            }
+          }
+        }
       }
-      for (let i = 0; i < 3; i++) {
-        console.log(` - on idx_${i} mseq value_${this.mediaSequenceValuesAudio[i]}`, 2007);
-        console.log(`- on idx_${i} mseq ${JSON.stringify(this.mediaSequence[i].audioSegments, null, 2)}`, 2007);
+        resolve();
       }
     });
   }
