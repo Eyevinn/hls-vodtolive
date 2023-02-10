@@ -1296,7 +1296,6 @@ describe("HLSVod with separate audio variants", () => {
       .then(() => {
         const seqSegments1 = mockVod.getLiveMediaSequenceSegments(0);
         const seqSegments2 = mockVod2.getLiveMediaSequenceSegments(0);
-        console.log(JSON.stringify(mockVod2.mediaSequences.map(seq => Object.keys(seq.audioSegments).length),null,2), 2002)
         expect(seqSegments1["354000"][0].uri).toEqual("http://mock.com/1woxvooiidb(11186147_ISMUSP)-video=241929-1.ts");
         expect(seqSegments2["354000"][seqSegments2["354000"].length - 1 - 1].discontinuity).toBe(true);
         expect(seqSegments2["354000"][seqSegments2["354000"].length - 1].uri).toEqual("http://mock.com/1woxvooiidb(11186147_ISMUSP)-video=241929-1.ts");
@@ -3460,11 +3459,6 @@ describe("HLSVod when loading mux vod after demux vod, with set option-> sequenc
         ];
         let sq = 3;
         let _bw = Object.keys(mockVod2.mediaSequences[sq].segments)[0];
-        console.log(mockVod2.mediaSequences[0])
-        console.log(mockVod2.mediaSequences[1])
-        console.log(mockVod2.mediaSequences[2])
-        console.log(mockVod2.mediaSequences[3])
-        console.log(JSON.stringify(mockVod2.audioSegments, null ,2));
         const seqAudioSegments = mockVod2.mediaSequences[sq].audioSegments["aac"]["en"];
         const seqVideoSegments = mockVod2.mediaSequences[sq].segments[_bw];
         expect(seqVideoSegments).toEqual(expectedSeqVideoSegs);
@@ -3597,10 +3591,6 @@ describe("HLSVod delta time and positions", () => {
         const playheadPositions = mockVod2.getPlayheadPositions();
         const deltaTimes = mockVod2.getDeltaTimes();
         let bw_ = mockVod2.getBandwidths()[0];
-        // let seqA = 43
-        // let seqB = 44
-        // console.log(mockVod2.mediaSequences[seqA].segments[bw_], getDur(mockVod2.mediaSequences[seqA].segments[bw_]));
-        // console.log(mockVod2.mediaSequences[seqB].segments[bw_], getDur(mockVod2.mediaSequences[seqB].segments[bw_]));
         let seqWithNoNewSegmentCount = 0;
         mockVod2.mediaSequences.forEach((seq, index) => {
           if (index + 1 < mockVod2.mediaSequences.length) {

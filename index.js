@@ -535,7 +535,7 @@ class HLSVod {
   /**
    * Get the media-sequence value for the last audio media sequence of this VOD
    */
-  getLastSequenceMediaSequenceValue() {
+  getLastSequenceMediaSequenceValueAudio() {
     const end = Object.keys(this.mediaSequenceValuesAudio).length - 1;
     return this.mediaSequenceValuesAudio[end];
   }
@@ -906,7 +906,7 @@ class HLSVod {
    * and adds them to the current VOD's this.audioSegments property.
    */
   _copyAudioGroupsFromPrevious() {
-    const previousVodSeqCount = this.previousVod.getLiveMediaSequencesCount();
+    const previousVodSeqCount = this.previousVod.getLiveMediaSequencesCount("audio");
     const audioGroups = this.previousVod.getAudioGroups();
     if (audioGroups.length > 0) {
       for (let i = 0; i < audioGroups.length; i++) {
@@ -1027,7 +1027,6 @@ class HLSVod {
           if (this.segments[bw][segIdx].uri) {
             video_duration += this.segments[bw][segIdx].duration;
           }
-          //console.log(segIdx, this.segments[bw][segIdx], duration, this.segments[bw].length);
           if (video_duration < this.SEQUENCE_DURATION) {
             const bandwidths = Object.keys(this.segments);
             for (let i = 0; i < bandwidths.length; i++) {
@@ -1106,7 +1105,7 @@ class HLSVod {
             }
             audio_duration = 0;
             audio_sequence_list.push(audioSequence);
-
+            this.mediaSequenceValuesAudio[seqIndexAudio] = seqIndexAudio;
             seqIndexAudio++;
             audioSequence = {};
             segOffsetAudio++;
@@ -1147,10 +1146,6 @@ class HLSVod {
               audioSegments: audio_sequence_list[i] ? audio_sequence_list[i] : {},
             });
           }
-          // console.log({
-          //   video_sequence_list: video_sequence_list.length,
-          //   audio_sequence_list: audio_sequence_list.length
-          // })
 
           // Set Sequences Counts
           this.videoSequencesCount = video_sequence_list.length;
@@ -1410,7 +1405,6 @@ class HLSVod {
           if (!Object.keys(mseq.segments).length) {
             continue;
           }
-          //console.log("mseq", mseq)
 
           const bwIdx = Object.keys(mseq.segments)[0];
           if (mseq.segments[bwIdx] && mseq.segments[bwIdx][0] && mseq.segments[bwIdx][0].discontinuity) {
@@ -2097,7 +2091,6 @@ class HLSVod {
     try {
       const langs = Object.keys(this.audioSegments[group]);
       if (!!langs.length) {
-        console.log(`group=${group},lang=${langs[0]} has _length=${this.audioSegments[group][langs[0]].length}`);
         return this.audioSegments[group][langs[0]].length;
       }
     } catch (err) {

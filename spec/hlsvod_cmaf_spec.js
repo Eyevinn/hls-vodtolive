@@ -96,22 +96,13 @@ describe("HLSVod CMAF after another CMAF VOD", () => {
         return mockVod2.loadAfter(mockVod, mockMasterManifest, mockMediaManifest, mockAudioManifest);
       })
       .then(() => {
-        const str = (t) => JSON.stringify(t,null,2);
-        // video deltatimes
-        console.log(str(mockVod2.getLiveMediaSequencesCount()), 2);
+         let m3u8 = mockVod2.getLiveMediaSequences(0, "2500000", 10);
+         let lines = m3u8.split("\n");
+         expect(lines[26]).toEqual('#EXT-X-MAP:URI="http://mock.com/test-video=2500000.m4s"');
 
-        // let m3u8 = mockVod2.getLiveMediaSequences(0, "2500000", 10);
-        // let lines = m3u8.split("\n");
-        // expect(lines[26]).toEqual('#EXT-X-MAP:URI="http://mock.com/test-video=2500000.m4s"');
-
-        // m3u8 = mockVod2.getLiveMediaAudioSequences(0, "audio-aacl-256", "sv", 10);
-        // lines = m3u8.split("\n");
-        // expect(lines[48]).toEqual('#EXT-X-MAP:URI="http://mock.com/test-audio=256000.m4s"');
-        // console.log(mockVod2.mediaSequenceValuesAudio);
-        // console.log(JSON.stringify(mockVod2.mediaSequences[0].audioSegments["audio-aacl-256"]["sv"][0], null, 2), "mseq:", 0);
-        // console.log(JSON.stringify(mockVod2.mediaSequences[1].audioSegments["audio-aacl-256"]["sv"][0], null, 2), "mseq:", 1);
-        // console.log(JSON.stringify(mockVod2.mediaSequences[2].audioSegments["audio-aacl-256"]["sv"][0], null, 2), "mseq:", 2);
-        // console.log(JSON.stringify(mockVod2.mediaSequences[3].audioSegments["audio-aacl-256"]["sv"][0], null, 2), "mseq:", 2);
+         m3u8 = mockVod2.getLiveMediaAudioSequences(0, "audio-aacl-256", "sv", 10);
+         lines = m3u8.split("\n");
+         expect(lines[48]).toEqual('#EXT-X-MAP:URI="http://mock.com/test-audio=256000.m4s"');
         done();
       });
   });
