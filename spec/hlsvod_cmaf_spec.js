@@ -59,6 +59,7 @@ describe("HLSVod CMAF standalone", () => {
     mockVod.load(mockMasterManifestNoLang, mockMediaManifest, mockAudioManifest).then(() => {
       let m3u8 = mockVod.getLiveMediaAudioSequences(0, "audio-aacl-256", "sv", 0);
       let lines = m3u8.split("\n");
+      
       expect(lines[6]).toEqual('#EXT-X-MAP:URI="http://mock.com/test-audio=256000.m4s"');
       done();
     });

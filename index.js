@@ -53,12 +53,15 @@ class HLSVod {
     this.rangeMetadata = null;
     this.matchedBandwidths = {};
     this.deltaTimes = [];
+    this.deltaTimesAudio = [];
     this.header = header;
     this.lastUsedDiscSeq = null;
     this.sequenceAlwaysContainNewSegments = false;
     if (opts && opts.sequenceAlwaysContainNewSegments) {
       this.sequenceAlwaysContainNewSegments = opts.sequenceAlwaysContainNewSegments;
     }
+    this.videoSequencesCount = 0;
+    this.audioSequencesCount = 0;
   }
 
   toJSON() {
@@ -81,11 +84,14 @@ class HLSVod {
       discontinuities: this.discontinuities,
       discontinuitiesAudio: this.discontinuitiesAudio,
       deltaTimes: this.deltaTimes,
+      deltaTimesAudio: this.deltaTimesAudio,
       header: this.header,
       lastUsedDiscSeq: this.lastUsedDiscSeq,
       mediaSequenceValues: this.mediaSequenceValues,
       mediaSequenceValuesAudio: this.mediaSequenceValuesAudio,
       sequenceAlwaysContainNewSegments: this.sequenceAlwaysContainNewSegments,
+      videoSequencesCount: this.videoSequencesCount,
+      audioSequencesCount: this.audioSequencesCount
     };
     return JSON.stringify(serialized);
   }
@@ -114,6 +120,7 @@ class HLSVod {
     this.discontinuities = de.discontinuities;
     this.discontinuitiesAudio = de.discontinuitiesAudio;
     this.deltaTimes = de.deltaTimes;
+    this.deltaTimesAudio = de.deltaTimesAudio;
     this.header = de.header;
     if (de.lastUsedDiscSeq) {
       this.lastUsedDiscSeq = de.lastUsedDiscSeq;
@@ -121,6 +128,8 @@ class HLSVod {
     this.mediaSequenceValues = de.mediaSequenceValues;
     this.mediaSequenceValuesAudio = de.mediaSequenceValuesAudio;
     this.sequenceAlwaysContainNewSegments = de.sequenceAlwaysContainNewSegments;
+    this.videoSequencesCount = de.videoSequencesCount;
+    this.audioSequencesCount = de.audioSequencesCount;
   }
 
   /**
@@ -508,8 +517,11 @@ class HLSVod {
   /**
    * Get the number of media sequences for this VOD
    */
-  getLiveMediaSequencesCount() {
-    return this.mediaSequences.length;
+  getLiveMediaSequencesCount(media = "video") {
+    if (media === "audio") {
+      return this.audioSequencesCount;
+    }
+    return this.videoSequencesCount
   }
 
   /**
@@ -786,14 +798,20 @@ class HLSVod {
   /**
    * Get the delta times for each media sequence.
    */
-  getDeltaTimes() {
+  getDeltaTimes(media = "video") {
+    if (media === "audio") {
+      return this.deltaTimesAudio.map((o) => o.interval);
+    }
     return this.deltaTimes.map((o) => o.interval);
   }
 
   /**
    * Returns the playhead position for each media sequence
    */
-  getPlayheadPositions() {
+  getPlayheadPositions(media = "video") {
+    if (media === "audio") {
+      return this.deltaTimesAudio.map((o) => o.position);
+    }
     return this.deltaTimes.map((o) => o.position);
   }
 
@@ -942,7 +960,6 @@ class HLSVod {
   _createMediaSequences() {
     return new Promise((resolve, reject) => {
       let segOffset = 0;
-      let extra = 0;
       let segIdx = 0;
       let seqIndex = 0;
       let segOffsetAudio = 0;
@@ -1087,7 +1104,6 @@ class HLSVod {
               // contains the segment uri and is the actual playlist item to roll over the top.
               segOffsetAudio++;
             }
-            //console.log(`audio_duration=${audio_duration};segIdxAudio=${segIdxAudio},a_length=${a_length}`,2003)
             audio_duration = 0;
             audio_sequence_list.push(audioSequence);
 
@@ -1096,8 +1112,6 @@ class HLSVod {
             segOffsetAudio++;
 
             segIdxAudio = segOffsetAudio;
-            // console.log(this.audioSegments[audioGroupId][firstLanguage][segIdxAudio].uri ? this.audioSegments[audioGroupId][firstLanguage][segIdxAudio].uri.slice(-8) :
-            // console.log('') , 2006);
           }
         }
 
@@ -1114,7 +1128,7 @@ class HLSVod {
           // We are out of segments but have not reached the full duration of a sequence
           audio_duration = 0;
           audio_sequence_list.push(audioSequence);
-          this.mediaSequenceValuesAudio[seqIndexAudio] = seqIndexAudio + extra;
+          this.mediaSequenceValuesAudio[seqIndexAudio] = seqIndexAudio;
           audioSequence = {};
         }
 
@@ -1125,7 +1139,6 @@ class HLSVod {
           });
         });
         for (let i = 0; i < audio_sequence_list.length; i++) {
-          //console.log(this.mediaSequences[i], "##3")
           if (i < this.mediaSequences.length) {
             this.mediaSequences[i].audioSegments = audio_sequence_list[i] ? audio_sequence_list[i] : {};
           } else {
@@ -1138,7 +1151,10 @@ class HLSVod {
           //   video_sequence_list: video_sequence_list.length,
           //   audio_sequence_list: audio_sequence_list.length
           // })
-          //console.log(this.mediaSequences[i], "##4")
+
+          // Set Sequences Counts
+          this.videoSequencesCount = video_sequence_list.length;
+          this.audioSequencesCount = audio_sequence_list.length;
         }
       } else {
         /*---------------------------------------------.
