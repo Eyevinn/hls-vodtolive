@@ -2464,7 +2464,7 @@ describe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
     };
   });
 
-  xit("set to true, will never create media sequences that have the same last segment", (done) => {
+  it("set to true, will never create media sequences that have the same last segment", (done) => {
     const getDur = (list) => {
       let t = 0;
       list.forEach((i) => {
@@ -2734,7 +2734,7 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
     };
   });
 
-  xit("set to true, will never create media sequences that have the same last segment", (done) => {
+  it("set to true, will never create media sequences that have the same last segment", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: 1 });
     mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: 1 });
     mockVod3 = new HLSVod("http://mock.com/mock3.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: 1 });
@@ -3133,7 +3133,7 @@ describe("HLSVod when loading mux vod after demux vod, with set option-> sequenc
     };
   });
 
-  xit("set to true, will have null segments in the first couple of sequences", (done) => {
+  it("set to true, will have null segments in the first couple of sequences", (done) => {
     let bool = 1;
     mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: bool });
     mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: bool });
@@ -3241,7 +3241,7 @@ describe("HLSVod when loading mux vod after demux vod, with set option-> sequenc
         done();
       });
   });
-  xit("set to true, will have null segments in the later sequences", (done) => {
+  it("set to true, will have null segments in the later sequences", (done) => {
     let bool = 1;
     mockVod = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: bool });
     mockVod2 = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: bool });
@@ -3368,7 +3368,7 @@ describe("HLSVod when loading mux vod after demux vod, with set option-> sequenc
     };
   });
 
-  xit("set to false, will have null segments in the first couple of sequences", (done) => {
+  it("set to false, will have null segments in the first couple of sequences", (done) => {
     let bool = 0;
     mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: bool });
     mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: bool });
@@ -3466,7 +3466,7 @@ describe("HLSVod when loading mux vod after demux vod, with set option-> sequenc
         done();
       });
   });
-  xit("set to false, will have null segments in the later sequences", (done) => {
+  it("set to false, will have null segments in the later sequences", (done) => {
     let bool = 0;
     mockVod = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: bool });
     mockVod2 = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: bool });
@@ -3569,7 +3569,7 @@ describe("HLSVod delta time and positions", () => {
     };
   });
 
-  xit("with option-> sequenceAlwaysContainNewSegments set to true, are calculated and available for each media sequence", (done) => {
+  it("with option-> sequenceAlwaysContainNewSegments set to true, are calculated and available for each media sequence", (done) => {
     let bool = 1;
     mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: bool });
     mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: bool });

@@ -420,6 +420,7 @@ class HLSVod {
       this.mediaSequenceValues = {};
       this.discontinuities = {};
       this.deltaTimes = [];
+      this.deltaTimesAudio = [];
 
       try {
         this._createMediaSequences()
@@ -969,6 +970,7 @@ class HLSVod {
       let totalRemovedAudioDiscTags = 0;
       let totalRemovedSegments = 0;
       let totalSeqDurVideo = 0;
+      let totalSeqDurAudio = 0;
       let video_duration = 0;
       let audio_duration = 0;
       const bw = this._getFirstBwWithSegments();
@@ -1146,11 +1148,11 @@ class HLSVod {
               audioSegments: audio_sequence_list[i] ? audio_sequence_list[i] : {},
             });
           }
-
-          // Set Sequences Counts
-          this.videoSequencesCount = video_sequence_list.length;
-          this.audioSequencesCount = audio_sequence_list.length;
         }
+        // Set Sequences Counts
+        this.videoSequencesCount = video_sequence_list.length;
+        this.audioSequencesCount = audio_sequence_list.length;
+
       } else {
         /*---------------------------------------------.
          * Generate Sequences out of segments (type-B) |
@@ -1161,7 +1163,6 @@ class HLSVod {
          * will remove yet another segment from the top of the segment list.
          */
         const videoSequences = [];
-        const audioSequences = [];
         let segIdxVideo = 0;
         const SIZE = this.segments[bw].length;
         // Process Video Segments
@@ -1169,7 +1170,6 @@ class HLSVod {
           try {
             totalSeqDurVideo = 0;
             const _sequence = JSON.parse(JSON.stringify(sequence));
-            const _audioSequence = JSON.parse(JSON.stringify(audioSequence));
             if (_sequence[bw] && _sequence[bw].length > 0) {
               let temp = 0;
               _sequence[bw].forEach((seg) => {
@@ -1198,27 +1198,6 @@ class HLSVod {
                     _sequence[_bw].push(seg);
                   }
                 });
-                if (audioGroupId) {
-                  const audioGroupIds = Object.keys(this.audioSegments);
-                  audioGroupIds.forEach((groupId) => {
-                    if (!_audioSequence[groupId]) {
-                      _audioSequence[groupId] = {};
-                    }
-                    const audioLangs = Object.keys(this.audioSegments[groupId]);
-                    audioLangs.forEach((lang) => {
-                      if (!_audioSequence[groupId][lang]) {
-                        _audioSequence[groupId][lang] = [];
-                      }
-                      const seq_seg = this.audioSegments[groupId][lang][segIdxVideo];
-                      if (seqDur < this.SEQUENCE_DURATION) {
-                        if (!seq_seg) {
-                          debug(segIdxVideo, `WARNING! The _audioSequence[id=${groupId}][lang=${lang}] pushed seg=${seq_seg}`);
-                        }
-                        _audioSequence[groupId][lang].push(seq_seg);
-                      }
-                    });
-                  });
-                }
                 if (seqDur < this.SEQUENCE_DURATION) {
                   segIdxVideo++;
                 }
@@ -1244,25 +1223,6 @@ class HLSVod {
                     newPushedSegmentsCount++;
                   }
                 });
-                if (audioGroupId) {
-                  const audioGroupIds = Object.keys(this.audioSegments);
-                  audioGroupIds.forEach((groupId) => {
-                    if (!_audioSequence[groupId]) {
-                      _audioSequence[groupId] = {};
-                    }
-                    const audioLangs = Object.keys(this.audioSegments[groupId]);
-                    audioLangs.forEach((lang) => {
-                      if (!_audioSequence[groupId][lang]) {
-                        _audioSequence[groupId][lang] = [];
-                      }
-                      const seq_seg = this.audioSegments[groupId][lang][segIdxVideo];
-                      if (!seq_seg) {
-                        debug(segIdxVideo, `WARNING! The _audioSequence[id=${groupId}][lang=${lang}] pushed seg=${seq_seg}`);
-                      }
-                      _audioSequence[groupId][lang].push(seq_seg);
-                    });
-                  });
-                }
                 segIdxVideo++;
               }
               let shiftOnce = true;
@@ -1272,7 +1232,6 @@ class HLSVod {
                 shiftOnce = false;
                 let timeToRemove = 0;
                 let incrementDiscSeqCount = false;
-                let incrementAudioDiscSeqCount = false;
                 bandwidths.forEach((bw) => {
                   let seg = _sequence[bw].shift();
                   if (!seg) {
@@ -1288,8 +1247,144 @@ class HLSVod {
                     timeToRemove = seg.duration;
                   }
                 });
-                if (audioGroupId) {
+                if (timeToRemove) {
+                  totalSeqDurVideo -= timeToRemove;
+                  totalRemovedSegments++;
+                  shiftedSegmentsCount++;
+                }
+                if (incrementDiscSeqCount) {
+                  totalRemovedDiscTags++;
+                }
+
+                /*
+                To avoid creating a sequence where we remove 2 segs to add 2 segs.
+                Aim to add and remove as few segments as possible each sequence.
+                */
+                if (
+                  segIdxVideo < SIZE &&
+                  shiftedSegmentsCount === 1 &&
+                  newPushedSegmentsCount > 1
+                ) {
+                  // pop video...
+                  bandwidths.forEach((_bw) => {
+                    let seg = _sequence[_bw].pop();
+                    if (seg && seg.duration) {
+                      timeToRemove = seg.duration;
+                    }
+                  });
+                  // decrement...
+                  newPushedSegmentsCount--;
+                  segIdxVideo--;
+                  totalSeqDurVideo -= timeToRemove;
+                }
+              }
+            }
+
+            videoSequences.push(_sequence);
+
+            this.mediaSequenceValues[seqIndex] = totalRemovedSegments;
+            if (seqIndex === 0) {
+              // Compensate for hlsvod loaded after another.
+              totalRemovedSegments++;
+              this.mediaSequenceValues[seqIndex] = totalRemovedSegments;
+            }
+            this.discontinuities[seqIndex] = totalRemovedDiscTags;
+            sequence = _sequence;
+            seqIndex++;
+          } catch (err) {
+            console.error(err);
+          }
+        }
+        const audioSequences = [];
+        if (audioGroupId) {
+          let segIdxAudio = 0;
+          let seqIndex = 0
+          const SIZEAUDIO = this.audioSegments[audioGroupId][firstLanguage].length;
+          // Generate audio segments
+          while (this.audioSegments[audioGroupId][firstLanguage][segIdxAudio] && segIdxAudio < SIZEAUDIO) {
+            try {
+              totalSeqDurAudio = 0;
+              const _audioSequence = JSON.parse(JSON.stringify(audioSequence));
+              if (_audioSequence[audioGroupId] && _audioSequence[audioGroupId][firstLanguage] && _audioSequence[audioGroupId][firstLanguage].length > 0) {
+                let temp = 0;
+                _audioSequence[audioGroupId][firstLanguage].forEach((seg) => {
+                  if (seg && seg.duration) {
+                    temp += seg.duration;
+                  }
+                });
+                totalSeqDurAudio = temp;
+              }
+              if (segIdxAudio === 0) {
+                // Create the very first sequence. (No need to remove any segments)
+                let seqDur = 0;
+                while (seqDur < this.SEQUENCE_DURATION && segIdxAudio < SIZEAUDIO) {
                   const audioGroupIds = Object.keys(this.audioSegments);
+                  audioGroupIds.forEach((groupId) => {
+                    if (!_audioSequence[groupId]) {
+                      _audioSequence[groupId] = {};
+                    }
+                    const audioLangs = Object.keys(this.audioSegments[groupId]);
+                    let first = true;
+                    audioLangs.forEach((lang) => {
+                      if (!_audioSequence[groupId][lang]) {
+                        _audioSequence[groupId][lang] = [];
+                      }
+                      const seq_seg = this.audioSegments[groupId][lang][segIdxAudio];
+                      if (seq_seg && seq_seg.duration && first) {
+                        first = false;
+                        seqDur += seq_seg.duration;
+                      }
+                      if (seqDur < this.SEQUENCE_DURATION) {
+                        if (!seq_seg) {
+                          debug(segIdxAudio, `WARNING! The _audioSequence[id=${groupId}][lang=${lang}] pushed seg=${seq_seg}`);
+                        }
+                        _audioSequence[groupId][lang].push(seq_seg);
+                      }
+                    });
+                  });
+                  if (seqDur < this.SEQUENCE_DURATION) {
+                    segIdxAudio++;
+                  }
+                }
+              } else {
+                // Creating the rest of the sequences
+                let newPushedSegmentsCount = 0;
+                // 1 - Add new segments until we overflow (per variant)
+                while (totalSeqDurAudio < this.SEQUENCE_DURATION && segIdxAudio < SIZEAUDIO) {
+                  let first = true;
+                  const audioGroupIds = Object.keys(this.audioSegments);
+                  audioGroupIds.forEach((groupId) => {
+                    if (!_audioSequence[groupId]) {
+                      _audioSequence[groupId] = {};
+                    }
+                    const audioLangs = Object.keys(this.audioSegments[groupId]);
+                    audioLangs.forEach((lang) => {
+                      if (!_audioSequence[groupId][lang]) {
+                        _audioSequence[groupId][lang] = [];
+                      }
+                      const seq_seg = this.audioSegments[groupId][lang][segIdxAudio];
+                      if (seq_seg && seq_seg.duration && first) {
+                        first = false;
+                        totalSeqDurAudio += seq_seg.duration;
+                        newPushedSegmentsCount++;
+                      }
+                      if (!seq_seg) {
+                        debug(segIdxAudio, `WARNING! The _audioSequence[id=${groupId}][lang=${lang}] pushed seg=${seq_seg}`);
+                      }
+                      _audioSequence[groupId][lang].push(seq_seg);
+                    });
+                  });
+                  segIdxAudio++;
+                }
+                let shiftOnce = true;
+                let shiftedSegmentsCount = 0;
+                // 2 - Shift excess segments and keep count of what has been removed (per variant)
+                while (totalSeqDurAudio >= this.SEQUENCE_DURATION || (shiftOnce && segIdxAudio !== 0)) {
+                  shiftOnce = false;
+                  let timeToRemove = 0;
+                  let incrementAudioDiscSeqCount = false;
+                  const audioGroupIds = Object.keys(this.audioSegments);
+                  let first = true;
                   audioGroupIds.forEach((groupId) => {
                     if (!_audioSequence[groupId]) {
                       _audioSequence[groupId] = {};
@@ -1309,85 +1404,91 @@ class HLSVod {
                           seg = _audioSequence[groupId][lang].shift();
                         }
                       }
+                      if (seg && seg.duration && first) {
+                        first = false;
+                        timeToRemove = seg.duration;
+                      }
                     });
                   });
-                }
-                if (timeToRemove) {
-                  totalSeqDurVideo -= timeToRemove;
-                  totalRemovedSegments++;
-                  shiftedSegmentsCount++;
-                }
-                if (incrementDiscSeqCount) {
-                  totalRemovedDiscTags++;
-                }
-                if (incrementAudioDiscSeqCount) {
-                  totalRemovedAudioDiscTags++;
-                }
-
-                /*
-                To avoid creating a sequence where we remove 2 segs to add 2 segs.
-                Aim to add and remove as few segments as possible each sequence.
-                */
-                if (
-                  segIdxVideo < SIZE &&
-                  shiftedSegmentsCount === 1 &&
-                  newPushedSegmentsCount > 1 &&
-                  totalSeqDurVideo >= this.SEQUENCE_DURATION
-                ) {
-                  // pop video...
-                  bandwidths.forEach((_bw) => {
-                    let seg = _sequence[_bw].pop();
-                    if (seg && seg.duration) {
-                      timeToRemove = seg.duration;
-                    }
-                  });
-                  // pop audio...
-                  if (audioGroupId) {
-                    const audioGroupIds = Object.keys(this.audioSegments);
-                    audioGroupIds.forEach((groupId) => {
-                      const audioLangs = Object.keys(this.audioSegments[groupId]);
-                      audioLangs.forEach((lang) => {
-                        _audioSequence[groupId][lang].pop();
-                      });
-                    });
+                  if (timeToRemove) {
+                    totalSeqDurAudio -= timeToRemove;
+                    totalRemovedSegments++;
+                    shiftedSegmentsCount++;
                   }
-                  // decrement...
-                  newPushedSegmentsCount--;
-                  segIdxVideo--;
-                  totalSeqDurVideo -= timeToRemove;
+                  if (incrementAudioDiscSeqCount) {
+                    totalRemovedAudioDiscTags++;
+                  }
+
+                  /*
+                  To avoid creating a sequence where we remove 2 segs to add 2 segs.
+                  Aim to add and remove as few segments as possible each sequence.
+                  */
+                  if (
+                    segIdxAudio < SIZEAUDIO &&
+                    shiftedSegmentsCount === 1 &&
+                    newPushedSegmentsCount > 1 &&
+                    totalSeqDurAudio >= this.SEQUENCE_DURATION
+                  ) {
+                    // pop audio...
+                    if (audioGroupId) {
+                      const audioGroupIds = Object.keys(this.audioSegments);
+                      audioGroupIds.forEach((groupId) => {
+                        const audioLangs = Object.keys(this.audioSegments[groupId]);
+                        audioLangs.forEach((lang) => {
+                          let seg = _audioSequence[groupId][lang].pop();
+                          if(groupId === audioGroupId && lang === firstLanguage) {
+                            timeToRemove = seg.duration;
+                          }
+                        });
+                      });
+                    }
+                    // decrement...
+                    newPushedSegmentsCount--;
+                    segIdxAudio--;
+                    totalSeqDurAudio -= timeToRemove;
+                  }
                 }
               }
-            }
+              
+              audioSequences.push(_audioSequence);
 
-            videoSequences.push(_sequence);
-            audioSequences.push(_audioSequence);
-
-            this.mediaSequenceValues[seqIndex] = totalRemovedSegments;
-            if (seqIndex === 0) {
-              // Compensate for hlsvod loaded after another.
-              totalRemovedSegments++;
               this.mediaSequenceValues[seqIndex] = totalRemovedSegments;
+              if (seqIndex === 0) {
+                // Compensate for hlsvod loaded after another.
+                totalRemovedSegments++;
+                this.mediaSequenceValues[seqIndex] = totalRemovedSegments;
+              }
+              this.discontinuitiesAudio[seqIndex] = totalRemovedAudioDiscTags;
+              audioSequence = _audioSequence;
+              seqIndex++;
+            } catch (err) {
+              console.error(err);
             }
-            this.discontinuities[seqIndex] = totalRemovedDiscTags;
-            this.discontinuitiesAudio[seqIndex] = totalRemovedAudioDiscTags;
-            sequence = _sequence;
-            audioSequence = _audioSequence;
-            seqIndex++;
-          } catch (err) {
-            console.error(err);
           }
         }
+
         // Append newly generated video/audio sequences
-        for (let i = 0; i < videoSequences.length; i++) {
-          const vseq = videoSequences[i];
-          const aseq = audioSequences[i];
-          const mseq = {
-            segments: vseq,
-            audioSegments: aseq,
-          };
-          this.mediaSequences.push(mseq);
+        videoSequences.map((_, index) => {
+          this.mediaSequences.push({
+            segments: videoSequences[index],
+            audioSegments: {},
+          });
+        });
+        for (let i = 0; i < audioSequences.length; i++) {
+          if (i < this.mediaSequences.length) {
+            this.mediaSequences[i].audioSegments = audioSequences[i] ? audioSequences[i] : {};
+          } else {
+            this.mediaSequences.push({
+              segments: {},
+              audioSegments: audioSequences[i] ? audioSequences[i] : {},
+            });
+          }
         }
+
+        this.videoSequencesCount = videoSequences.length;
+        this.audioSequencesCount = audioSequences.length;
       }
+
 
       if (!this.mediaSequences) {
         reject("Failed to init media sequences");
@@ -1505,8 +1606,8 @@ class HLSVod {
             if (!alang) {
               continue;
             }
-            
-            if (mseq.audioSegments[agid][alang] && mseq.audioSegments[agid][alang][0] && mseq.audioSegments[agid][alang][0].discontinuity) {
+            const audioSegment = mseq.audioSegments[agid][alang];
+            if (audioSegment && audioSegment[0] && audioSegment[0].discontinuity) {
               debug(`Discontinuity in first segment of media seq ${seqNo}`);
               discSeqNo++;
               debug(`Increasing discont sequence ${discSeqNo}`);
@@ -1518,76 +1619,75 @@ class HLSVod {
               this.discontinuitiesAudio[seqNo] = discSeqNo;
             }
 
-          // audiofiera allt här under 
-          if (this.sequenceAlwaysContainNewSegments) {
-            reject("Audio Implementation NOT Finished")
-            // if (seqNo > 0) {
-            //   let tpi = 0; // Total Position Increment (total newly added content in seconds)
-            //   const prevLastSegIdx = findIndexReversed(mseq.segments[bwIdx], (seg) => {
-            //     if (seg.uri) {
-            //       return seg.uri === prevLastSegmentUri;
-            //     }
-            //     return false;
-            //   });
-            //   for (let i = prevLastSegIdx + 1; i < mseq.segments[bwIdx].length; i++) {
-            //     const seg = mseq.segments[bwIdx][i];
-            //     if (seg && seg.duration) {
-            //       tpi += seg.duration;
-            //     }
-            //   }
-            //   let lastSegment = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1];
-            //   if (lastSegment && lastSegment.discontinuity) {
-            //     lastSegment = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2];
-            //   }
-            //   const positionIncrement = lastSegment.duration;
-            //   const interval = tpi - lastPositionIncrement;
-            //   this.deltaTimes.push({
-            //     interval: interval,
-            //     position: positionIncrement ? lastPosition + tpi : lastPosition,
-            //   });
-            //   if (positionIncrement) {
-            //     lastPosition += tpi;
-            //     lastPositionIncrement = positionIncrement;
-            //   }
-            //   if (lastSegment && lastSegment.uri) {
-            //     prevLastSegmentUri = lastSegment.uri;
-            //   }
-            // } else {
-            //   if (mseq.audioSegments[agid][alang]) {
-            //     let lastSegment = mseq.audioSegments[agid][alang][mseq.audioSegments[agid][alang].length - 1];
-            //     if (lastSegment && lastSegment.discontinuity) {
-            //       lastSegment = mseq.audioSegments[agid][alang][mseq.audioSegments[agid][alang].length - 2];
-            //     }
-            //     if (lastSegment && lastSegment.uri) {
-            //       prevLastSegmentUri = lastSegment.uri;
-            //     }
-            //     lastPositionIncrement = lastSegment.duration;
-            //   }
-            // }
-          } else {
-            if (seqNo > 0) {
-              const positionIncrement = mseq.audioSegments[agid][alang][mseq.audioSegments[agid][alang].length - 1].discontinuity
-                ? mseq.audioSegments[agid][alang][mseq.audioSegments[agid][alang].length - 2].duration
-                : mseq.audioSegments[agid][alang][mseq.audioSegments[agid][alang].length - 1].duration;
-              const interval = positionIncrement - lastPositionIncrement;
-              this.deltaTimesAudio.push({
-                interval: interval,
-                position: positionIncrement ? lastPosition + positionIncrement : lastPosition,
-              });
-              if (positionIncrement) {
-                lastPosition += positionIncrement;
-                lastPositionIncrement = positionIncrement;
+            // audiofiera allt här under 
+            if (this.sequenceAlwaysContainNewSegments) {
+              if (seqNo > 0) {
+                let tpi = 0; // Total Position Increment (total newly added content in seconds)
+                const prevLastSegIdx = findIndexReversed(audioSegment, (seg) => {
+                  if (seg.uri) {
+                    return seg.uri === prevLastSegmentUri;
+                  }
+                  return false;
+                });
+                for (let i = prevLastSegIdx + 1; i < audioSegment.length; i++) {
+                  const seg = audioSegment[i];
+                  if (seg && seg.duration) {
+                    tpi += seg.duration;
+                  }
+                }
+                let lastSegment = audioSegment[audioSegment.length - 1];
+                if (lastSegment && lastSegment.discontinuity) {
+                  lastSegment = audioSegment[audioSegment.length - 2];
+                }
+                const positionIncrement = lastSegment.duration;
+                const interval = tpi - lastPositionIncrement;
+                this.deltaTimesAudio.push({
+                  interval: interval,
+                  position: positionIncrement ? lastPosition + tpi : lastPosition,
+                });
+                if (positionIncrement) {
+                  lastPosition += tpi;
+                  lastPositionIncrement = positionIncrement;
+                }
+                if (lastSegment && lastSegment.uri) {
+                  prevLastSegmentUri = lastSegment.uri;
+                }
+              } else {
+                if (audioSegment) {
+                  let lastSegment = audioSegment[audioSegment.length - 1];
+                  if (lastSegment && lastSegment.discontinuity) {
+                    lastSegment = audioSegment[audioSegment.length - 2];
+                  }
+                  if (lastSegment && lastSegment.uri) {
+                    prevLastSegmentUri = lastSegment.uri;
+                  }
+                  lastPositionIncrement = lastSegment.duration;
+                }
               }
             } else {
-              if (mseq.audioSegments[agid][alang]) {
-                lastPositionIncrement = mseq.audioSegments[agid][alang][mseq.audioSegments[agid][alang].length - 1].discontinuity
-                  ? mseq.audioSegments[agid][alang][mseq.audioSegments[agid][alang].length - 2].duration
-                  : mseq.audioSegments[agid][alang][mseq.audioSegments[agid][alang].length - 1].duration;
+              if (seqNo > 0) {
+                const positionIncrement = audioSegment[audioSegment.length - 1].discontinuity
+                  ? audioSegment[audioSegment.length - 2].duration
+                  : audioSegment[audioSegment.length - 1].duration;
+                const interval = positionIncrement - lastPositionIncrement;
+                this.deltaTimesAudio.push({
+                  interval: interval,
+                  position: positionIncrement ? lastPosition + positionIncrement : lastPosition,
+                });
+                if (positionIncrement) {
+                  lastPosition += positionIncrement;
+                  lastPositionIncrement = positionIncrement;
+                }
+              } else {
+                if (audioSegment) {
+                  lastPositionIncrement = audioSegment[audioSegment.length - 1].discontinuity
+                    ? audioSegment[audioSegment.length - 2].duration
+                    : audioSegment[audioSegment.length - 1].duration;
+                }
               }
             }
           }
         }
-      }
         resolve();
       }
     });
@@ -1614,6 +1714,7 @@ class HLSVod {
     this.rangeMetadata = null;
     this.matchedBandwidths = {};
     this.deltaTimes = [];
+    this.deltaTimesAudio = [];
   }
 
   _getFirstBwWithSegments() {
@@ -1811,13 +1912,13 @@ class HLSVod {
                 let cue =
                   cueOut || cueIn || cueOutCont || assetData
                     ? {
-                        out: typeof cueOut !== "undefined",
-                        cont: typeof cueOutCont !== "undefined" ? cueOutCont : null,
-                        scteData: typeof scteData !== "undefined" ? scteData : null,
-                        in: cueIn ? true : false,
-                        duration: duration,
-                        assetData: typeof assetData !== "undefined" ? assetData : null,
-                      }
+                      out: typeof cueOut !== "undefined",
+                      cont: typeof cueOutCont !== "undefined" ? cueOutCont : null,
+                      scteData: typeof scteData !== "undefined" ? scteData : null,
+                      in: cueIn ? true : false,
+                      duration: duration,
+                      assetData: typeof assetData !== "undefined" ? assetData : null,
+                    }
                     : null;
                 let q = {
                   duration: playlistItem.properties.duration,
