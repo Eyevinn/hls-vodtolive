@@ -3137,7 +3137,6 @@ describe("HLSVod when loading mux vod after demux vod, with set option-> forcedD
   let mock1_AudioManifest;
   let mock2_MasterManifest;
   let mock2_MediaManifest;
-  let mock2_AudioManifest;
 
   beforeEach(() => {
     mock1_MasterManifest = function () {
@@ -3160,20 +3159,15 @@ describe("HLSVod when loading mux vod after demux vod, with set option-> forcedD
     mock2_MediaManifest = function (bandwidth) {
       return fs.createReadStream("testvectors/hls_always_1/" + bandwidth + ".m3u8");
     };
-    mock2_AudioManifest = function (groupId, lang) {
-      if (groupId && lang) {
-        return fs.createReadStream(`testvectors/hls_always_1/${groupId}-${lang}.m3u8`);
-      } else {
-        return fs.createReadStream(`testvectors/hls_always_1/${groupId}.m3u8`);
-      }
-    };
   });
-  it("test ", () => {
+
+  it("test that it rejects as expected", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: false, forcedDemuxMode: true });
     mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: false, forcedDemuxMode: true });
     mockVod.load(mock1_MasterManifest, mock1_MediaManifest, mock1_AudioManifest).then(() => {
       mockVod2.loadAfter(mockVod, mock2_MasterManifest, mock2_MediaManifest).catch((e) => {
         expect(e.message).toEqual("The vod is not a demux vod")
+        done();
       })
     })
   });
