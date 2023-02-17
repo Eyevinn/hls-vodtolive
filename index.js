@@ -60,6 +60,9 @@ class HLSVod {
     if (opts && opts.sequenceAlwaysContainNewSegments) {
       this.sequenceAlwaysContainNewSegments = opts.sequenceAlwaysContainNewSegments;
     }
+    if (opts && opts.forcedDemuxMode) {
+      this.forcedDemuxMode = opts.forcedDemuxMode;
+    }
     this.videoSequencesCount = 0;
     this.audioSequencesCount = 0;
   }
@@ -90,6 +93,7 @@ class HLSVod {
       mediaSequenceValues: this.mediaSequenceValues,
       mediaSequenceValuesAudio: this.mediaSequenceValuesAudio,
       sequenceAlwaysContainNewSegments: this.sequenceAlwaysContainNewSegments,
+      forcedDemuxMode: this.forcedDemuxMode,
       videoSequencesCount: this.videoSequencesCount,
       audioSequencesCount: this.audioSequencesCount
     };
@@ -128,6 +132,7 @@ class HLSVod {
     this.mediaSequenceValues = de.mediaSequenceValues;
     this.mediaSequenceValuesAudio = de.mediaSequenceValuesAudio;
     this.sequenceAlwaysContainNewSegments = de.sequenceAlwaysContainNewSegments;
+    this.forcedDemuxMode = de.forcedDemuxMode;
     this.videoSequencesCount = de.videoSequencesCount;
     this.audioSequencesCount = de.audioSequencesCount;
   }
@@ -277,6 +282,8 @@ class HLSVod {
                 debug(`No media item for '${audioGroupId}' in "${audioLang}" was found, skipping`);
               }
             }
+          }  else if (this.forcedDemuxMode) {
+            reject(new Error("The vod is not a demux vod"));
           }
         }
         Promise.all(mediaManifestPromises.concat(audioManifestPromises))
@@ -418,6 +425,7 @@ class HLSVod {
       // Clean up/Reset HLSVod data since we are going to create new data
       this.mediaSequences = [];
       this.mediaSequenceValues = {};
+      this.mediaSequenceValuesAudio = {};
       this.discontinuities = {};
       this.deltaTimes = [];
       this.deltaTimesAudio = [];
@@ -1229,6 +1237,7 @@ class HLSVod {
               let shiftedSegmentsCount = 0;
               // 2 - Shift excess segments and keep count of what has been removed (per variant)
               while (totalSeqDurVideo >= this.SEQUENCE_DURATION || (shiftOnce && segIdxVideo !== 0)) {
+                
                 shiftOnce = false;
                 let timeToRemove = 0;
                 let incrementDiscSeqCount = false;
@@ -1263,7 +1272,8 @@ class HLSVod {
                 if (
                   segIdxVideo < SIZE &&
                   shiftedSegmentsCount === 1 &&
-                  newPushedSegmentsCount > 1
+                  newPushedSegmentsCount > 1 &&
+                  totalSeqDurVideo >= this.SEQUENCE_DURATION
                 ) {
                   // pop video...
                   bandwidths.forEach((_bw) => {
@@ -1299,6 +1309,7 @@ class HLSVod {
         if (audioGroupId) {
           let segIdxAudio = 0;
           let seqIndex = 0
+          totalRemovedSegments = 0;
           const SIZEAUDIO = this.audioSegments[audioGroupId][firstLanguage].length;
           // Generate audio segments
           while (this.audioSegments[audioGroupId][firstLanguage][segIdxAudio] && segIdxAudio < SIZEAUDIO) {
@@ -1452,11 +1463,11 @@ class HLSVod {
               
               audioSequences.push(_audioSequence);
 
-              this.mediaSequenceValues[seqIndex] = totalRemovedSegments;
+              this.mediaSequenceValuesAudio[seqIndex] = totalRemovedSegments;
               if (seqIndex === 0) {
                 // Compensate for hlsvod loaded after another.
                 totalRemovedSegments++;
-                this.mediaSequenceValues[seqIndex] = totalRemovedSegments;
+                this.mediaSequenceValuesAudio[seqIndex] = totalRemovedSegments;
               }
               this.discontinuitiesAudio[seqIndex] = totalRemovedAudioDiscTags;
               audioSequence = _audioSequence;
@@ -1710,6 +1721,7 @@ class HLSVod {
     this.discontinuities = {};
     this.discontinuitiesAudio = {};
     this.mediaSequenceValues = {};
+    this.mediaSequenceValuesAudio = {};
     this.sequenceAlwaysContainNewSegments = null;
     this.rangeMetadata = null;
     this.matchedBandwidths = {};
