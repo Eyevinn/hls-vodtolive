@@ -1816,7 +1816,7 @@ class HLSVod {
             let position = 0;
             let nextSplicePosition = null;
             let spliceIdx = 0;
-
+            let initSegment = undefined;
             // Remove segments in the beginning if we have a start time offset
             if (this.startTimeOffset != null) {
               let remain = this.startTimeOffset;
@@ -1846,7 +1846,7 @@ class HLSVod {
               if (m) {
                 baseUrl = m[1] + "/";
               }
-              let initSegment = undefined;
+
               if (m3u.items.PlaylistItem[i].attributes.attributes["map-uri"]) {
                 initSegment = m3u.items.PlaylistItem[i].attributes.attributes["map-uri"];
                 if (!initSegment.match("^http")) {
@@ -2010,10 +2010,9 @@ class HLSVod {
           if (m) {
             baseUrl = m[1] + "/";
           }
-
+          let initSegment = undefined;
           if (this.audioSegments[groupId][language]) {
             for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
-              let initSegment = undefined;
               const playlistItem = m3u.items.PlaylistItem[i];
               let segmentUri;
               if (m3u.items.PlaylistItem[i].attributes.attributes["map-uri"]) {
