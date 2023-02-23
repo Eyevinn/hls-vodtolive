@@ -65,6 +65,7 @@ class HLSVod {
     }
     this.videoSequencesCount = 0;
     this.audioSequencesCount = 0;
+    this.defaultAudioGroupAndLang = null;
   }
 
   toJSON() {
@@ -95,7 +96,7 @@ class HLSVod {
       sequenceAlwaysContainNewSegments: this.sequenceAlwaysContainNewSegments,
       forcedDemuxMode: this.forcedDemuxMode,
       videoSequencesCount: this.videoSequencesCount,
-      audioSequencesCount: this.audioSequencesCount
+      audioSequencesCount: this.audioSequencesCount,
     };
     return JSON.stringify(serialized);
   }
@@ -152,7 +153,7 @@ class HLSVod {
         if (m) {
           baseUrl = m[1] + "/";
         }
-
+        const HAS_AUDIO_DEFAULTS = this.defaultAudioGroupAndLang === null ? false : true;
         if (this.previousVod && this.previousVod.getBandwidths().length === m3u.items.StreamItem.length) {
           debug(`Previous VOD bandwidths matches amount of current. A mapping is possible`);
           const previousBandwidths = this.previousVod.getBandwidths().sort((a, b) => a - b);
@@ -195,13 +196,15 @@ class HLSVod {
           }
           if (streamItem.attributes.attributes["audio"]) {
             let audioGroupId = streamItem.attributes.attributes["audio"];
-            if (!this.audioSegments[audioGroupId]) {
+            if (!HAS_AUDIO_DEFAULTS && !this.audioSegments[audioGroupId]) {
               this.audioSegments[audioGroupId] = {};
             }
             debug(`Lookup media item for '${audioGroupId}'`);
 
             // # Needed for the case when loading after another VOD.
-            const previousVODLanguages = Object.keys(this.audioSegments[audioGroupId]);
+            const previousVODLanguages = HAS_AUDIO_DEFAULTS
+              ? Object.keys(this.audioSegments[this.defaultAudioGroupAndLang.audioGroupId])
+              : Object.keys(this.audioSegments[audioGroupId]);
 
             let audioGroupItems = m3u.items.MediaItem.filter((item) => {
               return item.attributes.attributes.type === "AUDIO" && item.attributes.attributes["group-id"] === audioGroupId;
@@ -217,7 +220,7 @@ class HLSVod {
                 itemLang = item.attributes.attributes["language"];
               }
               // Initialize lang. in new group.
-              if (!this.audioSegments[audioGroupId][itemLang]) {
+              if (!HAS_AUDIO_DEFAULTS && !this.audioSegments[audioGroupId][itemLang]) {
                 this.audioSegments[audioGroupId][itemLang] = [];
               }
               return (item = itemLang);
@@ -230,7 +233,7 @@ class HLSVod {
               return !previousVODLanguages.includes(lang);
             });
             // # Only inject if there were prior tracks.
-            if (previousVODLanguages.length > 0) {
+            if (previousVODLanguages.length > 0 && !HAS_AUDIO_DEFAULTS) {
               for (let i = 0; i < newLanguages.length; i++) {
                 const newLanguage = newLanguages[i];
                 const defaultLanguage = this._getFirstAudioLanguageWithSegments(audioGroupId);
@@ -241,16 +244,18 @@ class HLSVod {
             // # Need to clean up langs. loaded from prev. VOD that current VOD doesn't have.
             // # Necessary, for the case when getLiveMediaSequenceAudioSegments() tries to
             // # access an audioGroup's language that the current VOD never had. A False-Positive.
-            let allLangs = Object.keys(this.audioSegments[audioGroupId]);
-            let toRemove = [];
-            allLangs.map((junkLang) => {
-              if (!audioLanguages.includes(junkLang)) {
-                toRemove.push(junkLang);
-              }
-            });
-            toRemove.map((junkLang) => {
-              delete this.audioSegments[audioGroupId][junkLang];
-            });
+            if (!HAS_AUDIO_DEFAULTS) {
+              let allLangs = Object.keys(this.audioSegments[audioGroupId]);
+              let toRemove = [];
+              allLangs.map((junkLang) => {
+                if (!audioLanguages.includes(junkLang)) {
+                  toRemove.push(junkLang);
+                }
+              });
+              toRemove.map((junkLang) => {
+                delete this.audioSegments[audioGroupId][junkLang];
+              });
+            }
 
             // # For each lang, find the lang playlist uri and do _loadAudioManifest() on it.
             for (let j = 0; j < audioLanguages.length; j++) {
@@ -273,8 +278,14 @@ class HLSVod {
                 // # Prevents 'loading' an audio track with same GroupID and LANG.
                 // # otherwise it just would've loaded OVER the latest occurrent of the LANG in GroupID.
                 if (!audioGroups[audioGroupId][audioLang]) {
+                  let targetGroup = audioGroupId;
+                  let targetLang = audioLang;
                   audioGroups[audioGroupId][audioLang] = true;
-                  audioManifestPromises.push(this._loadAudioManifest(audioManifestUrl, audioGroupId, audioLang, _injectAudioManifest));
+                  if (HAS_AUDIO_DEFAULTS) {
+                    targetGroup = this.defaultAudioGroupAndLang.audioGroupId;
+                    targetLang = this.defaultAudioGroupAndLang.audioLanguage;
+                  }
+                  audioManifestPromises.push(this._loadAudioManifest(audioManifestUrl, targetGroup, targetLang, _injectAudioManifest));
                 } else {
                   debug(`Audio manifest for language "${audioLang}" from '${audioGroupId}' in already loaded, skipping`);
                 }
@@ -282,7 +293,7 @@ class HLSVod {
                 debug(`No media item for '${audioGroupId}' in "${audioLang}" was found, skipping`);
               }
             }
-          }  else if (this.forcedDemuxMode) {
+          } else if (this.forcedDemuxMode) {
             reject(new Error("The vod is not a demux vod"));
           }
         }
@@ -530,7 +541,7 @@ class HLSVod {
     if (media === "audio") {
       return this.audioSequencesCount;
     }
-    return this.videoSequencesCount
+    return this.videoSequencesCount;
   }
 
   /**
@@ -750,20 +761,16 @@ class HLSVod {
           if (v.cue && v.cue.cont) {
             m3u8 += "#EXT-X-CUE-OUT-CONT:" + v.cue.cont + "/" + v.cue.duration + "\n";
           }
-          if (v.uri) {
-            m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
-            m3u8 += v.uri + "\n";
-          }
           if (v.cue && v.cue.in) {
-            if (
-              this.mediaSequences[seqIdx].segments[bw][i + 1] &&
-              this.mediaSequences[seqIdx].segments[bw][i + 1].discontinuity &&
-              i + 1 == this.mediaSequences[seqIdx].segments[bw].length - 1
-            ) {
+            if (mediaSeqAudioSegments[i + 1] && mediaSeqAudioSegments[i + 1].discontinuity && i + 1 == mediaSeqAudioSegments.length - 1) {
               // Do not add a closing cue-in if next is not a segment and last one in the list
             } else {
               m3u8 += "#EXT-X-CUE-IN" + "\n";
             }
+          }
+          if (v.uri) {
+            m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
+            m3u8 += v.uri + "\n";
           }
         } else {
           if (i != 0 && i != mediaSeqAudioSegments.length - 1) {
@@ -921,7 +928,12 @@ class HLSVod {
       for (let i = 0; i < audioGroups.length; i++) {
         const audioGroupId = audioGroups[i];
         const audioLangs = this.previousVod.getAudioLangsForAudioGroup(audioGroupId);
-
+        if (audioGroups.length === 1 && audioLangs.length === 1) {
+          this.defaultAudioGroupAndLang = {
+            audioGroupId: audioGroups[0],
+            audioLanguage: audioLangs[0],
+          };
+        }
         for (let k = 0; k < audioLangs.length; k++) {
           const audioLang = audioLangs[k];
           const lastMediaAudioSequence = this.previousVod.getLiveMediaSequenceAudioSegments(audioGroupId, audioLang, previousVodSeqCount - 1);
@@ -1160,7 +1172,6 @@ class HLSVod {
         // Set Sequences Counts
         this.videoSequencesCount = video_sequence_list.length;
         this.audioSequencesCount = audio_sequence_list.length;
-
       } else {
         /*---------------------------------------------.
          * Generate Sequences out of segments (type-B) |
@@ -1237,7 +1248,6 @@ class HLSVod {
               let shiftedSegmentsCount = 0;
               // 2 - Shift excess segments and keep count of what has been removed (per variant)
               while (totalSeqDurVideo >= this.SEQUENCE_DURATION || (shiftOnce && segIdxVideo !== 0)) {
-                
                 shiftOnce = false;
                 let timeToRemove = 0;
                 let incrementDiscSeqCount = false;
@@ -1308,7 +1318,7 @@ class HLSVod {
         const audioSequences = [];
         if (audioGroupId) {
           let segIdxAudio = 0;
-          let seqIndex = 0
+          let seqIndex = 0;
           totalRemovedSegments = 0;
           const SIZEAUDIO = this.audioSegments[audioGroupId][firstLanguage].length;
           // Generate audio segments
@@ -1316,7 +1326,11 @@ class HLSVod {
             try {
               totalSeqDurAudio = 0;
               const _audioSequence = JSON.parse(JSON.stringify(audioSequence));
-              if (_audioSequence[audioGroupId] && _audioSequence[audioGroupId][firstLanguage] && _audioSequence[audioGroupId][firstLanguage].length > 0) {
+              if (
+                _audioSequence[audioGroupId] &&
+                _audioSequence[audioGroupId][firstLanguage] &&
+                _audioSequence[audioGroupId][firstLanguage].length > 0
+              ) {
                 let temp = 0;
                 _audioSequence[audioGroupId][firstLanguage].forEach((seg) => {
                   if (seg && seg.duration) {
@@ -1447,7 +1461,7 @@ class HLSVod {
                         const audioLangs = Object.keys(this.audioSegments[groupId]);
                         audioLangs.forEach((lang) => {
                           let seg = _audioSequence[groupId][lang].pop();
-                          if(groupId === audioGroupId && lang === firstLanguage) {
+                          if (groupId === audioGroupId && lang === firstLanguage) {
                             timeToRemove = seg.duration;
                           }
                         });
@@ -1460,7 +1474,7 @@ class HLSVod {
                   }
                 }
               }
-              
+
               audioSequences.push(_audioSequence);
 
               this.mediaSequenceValuesAudio[seqIndex] = totalRemovedSegments;
@@ -1499,7 +1513,6 @@ class HLSVod {
         this.videoSequencesCount = videoSequences.length;
         this.audioSequencesCount = audioSequences.length;
       }
-
 
       if (!this.mediaSequences) {
         reject("Failed to init media sequences");
@@ -1630,7 +1643,6 @@ class HLSVod {
               this.discontinuitiesAudio[seqNo] = discSeqNo;
             }
 
-            // audiofiera allt här under 
             if (this.sequenceAlwaysContainNewSegments) {
               if (seqNo > 0) {
                 let tpi = 0; // Total Position Increment (total newly added content in seconds)
@@ -1788,7 +1800,6 @@ class HLSVod {
           const sourceBw = Number(bandwidthsWithSequences.sort((a, b) => b - a)[0]);
           debug(`Was not able to match ${bandwidth}, will create and copy from previous ${sourceBw}`);
           this._copyFromPrevious(bandwidth, sourceBw);
-          this._copyAudioGroupsFromPrevious();
           bw = bandwidth;
         }
         debug(`Selected ${bw} to use`);
@@ -1801,20 +1812,6 @@ class HLSVod {
 
       parser.on("m3u", (m3u) => {
         try {
-          let initSegment = undefined;
-          if (m3u.get("EXT-X-MAP")) {
-            const m = m3u.get("EXT-X-MAP").match(/URI=\"(.*)\"/);
-            if (m) {
-              initSegment = m[1];
-              if (!initSegment.match("^http")) {
-                const n = mediaManifestUri.match("^(.*)/.*?$");
-                if (n) {
-                  initSegment = url.resolve(n[1] + "/", initSegment);
-                }
-              }
-            }
-          }
-
           if (!this.segmentsInitiated[bw]) {
             let position = 0;
             let nextSplicePosition = null;
@@ -1848,6 +1845,16 @@ class HLSVod {
               const m = mediaManifestUri.match("^(.*)/.*?$");
               if (m) {
                 baseUrl = m[1] + "/";
+              }
+              let initSegment = undefined;
+              if (m3u.items.PlaylistItem[i].attributes.attributes["map-uri"]) {
+                initSegment = m3u.items.PlaylistItem[i].attributes.attributes["map-uri"];
+                if (!initSegment.match("^http")) {
+                  const n = mediaManifestUri.match("^(.*)/.*?$");
+                  if (n) {
+                    initSegment = url.resolve(n[1] + "/", initSegment);
+                  }
+                }
               }
 
               // some items such as CUE-IN parse as a PlaylistItem
@@ -1924,13 +1931,13 @@ class HLSVod {
                 let cue =
                   cueOut || cueIn || cueOutCont || assetData
                     ? {
-                      out: typeof cueOut !== "undefined",
-                      cont: typeof cueOutCont !== "undefined" ? cueOutCont : null,
-                      scteData: typeof scteData !== "undefined" ? scteData : null,
-                      in: cueIn ? true : false,
-                      duration: duration,
-                      assetData: typeof assetData !== "undefined" ? assetData : null,
-                    }
+                        out: typeof cueOut !== "undefined",
+                        cont: typeof cueOutCont !== "undefined" ? cueOutCont : null,
+                        scteData: typeof scteData !== "undefined" ? scteData : null,
+                        in: cueIn ? true : false,
+                        duration: duration,
+                        assetData: typeof assetData !== "undefined" ? assetData : null,
+                      }
                     : null;
                 let q = {
                   duration: playlistItem.properties.duration,
@@ -1994,6 +2001,8 @@ class HLSVod {
       debug(`Loading audio manifest for lang=${language} of group=${groupId}`);
       debug(`Audio manifest URI: ${audioManifestUri}`);
 
+      let timelinePosition = 0;
+
       parser.on("m3u", (m3u) => {
         try {
           let baseUrl;
@@ -2003,21 +2012,16 @@ class HLSVod {
           }
 
           if (this.audioSegments[groupId][language]) {
-            let initSegment = undefined;
-            if (m3u.get("EXT-X-MAP")) {
-              const m = m3u.get("EXT-X-MAP").match(/URI=\"(.*)\"/);
-              if (m) {
-                initSegment = m[1];
+            for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
+              let initSegment = undefined;
+              const playlistItem = m3u.items.PlaylistItem[i];
+              let segmentUri;
+              if (m3u.items.PlaylistItem[i].attributes.attributes["map-uri"]) {
+                initSegment = m3u.items.PlaylistItem[i].attributes.attributes["map-uri"];
                 if (!initSegment.match("^http")) {
                   initSegment = url.resolve(baseUrl, initSegment);
                 }
               }
-            }
-
-            for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
-              const playlistItem = m3u.items.PlaylistItem[i];
-              let segmentUri;
-
               // some items such as CUE-IN parse as a PlaylistItem
               // but have no URI
               if (playlistItem.properties.uri) {
@@ -2032,8 +2036,32 @@ class HLSVod {
                   discontinuity: true,
                 });
               }
+              let assetData = playlistItem.get("assetdata");
+              let cueOut = playlistItem.get("cueout");
+              let cueIn = playlistItem.get("cuein");
+              let cueOutCont = playlistItem.get("cont-offset");
+              let duration = 0;
+              let scteData = playlistItem.get("sctedata");
+              if (typeof cueOut !== "undefined") {
+                duration = cueOut;
+              } else if (typeof cueOutCont !== "undefined") {
+                duration = playlistItem.get("cont-dur");
+              }
+              let cue =
+                cueOut || cueIn || cueOutCont || assetData
+                  ? {
+                      out: typeof cueOut !== "undefined",
+                      cont: typeof cueOutCont !== "undefined" ? cueOutCont : null,
+                      scteData: typeof scteData !== "undefined" ? scteData : null,
+                      in: cueIn ? true : false,
+                      duration: duration,
+                      assetData: typeof assetData !== "undefined" ? assetData : null,
+                    }
+                  : null;
               let q = {
                 duration: playlistItem.properties.duration,
+                timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
+                cue: cue,
               };
               if (segmentUri) {
                 q.uri = segmentUri;
@@ -2041,7 +2069,14 @@ class HLSVod {
               if (initSegment) {
                 q.initSegment = initSegment;
               }
+              if (this.audioSegments[groupId][language].length === 0) {
+                // Add daterange metadata if this is the first segment
+                if (this.rangeMetadata) {
+                  q["daterange"] = this.rangeMetadata;
+                }
+              }
               this.audioSegments[groupId][language].push(q);
+              timelinePosition += q.duration * 1000;
             }
             if (!this.targetAudioDuration[groupId]) {
               this.targetAudioDuration[groupId] = {};

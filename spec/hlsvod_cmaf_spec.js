@@ -59,7 +59,6 @@ describe("HLSVod CMAF standalone", () => {
     mockVod.load(mockMasterManifestNoLang, mockMediaManifest, mockAudioManifest).then(() => {
       let m3u8 = mockVod.getLiveMediaAudioSequences(0, "audio-aacl-256", "sv", 0);
       let lines = m3u8.split("\n");
-      
       expect(lines[6]).toEqual('#EXT-X-MAP:URI="http://mock.com/test-audio=256000.m4s"');
       done();
     });
@@ -72,7 +71,7 @@ describe("HLSVod CMAF after another CMAF VOD", () => {
   let mockAudioManifest;
   beforeEach(() => {
     mockMasterManifest = function () {
-      return fs.createReadStream("testvectors/hls_cmaf_1/master.m3u8");
+      return fs.createReadStream("testvectors/hls_cmaf_1/master_nolang.m3u8");
     };
 
     mockMediaManifest = function (bandwidth) {
@@ -85,6 +84,21 @@ describe("HLSVod CMAF after another CMAF VOD", () => {
       };
       return fs.createReadStream("testvectors/hls_cmaf_1/test-audio=" + bw[groupId] + ".m3u8");
     };
+    mockMasterManifest2 = function () {
+      return fs.createReadStream("testvectors/hls_cmaf_2/master_nolang.m3u8");
+    };
+
+    mockMediaManifest2 = function (bandwidth) {
+      return fs.createReadStream("testvectors/hls_cmaf_2/test-video=" + bandwidth + ".m3u8");
+    };
+
+    mockAudioManifest2 = function (groupId, lang) {
+      const bw = {
+        "audio-aacl-128": "256000",
+        "audio-aacl-256": "256000",
+      };
+      return fs.createReadStream("testvectors/hls_cmaf_2/test-audio=" + bw[groupId] + ".m3u8");
+    };
   });
 
   it("inserts init segment after discontinuity", (done) => {
@@ -93,16 +107,21 @@ describe("HLSVod CMAF after another CMAF VOD", () => {
     mockVod
       .load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
       .then(() => {
-        return mockVod2.loadAfter(mockVod, mockMasterManifest, mockMediaManifest, mockAudioManifest);
+        return mockVod2.loadAfter(mockVod, mockMasterManifest2, mockMediaManifest2, mockAudioManifest2);
       })
       .then(() => {
-         let m3u8 = mockVod2.getLiveMediaSequences(0, "2500000", 10);
-         let lines = m3u8.split("\n");
-         expect(lines[26]).toEqual('#EXT-X-MAP:URI="http://mock.com/test-video=2500000.m4s"');
+        let m3u8 = mockVod2.getLiveMediaSequences(0, "2500000", 10);
+        let lines = m3u8.split("\n");
+        expect(lines[26]).toEqual(
+          '#EXT-X-MAP:URI="https://ovpuspvod.a2d-stage.tv/trailers/63ef9c36e3ffa90028603374/output.ism/hls/output-video=1500000.m4s"'
+        );
+        m3u8 = mockVod2.getLiveMediaAudioSequences(0, "audio-aacl-256", "sv", 10);
+        lines = m3u8.split("\n");
+        expect(lines[48]).toEqual(
+          '#EXT-X-MAP:URI="https://ovpuspvod.a2d-stage.tv/trailers/63ef9c36e3ffa90028603374/output.ism/hls/output-audio=128000.m4s"'
+        );
+        expect(lines[63]).toEqual('#EXT-X-MAP:URI="http://mock.com/test-audio=256000.m4s"');
 
-         m3u8 = mockVod2.getLiveMediaAudioSequences(0, "audio-aacl-256", "sv", 10);
-         lines = m3u8.split("\n");
-         expect(lines[48]).toEqual('#EXT-X-MAP:URI="http://mock.com/test-audio=256000.m4s"');
         done();
       });
   });
