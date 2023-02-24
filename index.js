@@ -284,6 +284,7 @@ class HLSVod {
                   if (HAS_AUDIO_DEFAULTS) {
                     targetGroup = this.defaultAudioGroupAndLang.audioGroupId;
                     targetLang = this.defaultAudioGroupAndLang.audioLanguage;
+                    debug(`Loading Audio manifest onto Default GroupID=${targetGroup} and Language=${targetLang}`);
                   }
                   audioManifestPromises.push(this._loadAudioManifest(audioManifestUrl, targetGroup, targetLang, _injectAudioManifest));
                 } else {
@@ -337,6 +338,7 @@ class HLSVod {
    * @param {HLSVod} previousVod - the previous VOD to concatenate to
    */
   loadAfter(previousVod, _injectMasterManifest, _injectMediaManifest, _injectAudioManifest) {
+    debug(`Initializing Load VOD After VOD...`);
     return new Promise((resolve, reject) => {
       this.previousVod = previousVod;
       try {
@@ -929,10 +931,16 @@ class HLSVod {
         const audioGroupId = audioGroups[i];
         const audioLangs = this.previousVod.getAudioLangsForAudioGroup(audioGroupId);
         if (audioGroups.length === 1 && audioLangs.length === 1) {
+          /**
+           * TODO: Handle case where prevVod and nextVod have many groups and languages, but none of them match.
+           * Currently, it only sets a default if there is only one possible group and lang to match with on
+           * the prevVod.
+           */
           this.defaultAudioGroupAndLang = {
             audioGroupId: audioGroups[0],
             audioLanguage: audioLangs[0],
           };
+          debug(`Loading from previous - Default GroupID and lang selected=${JSON.stringify(this.defaultAudioGroupAndLang)}`);
         }
         for (let k = 0; k < audioLangs.length; k++) {
           const audioLang = audioLangs[k];
