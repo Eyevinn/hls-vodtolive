@@ -16,10 +16,6 @@ const daterangeAttribute = (key, attr) => {
   }
 };
 
-const stringify = (data) => {
-  return JSON.stringify(data, null, 2);
-};
-
 class HLSVod {
   /**
    * Create an HLS VOD instance
