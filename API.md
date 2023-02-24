@@ -5,6 +5,7 @@
 
 * [HLSVod](#HLSVod)
     * [new HLSVod(vodManifestUri, splices, timeOffset, startTimeOffset, header, opts)](#new_HLSVod_new)
+    * [.defaultAudioGroupAndLang](#HLSVod+defaultAudioGroupAndLang)
     * [.load()](#HLSVod+load)
     * [.loadAfter(previousVod)](#HLSVod+loadAfter)
     * [.reload(mediaSeqNo, additionalSegments, additionalAudioSegments, insertAfter)](#HLSVod+reload) ⇒
@@ -44,6 +45,14 @@ Create an HLS VOD instance
 | header | <code>string</code> | prepend the m3u8 playlist with this text |
 | opts | <code>string</code> | other options |
 
+<a name="HLSVod+defaultAudioGroupAndLang"></a>
+
+### hlsVod.defaultAudioGroupAndLang
+TODO: Handle case where prevVod and nextVod have many groups and languages, but none of them match.
+Currently, it only sets a default if there is only one possible group and lang to match with on
+the prevVod.
+
+**Kind**: instance property of [<code>HLSVod</code>](#HLSVod)  
 <a name="HLSVod+load"></a>
 
 ### hlsVod.load()
