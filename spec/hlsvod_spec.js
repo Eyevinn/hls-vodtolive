@@ -3383,7 +3383,6 @@ describe("HLSVod delta time and positions", () => {
         mockVod2.loadAfter(mockVod, mock2_MasterManifest, mock2_MediaManifest, mock2_AudioManifest).then(() => {
           let m3u8 = mockVod2.getLiveMediaAudioSequences(0, "aac", "en", 2);
           let lines = m3u8.split("\n");
-          lines.map((i, o) => console.log(i, o));
           expect(lines[17]).toBe(`http://mock.com/audio/seg_en_52.ts`);
           expect(lines[21]).toBe(`https://maitv-vod.lab.eyevinn.technology/ads/apotea-15s.mp4/audio/sv-00000.ts`);
           done();
