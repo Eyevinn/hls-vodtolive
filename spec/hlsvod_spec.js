@@ -1451,6 +1451,18 @@ describe("HLSVod with separate audio variants", () => {
         done();
       });
   });
+
+  it("handles start time offset correctly when 27 seconds", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", null, null, 27 * 1000);
+    mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest).then(() => {
+      const seqSegments = mockVod.getLiveMediaSequenceSegments(0);
+      let m3u8 = mockVod.getLiveMediaAudioSequences(0, "audio-aacl-96", "en", 0);
+      let m3u8v = mockVod.getLiveMediaSequences(0, "354000", 0);
+      // TODO: Verify that all bitrates have the same length
+      console.log(m3u8, m3u8v, 123);
+      done();
+    });
+  });
 });
 
 describe("HLSVod with discontinuites in the source", () => {

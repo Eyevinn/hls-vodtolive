@@ -1829,6 +1829,15 @@ class HLSVod {
                 if (!removed) {
                   remain = 0;
                 } else {
+                  if (removed.attributes.attributes["map-uri"]) {
+                    initSegment = removed.attributes.attributes["map-uri"];
+                    if (!initSegment.match("^http")) {
+                      const n = mediaManifestUri.match("^(.*)/.*?$");
+                      if (n) {
+                        initSegment = url.resolve(n[1] + "/", initSegment);
+                      }
+                    }
+                  }
                   remain -= removed.properties.duration * 1000;
                 }
               }
@@ -2009,12 +2018,35 @@ class HLSVod {
 
       parser.on("m3u", (m3u) => {
         try {
+          let initSegment = undefined;
+          // Remove segments in the beginning if we have a start time offset
+          if (this.startTimeOffset != null) {
+            let remain = this.startTimeOffset;
+            while (remain > 0) {
+              const removed = m3u.items.PlaylistItem.shift();
+              if (!removed) {
+                remain = 0;
+              } else {
+                if (removed.attributes.attributes["map-uri"]) {
+                  initSegment = removed.attributes.attributes["map-uri"];
+                  if (!initSegment.match("^http")) {
+                    const n = audioManifestUri.match("^(.*)/.*?$");
+                    if (n) {
+                      initSegment = url.resolve(n[1] + "/", initSegment);
+                    }
+                  }
+                }
+                remain -= removed.properties.duration * 1000;
+              }
+            }
+          }
+
           let baseUrl;
           const m = audioManifestUri.match("^(.*)/.*?$");
           if (m) {
             baseUrl = m[1] + "/";
           }
-          let initSegment = undefined;
+
           if (this.audioSegments[groupId][language]) {
             for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
               const playlistItem = m3u.items.PlaylistItem[i];

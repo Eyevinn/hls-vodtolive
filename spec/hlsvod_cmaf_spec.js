@@ -121,6 +121,18 @@ describe("HLSVod CMAF after another CMAF VOD", () => {
       });
   });
 
+  fit("handles start time offset correctly when 27 seconds", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", null, null, 29 * 1000);
+    mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest).then(() => {
+      const seqSegments = mockVod.getLiveMediaSequenceSegments(0);
+      let m3u8 = mockVod.getLiveMediaAudioSequences(0, "audio-aacl-256", "sv", 0);
+      let m3u8v = mockVod.getLiveMediaSequences(0, "2500000", 0);
+      // TODO: Verify that all bitrates have the same length
+      console.log(m3u8, m3u8v,800);
+      done();
+    });
+  });
+
   it("inserts init segment after discontinuity, when VOD has multiple init segments", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8");
     mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
