@@ -2015,22 +2015,14 @@ class HLSVod {
     });
   }
 
-  _similarSegItemDuration() {
-    const groups = Object.keys(this.audioSegments);
-    if (groups.length === 0) {
-      return true;
-    }
-    const langs = Object.keys(this.audioSegments[groups[0]]);
-    if (langs.length === 0) {
-      return true;
-    }
-    const audioSegList = this.audioSegments[groups[0]][langs[0]];
+  _similarSegItemDuration(audioPlaylistItems) {
+    //console.log(audioPlaylistItems)
     let totalAudioDuration = 0;
     let audioCount = 0;
-    audioSegList.map(seg => {
-      if (seg.duration) {
+    audioPlaylistItems.map(seg => {
+      if (seg.get("duration")) {
         audioCount++;
-        totalAudioDuration += seg.duration;
+        totalAudioDuration += seg.get("duration");
       }
     })
     const avgAudioDuration = totalAudioDuration / audioCount;
@@ -2049,7 +2041,6 @@ class HLSVod {
       }
     })
     const avgVideoDuration = totalVideoDuration / videoCount;
-
     const diff = Math.abs(avgVideoDuration - avgAudioDuration);
     if (diff > 0.250) {
       return false;
@@ -2065,19 +2056,23 @@ class HLSVod {
       debug(`Loading audio manifest for lang=${language} of group=${groupId}`);
       debug(`Audio manifest URI: ${audioManifestUri}`);
 
-      let timelinePosition = 0;
+      let timelinePosition = 1;
 
       parser.on("m3u", (m3u) => {
         try {
           let initSegment = undefined;
           // Remove segments in the beginning if we have a start time offset
           if (this.startTimeOffset != null) {
-            let remain = this._similarSegItemDuration() ? this.startTimeOffset : (this.startTimeOffset + this.mediaStartExecessTime);
+            let remain = this._similarSegItemDuration(m3u.items.PlaylistItem) ? this.startTimeOffset : (this.startTimeOffset + this.mediaStartExecessTime);
 
+            let count = 0;
             while (remain > 0) {
               let removed;
-              if (m3u.items.PlaylistItem[0].get("duration") < remain ) {
+              console.log("remain ", remain, " durr ", m3u.items.PlaylistItem[0].get("duration") * 1000, " count ", count)
+              if (m3u.items.PlaylistItem[0].get("duration") * 1000 < remain ) {
+                console.log("removed at count", count)
                 removed = m3u.items.PlaylistItem.shift();
+                count++;
               }
               if (!removed) {
                 remain = 0;
