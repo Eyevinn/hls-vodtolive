@@ -2016,7 +2016,6 @@ class HLSVod {
   }
 
   _similarSegItemDuration(audioPlaylistItems) {
-    //console.log(audioPlaylistItems)
     let totalAudioDuration = 0;
     let audioCount = 0;
     audioPlaylistItems.map(seg => {
@@ -2068,9 +2067,7 @@ class HLSVod {
             let count = 0;
             while (remain > 0) {
               let removed;
-              console.log("remain ", remain, " durr ", m3u.items.PlaylistItem[0].get("duration") * 1000, " count ", count)
               if (m3u.items.PlaylistItem[0].get("duration") * 1000 < remain ) {
-                console.log("removed at count", count)
                 removed = m3u.items.PlaylistItem.shift();
                 count++;
               }
