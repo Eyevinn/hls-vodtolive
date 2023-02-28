@@ -62,6 +62,7 @@ class HLSVod {
     this.videoSequencesCount = 0;
     this.audioSequencesCount = 0;
     this.defaultAudioGroupAndLang = null;
+    this.mediaStartExecessTime = 0;
   }
 
   toJSON() {
@@ -93,6 +94,7 @@ class HLSVod {
       forcedDemuxMode: this.forcedDemuxMode,
       videoSequencesCount: this.videoSequencesCount,
       audioSequencesCount: this.audioSequencesCount,
+      mediaStartExecessTime: this.mediaStartExecessTime,
     };
     return JSON.stringify(serialized);
   }
@@ -132,6 +134,7 @@ class HLSVod {
     this.forcedDemuxMode = de.forcedDemuxMode;
     this.videoSequencesCount = de.videoSequencesCount;
     this.audioSequencesCount = de.audioSequencesCount;
+    this.mediaStartExecessTime = de.mediaStartExecessTime;
   }
 
   /**
@@ -190,112 +193,116 @@ class HLSVod {
               }
             }
           }
-          if (streamItem.attributes.attributes["audio"]) {
-            let audioGroupId = streamItem.attributes.attributes["audio"];
-            if (!HAS_AUDIO_DEFAULTS && !this.audioSegments[audioGroupId]) {
-              this.audioSegments[audioGroupId] = {};
-            }
-            debug(`Lookup media item for '${audioGroupId}'`);
-
-            // # Needed for the case when loading after another VOD.
-            const previousVODLanguages = HAS_AUDIO_DEFAULTS
-              ? Object.keys(this.audioSegments[this.defaultAudioGroupAndLang.audioGroupId])
-              : Object.keys(this.audioSegments[audioGroupId]);
-
-            let audioGroupItems = m3u.items.MediaItem.filter((item) => {
-              return item.attributes.attributes.type === "AUDIO" && item.attributes.attributes["group-id"] === audioGroupId;
-            });
-            // # Find all langs amongst the mediaItems that have this group id.
-            // # It extracts each mediaItems language attribute value.
-            // # ALSO initialize in this.audioSegments a lang. property whos value is an array [{seg1}, {seg2}, ...].
-            let audioLanguages = audioGroupItems.map((item) => {
-              let itemLang;
-              if (!item.attributes.attributes["language"]) {
-                itemLang = item.attributes.attributes["name"];
-              } else {
-                itemLang = item.attributes.attributes["language"];
-              }
-              // Initialize lang. in new group.
-              if (!HAS_AUDIO_DEFAULTS && !this.audioSegments[audioGroupId][itemLang]) {
-                this.audioSegments[audioGroupId][itemLang] = [];
-              }
-              return (item = itemLang);
-            });
-
-            // # Inject "default" language's segments to every new language relative to previous VOD.
-            // # For the case when this is a VOD following another, every language new or old should
-            // # start with some segments from the previous VOD's last sequence.
-            const newLanguages = audioLanguages.filter((lang) => {
-              return !previousVODLanguages.includes(lang);
-            });
-            // # Only inject if there were prior tracks.
-            if (previousVODLanguages.length > 0 && !HAS_AUDIO_DEFAULTS) {
-              for (let i = 0; i < newLanguages.length; i++) {
-                const newLanguage = newLanguages[i];
-                const defaultLanguage = this._getFirstAudioLanguageWithSegments(audioGroupId);
-                this.audioSegments[audioGroupId][newLanguage] = [...this.audioSegments[audioGroupId][defaultLanguage]];
-              }
-            }
-
-            // # Need to clean up langs. loaded from prev. VOD that current VOD doesn't have.
-            // # Necessary, for the case when getLiveMediaSequenceAudioSegments() tries to
-            // # access an audioGroup's language that the current VOD never had. A False-Positive.
-            if (!HAS_AUDIO_DEFAULTS) {
-              let allLangs = Object.keys(this.audioSegments[audioGroupId]);
-              let toRemove = [];
-              allLangs.map((junkLang) => {
-                if (!audioLanguages.includes(junkLang)) {
-                  toRemove.push(junkLang);
-                }
-              });
-              toRemove.map((junkLang) => {
-                delete this.audioSegments[audioGroupId][junkLang];
-              });
-            }
-
-            // # For each lang, find the lang playlist uri and do _loadAudioManifest() on it.
-            for (let j = 0; j < audioLanguages.length; j++) {
-              let audioLang = audioLanguages[j];
-              let audioUri = audioGroupItems[j].attributes.attributes.uri;
-              if (!audioUri) {
-                //# if mediaItems dont have uris
-                let audioVariant = m3u.items.StreamItem.find((item) => {
-                  return !item.attributes.attributes.resolution && item.attributes.attributes["audio"] === audioGroupId;
-                });
-                if (audioVariant) {
-                  audioUri = audioVariant.properties.uri;
-                }
-              }
-              if (audioUri) {
-                let audioManifestUrl = url.resolve(baseUrl, audioUri);
-                if (!audioGroups[audioGroupId]) {
-                  audioGroups[audioGroupId] = {};
-                }
-                // # Prevents 'loading' an audio track with same GroupID and LANG.
-                // # otherwise it just would've loaded OVER the latest occurrent of the LANG in GroupID.
-                if (!audioGroups[audioGroupId][audioLang]) {
-                  let targetGroup = audioGroupId;
-                  let targetLang = audioLang;
-                  audioGroups[audioGroupId][audioLang] = true;
-                  if (HAS_AUDIO_DEFAULTS) {
-                    targetGroup = this.defaultAudioGroupAndLang.audioGroupId;
-                    targetLang = this.defaultAudioGroupAndLang.audioLanguage;
-                    debug(`Loading Audio manifest onto Default GroupID=${targetGroup} and Language=${targetLang}`);
-                  }
-                  audioManifestPromises.push(this._loadAudioManifest(audioManifestUrl, targetGroup, targetLang, _injectAudioManifest));
-                } else {
-                  debug(`Audio manifest for language "${audioLang}" from '${audioGroupId}' in already loaded, skipping`);
-                }
-              } else {
-                debug(`No media item for '${audioGroupId}' in "${audioLang}" was found, skipping`);
-              }
-            }
-          } else if (this.forcedDemuxMode) {
-            reject(new Error("The vod is not a demux vod"));
-          }
         }
-        Promise.all(mediaManifestPromises.concat(audioManifestPromises))
-          .then(this._cleanupUnused.bind(this))
+        Promise.all(mediaManifestPromises).then(() => {
+          for (let i = 0; i < m3u.items.StreamItem.length; i++) {
+            const streamItem = m3u.items.StreamItem[i];
+            if (streamItem.attributes.attributes["audio"]) {
+              let audioGroupId = streamItem.attributes.attributes["audio"];
+              if (!HAS_AUDIO_DEFAULTS && !this.audioSegments[audioGroupId]) {
+                this.audioSegments[audioGroupId] = {};
+              }
+              debug(`Lookup media item for '${audioGroupId}'`);
+
+              // # Needed for the case when loading after another VOD.
+              const previousVODLanguages = HAS_AUDIO_DEFAULTS
+                ? Object.keys(this.audioSegments[this.defaultAudioGroupAndLang.audioGroupId])
+                : Object.keys(this.audioSegments[audioGroupId]);
+
+              let audioGroupItems = m3u.items.MediaItem.filter((item) => {
+                return item.attributes.attributes.type === "AUDIO" && item.attributes.attributes["group-id"] === audioGroupId;
+              });
+              // # Find all langs amongst the mediaItems that have this group id.
+              // # It extracts each mediaItems language attribute value.
+              // # ALSO initialize in this.audioSegments a lang. property whos value is an array [{seg1}, {seg2}, ...].
+              let audioLanguages = audioGroupItems.map((item) => {
+                let itemLang;
+                if (!item.attributes.attributes["language"]) {
+                  itemLang = item.attributes.attributes["name"];
+                } else {
+                  itemLang = item.attributes.attributes["language"];
+                }
+                // Initialize lang. in new group.
+                if (!HAS_AUDIO_DEFAULTS && !this.audioSegments[audioGroupId][itemLang]) {
+                  this.audioSegments[audioGroupId][itemLang] = [];
+                }
+                return (item = itemLang);
+              });
+
+              // # Inject "default" language's segments to every new language relative to previous VOD.
+              // # For the case when this is a VOD following another, every language new or old should
+              // # start with some segments from the previous VOD's last sequence.
+              const newLanguages = audioLanguages.filter((lang) => {
+                return !previousVODLanguages.includes(lang);
+              });
+              // # Only inject if there were prior tracks.
+              if (previousVODLanguages.length > 0 && !HAS_AUDIO_DEFAULTS) {
+                for (let i = 0; i < newLanguages.length; i++) {
+                  const newLanguage = newLanguages[i];
+                  const defaultLanguage = this._getFirstAudioLanguageWithSegments(audioGroupId);
+                  this.audioSegments[audioGroupId][newLanguage] = [...this.audioSegments[audioGroupId][defaultLanguage]];
+                }
+              }
+
+              // # Need to clean up langs. loaded from prev. VOD that current VOD doesn't have.
+              // # Necessary, for the case when getLiveMediaSequenceAudioSegments() tries to
+              // # access an audioGroup's language that the current VOD never had. A False-Positive.
+              if (!HAS_AUDIO_DEFAULTS) {
+                let allLangs = Object.keys(this.audioSegments[audioGroupId]);
+                let toRemove = [];
+                allLangs.map((junkLang) => {
+                  if (!audioLanguages.includes(junkLang)) {
+                    toRemove.push(junkLang);
+                  }
+                });
+                toRemove.map((junkLang) => {
+                  delete this.audioSegments[audioGroupId][junkLang];
+                });
+              }
+
+              // # For each lang, find the lang playlist uri and do _loadAudioManifest() on it.
+              for (let j = 0; j < audioLanguages.length; j++) {
+                let audioLang = audioLanguages[j];
+                let audioUri = audioGroupItems[j].attributes.attributes.uri;
+                if (!audioUri) {
+                  //# if mediaItems dont have uris
+                  let audioVariant = m3u.items.StreamItem.find((item) => {
+                    return !item.attributes.attributes.resolution && item.attributes.attributes["audio"] === audioGroupId;
+                  });
+                  if (audioVariant) {
+                    audioUri = audioVariant.properties.uri;
+                  }
+                }
+                if (audioUri) {
+                  let audioManifestUrl = url.resolve(baseUrl, audioUri);
+                  if (!audioGroups[audioGroupId]) {
+                    audioGroups[audioGroupId] = {};
+                  }
+                  // # Prevents 'loading' an audio track with same GroupID and LANG.
+                  // # otherwise it just would've loaded OVER the latest occurrent of the LANG in GroupID.
+                  if (!audioGroups[audioGroupId][audioLang]) {
+                    let targetGroup = audioGroupId;
+                    let targetLang = audioLang;
+                    audioGroups[audioGroupId][audioLang] = true;
+                    if (HAS_AUDIO_DEFAULTS) {
+                      targetGroup = this.defaultAudioGroupAndLang.audioGroupId;
+                      targetLang = this.defaultAudioGroupAndLang.audioLanguage;
+                      debug(`Loading Audio manifest onto Default GroupID=${targetGroup} and Language=${targetLang}`);
+                    }
+                    audioManifestPromises.push(this._loadAudioManifest(audioManifestUrl, targetGroup, targetLang, _injectAudioManifest));
+                  } else {
+                    debug(`Audio manifest for language "${audioLang}" from '${audioGroupId}' in already loaded, skipping`);
+                  }
+                } else {
+                  debug(`No media item for '${audioGroupId}' in "${audioLang}" was found, skipping`);
+                }
+              }
+            } else if (this.forcedDemuxMode) {
+              reject(new Error("The vod is not a demux vod"));
+            }
+          }
+          return Promise.all(audioManifestPromises)
+        }).then(this._cleanupUnused.bind(this))
           .then(this._createMediaSequences.bind(this))
           .then(resolve)
           .catch((err) => {
@@ -1829,10 +1836,21 @@ class HLSVod {
                 if (!removed) {
                   remain = 0;
                 } else {
+                  if (removed.attributes.attributes["map-uri"]) {
+                    initSegment = removed.attributes.attributes["map-uri"];
+                    if (!initSegment.match("^http")) {
+                      const n = mediaManifestUri.match("^(.*)/.*?$");
+                      if (n) {
+                        initSegment = url.resolve(n[1] + "/", initSegment);
+                      }
+                    }
+                  }
                   remain -= removed.properties.duration * 1000;
                 }
               }
+              this.mediaStartExecessTime = Math.abs(remain);
             }
+            
 
             for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
               if (this.splices[spliceIdx]) {
@@ -1935,13 +1953,13 @@ class HLSVod {
                 let cue =
                   cueOut || cueIn || cueOutCont || assetData
                     ? {
-                        out: typeof cueOut !== "undefined",
-                        cont: typeof cueOutCont !== "undefined" ? cueOutCont : null,
-                        scteData: typeof scteData !== "undefined" ? scteData : null,
-                        in: cueIn ? true : false,
-                        duration: duration,
-                        assetData: typeof assetData !== "undefined" ? assetData : null,
-                      }
+                      out: typeof cueOut !== "undefined",
+                      cont: typeof cueOutCont !== "undefined" ? cueOutCont : null,
+                      scteData: typeof scteData !== "undefined" ? scteData : null,
+                      in: cueIn ? true : false,
+                      duration: duration,
+                      assetData: typeof assetData !== "undefined" ? assetData : null,
+                    }
                     : null;
                 let q = {
                   duration: playlistItem.properties.duration,
@@ -1997,6 +2015,38 @@ class HLSVod {
     });
   }
 
+  _similarSegItemDuration(audioPlaylistItems) {
+    let totalAudioDuration = 0;
+    let audioCount = 0;
+    audioPlaylistItems.map(seg => {
+      if (seg.get("duration")) {
+        audioCount++;
+        totalAudioDuration += seg.get("duration");
+      }
+    })
+    const avgAudioDuration = totalAudioDuration / audioCount;
+
+    const bandwidths = Object.keys(this.segments);
+    if (bandwidths.length === 0) {
+      return true;
+    }
+    const videoSegList = this.segments[bandwidths[0]]
+    let totalVideoDuration = 0;
+    let videoCount = 0;
+    videoSegList.map(seg => {
+      if (seg.duration) {
+        videoCount++;
+        totalVideoDuration += seg.duration;
+      }
+    })
+    const avgVideoDuration = totalVideoDuration / videoCount;
+    const diff = Math.abs(avgVideoDuration - avgAudioDuration);
+    if (diff > 0.250) {
+      return false;
+    }
+    return true;
+  }
+
   _loadAudioManifest(audioManifestUri, groupId, language, _injectAudioManifest) {
     // # Updated so that segment objects are pushed to Language array instead.
     // # Updated input args for _injectAudioManifest().
@@ -2005,16 +2055,45 @@ class HLSVod {
       debug(`Loading audio manifest for lang=${language} of group=${groupId}`);
       debug(`Audio manifest URI: ${audioManifestUri}`);
 
-      let timelinePosition = 0;
+      let timelinePosition = 1;
 
       parser.on("m3u", (m3u) => {
         try {
+          let initSegment = undefined;
+          // Remove segments in the beginning if we have a start time offset
+          if (this.startTimeOffset != null) {
+            let remain = this._similarSegItemDuration(m3u.items.PlaylistItem) ? this.startTimeOffset : (this.startTimeOffset + this.mediaStartExecessTime);
+
+            let count = 0;
+            while (remain > 0) {
+              let removed;
+              if (m3u.items.PlaylistItem[0].get("duration") * 1000 < remain ) {
+                removed = m3u.items.PlaylistItem.shift();
+                count++;
+              }
+              if (!removed) {
+                remain = 0;
+              } else {
+                if (removed.attributes.attributes["map-uri"]) {
+                  initSegment = removed.attributes.attributes["map-uri"];
+                  if (!initSegment.match("^http")) {
+                    const n = audioManifestUri.match("^(.*)/.*?$");
+                    if (n) {
+                      initSegment = url.resolve(n[1] + "/", initSegment);
+                    }
+                  }
+                }
+                remain -= removed.properties.duration * 1000;
+              }
+            }
+          }
+
           let baseUrl;
           const m = audioManifestUri.match("^(.*)/.*?$");
           if (m) {
             baseUrl = m[1] + "/";
           }
-          let initSegment = undefined;
+
           if (this.audioSegments[groupId][language]) {
             for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
               const playlistItem = m3u.items.PlaylistItem[i];
@@ -2053,13 +2132,13 @@ class HLSVod {
               let cue =
                 cueOut || cueIn || cueOutCont || assetData
                   ? {
-                      out: typeof cueOut !== "undefined",
-                      cont: typeof cueOutCont !== "undefined" ? cueOutCont : null,
-                      scteData: typeof scteData !== "undefined" ? scteData : null,
-                      in: cueIn ? true : false,
-                      duration: duration,
-                      assetData: typeof assetData !== "undefined" ? assetData : null,
-                    }
+                    out: typeof cueOut !== "undefined",
+                    cont: typeof cueOutCont !== "undefined" ? cueOutCont : null,
+                    scteData: typeof scteData !== "undefined" ? scteData : null,
+                    in: cueIn ? true : false,
+                    duration: duration,
+                    assetData: typeof assetData !== "undefined" ? assetData : null,
+                  }
                   : null;
               let q = {
                 duration: playlistItem.properties.duration,
