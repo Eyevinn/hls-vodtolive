@@ -121,14 +121,18 @@ describe("HLSVod CMAF after another CMAF VOD", () => {
       });
   });
 
-  fit("handles start time offset correctly when 27 seconds", (done) => {
-    mockVod = new HLSVod("http://mock.com/mock.m3u8", null, null, 29 * 1000);
+  it("handles start time offset correctly when 28 seconds", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", null, null, 28 * 1000);
     mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest).then(() => {
       const seqSegments = mockVod.getLiveMediaSequenceSegments(0);
-      let m3u8 = mockVod.getLiveMediaAudioSequences(0, "audio-aacl-256", "sv", 0);
-      let m3u8v = mockVod.getLiveMediaSequences(0, "2500000", 0);
-      // TODO: Verify that all bitrates have the same length
-      console.log(m3u8, m3u8v,800);
+      let m3u8Audio = mockVod.getLiveMediaAudioSequences(0, "audio-aacl-256", "sv", 0);
+      let m3u8Video = mockVod.getLiveMediaSequences(0, "2500000", 0);
+      const linesVideo = m3u8Video.split("\n");
+      const linesAudio = m3u8Audio.split("\n");
+      expect(linesVideo[6]).toEqual(`#EXT-X-MAP:URI="http://mock.com/test-video=2500000.m4s"`);
+      expect(linesVideo[8]).toEqual(`http://mock.com/test-video=2500000-11.m4s`);
+      expect(linesAudio[6]).toEqual(`#EXT-X-MAP:URI="http://mock.com/test-audio=256000.m4s"`);
+      expect(linesAudio[8]).toEqual(`http://mock.com/test-audio=256000-16.m4s`);
       done();
     });
   });

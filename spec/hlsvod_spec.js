@@ -1459,7 +1459,7 @@ describe("HLSVod with separate audio variants", () => {
       let m3u8 = mockVod.getLiveMediaAudioSequences(0, "audio-aacl-96", "en", 0);
       let m3u8v = mockVod.getLiveMediaSequences(0, "354000", 0);
       // TODO: Verify that all bitrates have the same length
-      console.log(m3u8, m3u8v, 123);
+      //console.log(m3u8, m3u8v, 123);
       done();
     });
   });
