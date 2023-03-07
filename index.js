@@ -620,11 +620,11 @@ class HLSVod {
         if (previousSegment != null) {
           if (previousSegment.discontinuity) {
             if (v.initSegment) {
-              let byteRange = "";
+              let byteRangeStr = "";
               if (v.initSegmentByteRange) {
-                byteRange = `,BYTERANGE="${v.initSegmentByteRange}"`;
+                byteRangeStr = `,BYTERANGE="${v.initSegmentByteRange}"`;
               }
-              m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRange}\n`;
+              m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRangeStr}\n`;
             }
             if (v.timelinePosition) {
               const d = new Date(v.timelinePosition);
@@ -635,11 +635,11 @@ class HLSVod {
 
         if (i === 0) {
           if (v.initSegment) {
-            let byteRange = "";
+            let byteRangeStr = "";
             if (v.initSegmentByteRange) {
-              byteRange = `,BYTERANGE="${v.initSegmentByteRange}"`;
+              byteRangeStr = `,BYTERANGE="${v.initSegmentByteRange}"`;
             }
-            m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRange}\n`;
+            m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRangeStr}\n`;
           }
         }
 
@@ -749,11 +749,11 @@ class HLSVod {
         if (previousSegment != null) {
           if (previousSegment.discontinuity) {
             if (v.initSegment) {
-              let byteRange;
+              let byteRangeStr = "";
               if (v.initSegmentByteRange) {
-                byteRange = `,BYTERANGE="${v.initSegmentByteRange}"`;
+                byteRangeStr = `,BYTERANGE="${v.initSegmentByteRange}"`;
               }
-              m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRange}\n`;
+              m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRangeStr}\n`;
             }
             if (v.timelinePosition) {
               const d = new Date(v.timelinePosition);
@@ -764,11 +764,11 @@ class HLSVod {
 
         if (i === 0) {
           if (v.initSegment) {
-            let byteRange;
+            let byteRangeStr = "";
             if (v.initSegmentByteRange) {
-              byteRange = `,BYTERANGE="${v.initSegmentByteRange}"`;
+              byteRangeStr = `,BYTERANGE="${v.initSegmentByteRange}"`;
             }
-            m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRange}\n`;
+            m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRangeStr}\n`;
           }
         }
 
