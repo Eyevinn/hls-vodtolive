@@ -44,6 +44,15 @@ describe("HLSVod CMAF with BYTERANGE standalone", () => {
         expect(lines[7]).toEqual("#EXTINF:6.000,");
         expect(lines[8]).toEqual("#EXT-X-BYTERANGE:126323@1291");
         expect(lines[9]).toEqual("http://mock.com/media/VIDEO_e4da5fcd-5ffc-4713-bcdd-95ea579d790b_sdr_720p-video-avc1.mp4");
+
+        let m3u8Audio = mockVod.getLiveMediaAudioSequences(0, "audio1_t0", "ja", 0);
+        let linesAudio = m3u8Audio.split("\n");
+
+        expect(linesAudio[6]).toEqual('#EXT-X-MAP:URI="http://mock.com/media/VIDEO_e4da5fcd-5ffc-4713-bcdd-95ea579d790b_stereo_aac-audio-ja-mp4a.mp4",BYTERANGE="660@0"')
+        expect(linesAudio[7]).toEqual("#EXTINF:5.995,");
+        expect(linesAudio[8]).toEqual("#EXT-X-BYTERANGE:97142@1220");
+        expect(linesAudio[9]).toEqual("http://mock.com/media/VIDEO_e4da5fcd-5ffc-4713-bcdd-95ea579d790b_stereo_aac-audio-ja-mp4a.mp4");
+
         done();
       })
       .catch((err) => {

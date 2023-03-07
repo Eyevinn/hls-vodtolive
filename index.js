@@ -749,7 +749,11 @@ class HLSVod {
         if (previousSegment != null) {
           if (previousSegment.discontinuity) {
             if (v.initSegment) {
-              m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"\n`;
+              let byteRange;
+              if (v.initSegmentByteRange) {
+                byteRange = `,BYTERANGE="${v.initSegmentByteRange}"`;
+              }
+              m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRange}\n`;
             }
             if (v.timelinePosition) {
               const d = new Date(v.timelinePosition);
@@ -760,7 +764,11 @@ class HLSVod {
 
         if (i === 0) {
           if (v.initSegment) {
-            m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"\n`;
+            let byteRange;
+            if (v.initSegmentByteRange) {
+              byteRange = `,BYTERANGE="${v.initSegmentByteRange}"`;
+            }
+            m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRange}\n`;
           }
         }
 
@@ -786,6 +794,9 @@ class HLSVod {
           }
           if (v.uri) {
             m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
+            if (v.byteRange) {
+              m3u8 += `#EXT-X-BYTERANGE:${v.byteRange}\n`;
+            }
             m3u8 += v.uri + "\n";
           }
         } else {
@@ -2121,6 +2132,7 @@ class HLSVod {
             for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
               const playlistItem = m3u.items.PlaylistItem[i];
               let segmentUri;
+              let byteRange = undefined;
               if (m3u.items.PlaylistItem[i].attributes.attributes["map-uri"]) {
                 initSegment = m3u.items.PlaylistItem[i].attributes.attributes["map-uri"];
                 initSegmentByteRange = m3u.items.PlaylistItem[i].attributes.attributes["map-byterange"];
@@ -2141,6 +2153,9 @@ class HLSVod {
                 this.audioSegments[groupId][language].push({
                   discontinuity: true,
                 });
+              }
+              if (playlistItem.properties.byteRange) {
+                byteRange = playlistItem.properties.byteRange;
               }
               let assetData = playlistItem.get("assetdata");
               let cueOut = playlistItem.get("cueout");
@@ -2168,6 +2183,7 @@ class HLSVod {
                 duration: playlistItem.properties.duration,
                 timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                 cue: cue,
+                byteRange: byteRange,
               };
               if (segmentUri) {
                 q.uri = segmentUri;
