@@ -1550,7 +1550,7 @@ class HLSVod {
       if (!this.mediaSequences) {
         reject("Failed to init media sequences");
       } else {
-        let prevLastSegmentUri = null;
+        let prevLastSegment = null;
         let discSeqNo = 0;
         this.deltaTimes.push({
           interval: 0,
@@ -1580,8 +1580,14 @@ class HLSVod {
             if (seqNo > 0) {
               let tpi = 0; // Total Position Increment (total newly added content in seconds)
               const prevLastSegIdx = findIndexReversed(mseq.segments[bwIdx], (seg) => {
-                if (seg.uri) {
-                  return seg.uri === prevLastSegmentUri;
+                if (seg.byteRange) {
+                  if (seg.uri) {
+                    return seg.uri === prevLastSegment.uri && seg.byteRange === prevLastSegment.byteRange;
+                  }
+                } else {
+                  if (seg.uri) {
+                    return seg.uri === prevLastSegment.uri;
+                  }
                 }
                 return false;
               });
@@ -1606,7 +1612,7 @@ class HLSVod {
                 lastPositionIncrement = positionIncrement;
               }
               if (lastSegment && lastSegment.uri) {
-                prevLastSegmentUri = lastSegment.uri;
+                prevLastSegment = lastSegment;
               }
             } else {
               if (mseq.segments[bwIdx]) {
@@ -1615,7 +1621,7 @@ class HLSVod {
                   lastSegment = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2];
                 }
                 if (lastSegment && lastSegment.uri) {
-                  prevLastSegmentUri = lastSegment.uri;
+                  prevLastSegment = lastSegment;
                 }
                 lastPositionIncrement = lastSegment.duration;
               }
@@ -1645,7 +1651,7 @@ class HLSVod {
         }
         // Audio Version
         if (this.mediaSequences[0].audioSegments) {
-          let prevLastSegmentUri = null;
+          let prevLastSegment = null;
           let discSeqNo = 0;
           this.deltaTimesAudio.push({
             interval: 0,
@@ -1680,8 +1686,14 @@ class HLSVod {
               if (seqNo > 0) {
                 let tpi = 0; // Total Position Increment (total newly added content in seconds)
                 const prevLastSegIdx = findIndexReversed(audioSegment, (seg) => {
-                  if (seg.uri) {
-                    return seg.uri === prevLastSegmentUri;
+                  if (seg.byteRange) {
+                    if (seg.uri) {
+                      return seg.uri === prevLastSegment.uri && seg.byteRange === prevLastSegment.byteRange;
+                    }
+                  } else {
+                    if (seg.uri) {
+                      return seg.uri === prevLastSegment.uri;
+                    }
                   }
                   return false;
                 });
@@ -1706,7 +1718,7 @@ class HLSVod {
                   lastPositionIncrement = positionIncrement;
                 }
                 if (lastSegment && lastSegment.uri) {
-                  prevLastSegmentUri = lastSegment.uri;
+                  prevLastSegment = lastSegment;
                 }
               } else {
                 if (audioSegment) {
@@ -1715,7 +1727,7 @@ class HLSVod {
                     lastSegment = audioSegment[audioSegment.length - 2];
                   }
                   if (lastSegment && lastSegment.uri) {
-                    prevLastSegmentUri = lastSegment.uri;
+                    prevLastSegment = lastSegment;
                   }
                   lastPositionIncrement = lastSegment.duration;
                 }
