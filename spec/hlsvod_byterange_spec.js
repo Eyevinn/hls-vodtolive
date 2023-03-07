@@ -26,7 +26,7 @@ describe("HLSVod CMAF with BYTERANGE standalone", () => {
     };
   });
 
-  fit("passes through the segments with byterange correctly", (done) => {
+  it("passes through the segments with byterange correctly", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8");
     mockVod
       .load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
