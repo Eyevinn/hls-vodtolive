@@ -620,7 +620,11 @@ class HLSVod {
         if (previousSegment != null) {
           if (previousSegment.discontinuity) {
             if (v.initSegment) {
-              m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"\n`;
+              let byteRangeStr = "";
+              if (v.initSegmentByteRange) {
+                byteRangeStr = `,BYTERANGE="${v.initSegmentByteRange}"`;
+              }
+              m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRangeStr}\n`;
             }
             if (v.timelinePosition) {
               const d = new Date(v.timelinePosition);
@@ -631,7 +635,11 @@ class HLSVod {
 
         if (i === 0) {
           if (v.initSegment) {
-            m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"\n`;
+            let byteRangeStr = "";
+            if (v.initSegmentByteRange) {
+              byteRangeStr = `,BYTERANGE="${v.initSegmentByteRange}"`;
+            }
+            m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRangeStr}\n`;
           }
         }
 
@@ -667,6 +675,9 @@ class HLSVod {
           }
           if (v.uri) {
             m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
+            if (v.byteRange) {
+              m3u8 += `#EXT-X-BYTERANGE:${v.byteRange}\n`;
+            }
             m3u8 += v.uri + "\n";
           }
         } else {
@@ -738,7 +749,11 @@ class HLSVod {
         if (previousSegment != null) {
           if (previousSegment.discontinuity) {
             if (v.initSegment) {
-              m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"\n`;
+              let byteRangeStr = "";
+              if (v.initSegmentByteRange) {
+                byteRangeStr = `,BYTERANGE="${v.initSegmentByteRange}"`;
+              }
+              m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRangeStr}\n`;
             }
             if (v.timelinePosition) {
               const d = new Date(v.timelinePosition);
@@ -749,7 +764,11 @@ class HLSVod {
 
         if (i === 0) {
           if (v.initSegment) {
-            m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"\n`;
+            let byteRangeStr = "";
+            if (v.initSegmentByteRange) {
+              byteRangeStr = `,BYTERANGE="${v.initSegmentByteRange}"`;
+            }
+            m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRangeStr}\n`;
           }
         }
 
@@ -775,6 +794,9 @@ class HLSVod {
           }
           if (v.uri) {
             m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
+            if (v.byteRange) {
+              m3u8 += `#EXT-X-BYTERANGE:${v.byteRange}\n`;
+            }
             m3u8 += v.uri + "\n";
           }
         } else {
@@ -1828,6 +1850,7 @@ class HLSVod {
             let nextSplicePosition = null;
             let spliceIdx = 0;
             let initSegment = undefined;
+            let initSegmentByteRange = undefined;
             // Remove segments in the beginning if we have a start time offset
             if (this.startTimeOffset != null) {
               let remain = this.startTimeOffset;
@@ -1863,14 +1886,16 @@ class HLSVod {
               const playlistItem = m3u.items.PlaylistItem[i];
               let segmentUri;
               let baseUrl;
+              let byteRange = undefined;
 
               const m = mediaManifestUri.match("^(.*)/.*?$");
               if (m) {
                 baseUrl = m[1] + "/";
               }
 
-              if (m3u.items.PlaylistItem[i].attributes.attributes["map-uri"]) {
-                initSegment = m3u.items.PlaylistItem[i].attributes.attributes["map-uri"];
+              if (playlistItem.attributes.attributes["map-uri"]) {
+                initSegment = playlistItem.attributes.attributes["map-uri"];
+                initSegmentByteRange = playlistItem.attributes.attributes["map-byterange"];
                 if (!initSegment.match("^http")) {
                   const n = mediaManifestUri.match("^(.*)/.*?$");
                   if (n) {
@@ -1893,6 +1918,9 @@ class HLSVod {
                   discontinuity: true,
                 });
               }
+              if (playlistItem.properties.byteRange) {
+                byteRange = playlistItem.properties.byteRange;
+              }
               let diff = 0;
               if (nextSplicePosition != null && position + playlistItem.properties.duration > nextSplicePosition) {
                 debug(`Inserting splice at ${bw}:${position} (${i})`);
@@ -1912,6 +1940,7 @@ class HLSVod {
                       uri: v[1],
                       timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                       discontinuity: false,
+                      byteRange: byteRange,
                     };
 
                     this.segments[bw].push(q);
@@ -1965,9 +1994,13 @@ class HLSVod {
                   duration: playlistItem.properties.duration,
                   timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                   cue: cue,
+                  byteRange: byteRange,
                 };
                 if (initSegment) {
                   q.initSegment = initSegment;
+                }
+                if (initSegmentByteRange) {
+                  q.initSegmentByteRange = initSegmentByteRange;
                 }
                 if (segmentUri) {
                   q.uri = segmentUri;
@@ -2060,6 +2093,7 @@ class HLSVod {
       parser.on("m3u", (m3u) => {
         try {
           let initSegment = undefined;
+          let initSegmentByteRange = undefined;
           // Remove segments in the beginning if we have a start time offset
           if (this.startTimeOffset != null) {
             let remain = this._similarSegItemDuration(m3u.items.PlaylistItem) ? this.startTimeOffset : (this.startTimeOffset + this.mediaStartExecessTime);
@@ -2098,8 +2132,10 @@ class HLSVod {
             for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
               const playlistItem = m3u.items.PlaylistItem[i];
               let segmentUri;
+              let byteRange = undefined;
               if (m3u.items.PlaylistItem[i].attributes.attributes["map-uri"]) {
                 initSegment = m3u.items.PlaylistItem[i].attributes.attributes["map-uri"];
+                initSegmentByteRange = m3u.items.PlaylistItem[i].attributes.attributes["map-byterange"];
                 if (!initSegment.match("^http")) {
                   initSegment = url.resolve(baseUrl, initSegment);
                 }
@@ -2117,6 +2153,9 @@ class HLSVod {
                 this.audioSegments[groupId][language].push({
                   discontinuity: true,
                 });
+              }
+              if (playlistItem.properties.byteRange) {
+                byteRange = playlistItem.properties.byteRange;
               }
               let assetData = playlistItem.get("assetdata");
               let cueOut = playlistItem.get("cueout");
@@ -2144,12 +2183,16 @@ class HLSVod {
                 duration: playlistItem.properties.duration,
                 timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                 cue: cue,
+                byteRange: byteRange,
               };
               if (segmentUri) {
                 q.uri = segmentUri;
               }
               if (initSegment) {
                 q.initSegment = initSegment;
+              }
+              if (initSegmentByteRange) {
+                q.initSegmentByteRange = initSegmentByteRange;
               }
               if (this.audioSegments[groupId][language].length === 0) {
                 // Add daterange metadata if this is the first segment
