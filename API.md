@@ -5,6 +5,7 @@
 
 * [HLSVod](#HLSVod)
     * [new HLSVod(vodManifestUri, splices, timeOffset, startTimeOffset, header, opts)](#new_HLSVod_new)
+    * [.defaultAudioGroupAndLang](#HLSVod+defaultAudioGroupAndLang)
     * [.load()](#HLSVod+load)
     * [.loadAfter(previousVod)](#HLSVod+loadAfter)
     * [.reload(mediaSeqNo, additionalSegments, additionalAudioSegments, insertAfter)](#HLSVod+reload) ⇒
@@ -16,10 +17,12 @@
     * [.getBandwidths()](#HLSVod+getBandwidths)
     * [.getLiveMediaSequencesCount()](#HLSVod+getLiveMediaSequencesCount)
     * [.getLastSequenceMediaSequenceValue()](#HLSVod+getLastSequenceMediaSequenceValue)
+    * [.getLastSequenceMediaSequenceValueAudio()](#HLSVod+getLastSequenceMediaSequenceValueAudio)
     * [.getLiveMediaSequences(offset, bandwidth, seqIdx, discOffset, padding, forceTargetDuration)](#HLSVod+getLiveMediaSequences)
     * [.getLiveMediaAudioSequences()](#HLSVod+getLiveMediaAudioSequences)
     * [.getUsageProfiles()](#HLSVod+getUsageProfiles)
     * [.getLastDiscontinuity()](#HLSVod+getLastDiscontinuity)
+    * [.getLastDiscontinuityAudio()](#HLSVod+getLastDiscontinuityAudio)
     * [.getDeltaTimes()](#HLSVod+getDeltaTimes)
     * [.getPlayheadPositions()](#HLSVod+getPlayheadPositions)
     * [.releasePreviousVod()](#HLSVod+releasePreviousVod)
@@ -42,6 +45,14 @@ Create an HLS VOD instance
 | header | <code>string</code> | prepend the m3u8 playlist with this text |
 | opts | <code>string</code> | other options |
 
+<a name="HLSVod+defaultAudioGroupAndLang"></a>
+
+### hlsVod.defaultAudioGroupAndLang
+TODO: Handle case where prevVod and nextVod have many groups and languages, but none of them match.
+Currently, it only sets a default if there is only one possible group and lang to match with on
+the prevVod.
+
+**Kind**: instance property of [<code>HLSVod</code>](#HLSVod)  
 <a name="HLSVod+load"></a>
 
 ### hlsVod.load()
@@ -51,7 +62,8 @@ Load and parse the HLS VOD
 <a name="HLSVod+loadAfter"></a>
 
 ### hlsVod.loadAfter(previousVod)
-Load and parse the HLS VOD where the first media sequencescontains the end sequences of the previous VOD
+Load and parse the HLS VOD where the first media sequences
+contains the end sequences of the previous VOD
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 
@@ -62,7 +74,9 @@ Load and parse the HLS VOD where the first media sequencescontains the end sequ
 <a name="HLSVod+reload"></a>
 
 ### hlsVod.reload(mediaSeqNo, additionalSegments, additionalAudioSegments, insertAfter) ⇒
-Removes all segments that come before or after a specified media sequence.Then adds the new additional segments in front or behind.It finally creates new media sequences with the updated collection of segments.
+Removes all segments that come before or after a specified media sequence.
+Then adds the new additional segments in front or behind.
+It finally creates new media sequences with the updated collection of segments.
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 **Returns**: A promise that new Media Sequences have been made  
@@ -140,6 +154,12 @@ Get the number of media sequences for this VOD
 Get the media-sequence value for the last media sequence of this VOD
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+getLastSequenceMediaSequenceValueAudio"></a>
+
+### hlsVod.getLastSequenceMediaSequenceValueAudio()
+Get the media-sequence value for the last audio media sequence of this VOD
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 <a name="HLSVod+getLiveMediaSequences"></a>
 
 ### hlsVod.getLiveMediaSequences(offset, bandwidth, seqIdx, discOffset, padding, forceTargetDuration)
@@ -159,7 +179,8 @@ Get the HLS live media sequence for a specific media sequence and bandwidth
 <a name="HLSVod+getLiveMediaAudioSequences"></a>
 
 ### hlsVod.getLiveMediaAudioSequences()
-Gets a hls/makes m3u8-file with all of the correct audio segmentsbelonging to a given groupID & language for a particular sequence.
+Gets a hls/makes m3u8-file with all of the correct audio segments
+belonging to a given groupID & language for a particular sequence.
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 <a name="HLSVod+getUsageProfiles"></a>
@@ -172,6 +193,12 @@ Get the usage profile for this VOD
 
 ### hlsVod.getLastDiscontinuity()
 Get the last discontinuity sequence number
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+getLastDiscontinuityAudio"></a>
+
+### hlsVod.getLastDiscontinuityAudio()
+Get the last audio discontinuity sequence number
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 <a name="HLSVod+getDeltaTimes"></a>
@@ -207,6 +234,7 @@ Returns the last added Discontinuity sequence count from getLiveMediaSequences()
 <a name="HLSVod+_copyAudioGroupsFromPrevious"></a>
 
 ### hlsVod.\_copyAudioGroupsFromPrevious()
-Gets previous VOD's audio -groupIds, -langs, -segments from its last sequenceand adds them to the current VOD's this.audioSegments property.
+Gets previous VOD's audio -groupIds, -langs, -segments from its last sequence
+and adds them to the current VOD's this.audioSegments property.
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  

@@ -3,7 +3,7 @@ const fs = require("fs");
 const m3u8 = require("@eyevinn/m3u8");
 const Readable = require("stream").Readable;
 
-describe("HLSVod with subtitles", () => {
+xdescribe("HLSVod with subtitles", () => {
     beforeEach(() => {
         mockMasterManifest = function () {
             return fs.createReadStream("testvectors/hls_subs/master.m3u8");

@@ -1,6 +1,6 @@
 {
   "name": "@eyevinn/hls-vodtolive",
-  "version": "2.0.2",
+  "version": "2.1.1",
   "description": "NPM library to generate HLS Live from HLS VOD",
   "main": "index.js",
   "scripts": {
@@ -34,14 +34,14 @@
   "devDependencies": {
     "coveralls": "^3.0.11",
     "jasmine": "^3.5.0",
-    "jsdoc-to-markdown": "^5.0.3",
+    "jsdoc-to-markdown": "^7.1.1",
     "minimist": ">=0.2.1",
     "nyc": "^15.0.1"
   },
   "dependencies": {
-    "@eyevinn/m3u8": "^0.4.1",
+    "@eyevinn/m3u8": "^0.5.3",
     "abort-controller": "^3.0.0",
     "debug": "^4.1.1",
-    "node-fetch": "2.6.2"
+    "node-fetch": "2.6.7"
   }
 }
