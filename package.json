@@ -4,8 +4,8 @@
   "description": "NPM library to generate HLS Live from HLS VOD",
   "main": "index.js",
   "scripts": {
-    "test": "$(npm bin)/jasmine",
-    "doc": "$(npm bin)/jsdoc2md index.js > API.md",
+    "test": "jasmine",
+    "doc": "jsdoc2md index.js > API.md",
     "prebuild": "npm test",
     "build": "npm run doc",
     "version": "npm run build && git add API.md",
