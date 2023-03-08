@@ -30,10 +30,12 @@ class HLSVod {
     this.masterManifestUri = vodManifestUri;
     this.segments = {};
     this.audioSegments = {};
+    this.subtitleSegments = {};
     this.mediaSequences = [];
     this.SEQUENCE_DURATION = process.env.SEQUENCE_DURATION ? process.env.SEQUENCE_DURATION : 60;
     this.targetDuration = {};
     this.targetAudioDuration = {};
+    this.targetSubtitleDuration = {};
     this.previousVod = null;
     this.usageProfile = [];
     this.segmentsInitiated = {};
@@ -44,12 +46,15 @@ class HLSVod {
     this.usageProfileMappingRev = null;
     this.discontinuities = {};
     this.discontinuitiesAudio = {};
+    this.discontinuitiesSubtitle = {};
     this.mediaSequenceValues = {};
     this.mediaSequenceValuesAudio = {};
+    this.mediaSequenceValuesSubtitle = {};
     this.rangeMetadata = null;
     this.matchedBandwidths = {};
     this.deltaTimes = [];
     this.deltaTimesAudio = [];
+    this.deltaTimesSubtitle = [];
     this.header = header;
     this.lastUsedDiscSeq = null;
     this.sequenceAlwaysContainNewSegments = false;
@@ -62,6 +67,8 @@ class HLSVod {
     this.videoSequencesCount = 0;
     this.audioSequencesCount = 0;
     this.defaultAudioGroupAndLang = null;
+    this.SubtitleSequencesCount = 0;
+    this.defaultSubtitleGroupAndLang = null;// ?
     this.mediaStartExecessTime = 0;
   }
 
@@ -70,10 +77,12 @@ class HLSVod {
       masterManifestUri: this.masterManifestUri,
       segments: this.segments,
       audioSegments: this.audioSegments,
+      subtitleSegments: this.subtitleSegments,
       mediaSequences: this.mediaSequences,
       SEQUENCE_DURATION: this.SEQUENCE_DURATION,
       targetDuration: this.targetDuration,
       targetAudioDuration: this.targetAudioDuration,
+      targetSubtitleDuration: this.targetSubtitleDuration,
       previousVod: this.previousVod ? this.previousVod.toJSON() : null,
       usageProfile: this.usageProfile,
       segmentsInitiated: this.segmentsInitiated,
@@ -84,8 +93,10 @@ class HLSVod {
       usageProfileMappingRev: this.usageProfileMappingRev,
       discontinuities: this.discontinuities,
       discontinuitiesAudio: this.discontinuitiesAudio,
+      discontinuitiesSubtitle: this.discontinuitiesSubtitle,
       deltaTimes: this.deltaTimes,
       deltaTimesAudio: this.deltaTimesAudio,
+      deltaTimesSubtitle: this.deltaTimesSubtitle,
       header: this.header,
       lastUsedDiscSeq: this.lastUsedDiscSeq,
       mediaSequenceValues: this.mediaSequenceValues,
@@ -94,6 +105,7 @@ class HLSVod {
       forcedDemuxMode: this.forcedDemuxMode,
       videoSequencesCount: this.videoSequencesCount,
       audioSequencesCount: this.audioSequencesCount,
+      subtitleSequencesCount: this.subtitleSegments,
       mediaStartExecessTime: this.mediaStartExecessTime,
     };
     return JSON.stringify(serialized);
@@ -104,10 +116,12 @@ class HLSVod {
     this.masterManifestUri = de.masterManifestUri;
     this.segments = de.segments;
     this.audioSegments = de.audioSegments;
+    this.subtitleSegments = de.subtitleSegments;
     this.mediaSequences = de.mediaSequences;
     this.SEQUENCE_DURATION = de.SEQUENCE_DURATION;
     this.targetDuration = de.targetDuration;
     this.targetAudioDuration = de.targetAudioDuration;
+    this.targetSubtitleDuration = de.targetSubtitleDuration;
     const prevVod = new HLSVod();
     this.previousVod = null;
     if (de.previousVod) {
@@ -122,31 +136,36 @@ class HLSVod {
     this.usageProfileMappingRev = de.usageProfileMappingRev;
     this.discontinuities = de.discontinuities;
     this.discontinuitiesAudio = de.discontinuitiesAudio;
+    this.discontinuitiesSubtitle = de.discontinuitiesSubtitle;
     this.deltaTimes = de.deltaTimes;
     this.deltaTimesAudio = de.deltaTimesAudio;
+    this.deltaTimesSubtitle = de.deltaTimesSubtitle;
     this.header = de.header;
     if (de.lastUsedDiscSeq) {
       this.lastUsedDiscSeq = de.lastUsedDiscSeq;
     }
     this.mediaSequenceValues = de.mediaSequenceValues;
     this.mediaSequenceValuesAudio = de.mediaSequenceValuesAudio;
+    this.mediaSequenceValuesSubtitle = de.mediaSequenceValuesSubtitle;
     this.sequenceAlwaysContainNewSegments = de.sequenceAlwaysContainNewSegments;
     this.forcedDemuxMode = de.forcedDemuxMode;
     this.videoSequencesCount = de.videoSequencesCount;
     this.audioSequencesCount = de.audioSequencesCount;
+    this.subtitleSequencesCount = de.subtitleSequencesCount
     this.mediaStartExecessTime = de.mediaStartExecessTime;
   }
 
   /**
    * Load and parse the HLS VOD
    */
-  load(_injectMasterManifest, _injectMediaManifest, _injectAudioManifest) {
+  load(_injectMasterManifest, _injectMediaManifest, _injectAudioManifest, _injectSubtitleManifest) {
     return new Promise((resolve, reject) => {
       const parser = m3u8.createStream();
 
       parser.on("m3u", (m3u) => {
         let mediaManifestPromises = [];
         let audioManifestPromises = [];
+        let subtitleManifestPromises = [];
         let baseUrl;
         const m = this.masterManifestUri.match("^(.*)/.*?$");
         if (m) {
@@ -300,8 +319,93 @@ class HLSVod {
             } else if (this.forcedDemuxMode) {
               reject(new Error("The vod is not a demux vod"));
             }
+
+            if (streamItem.attributes.attributes["subtitles"]) {
+              let subtitleGroupId = streamItem.attributes.attributes["subtitles"];
+              
+              if (!this.subtitleSegments[subtitleGroupId]) {
+                this.subtitleSegments[subtitleGroupId] = {};
+              
+              }
+              //debug(`Lookup media item for '${subtitleGroupId}'`);
+              
+  
+              // # Needed for the case when loading after another VOD.
+              const previousVODLanguages = Object.keys(this.subtitleSegments[subtitleGroupId]);
+  
+              let subGroupItems = m3u.items.MediaItem.filter((item) => {
+                return item.attributes.attributes.type === "SUBTITLES" && item.attributes.attributes["group-id"] === subtitleGroupId;
+              });
+              let subLanguages = subGroupItems.map((item) => {
+                let itemLang;
+                if (!item.attributes.attributes["language"]) {
+                  itemLang = null;
+                } else {
+                  itemLang = item.attributes.attributes["language"];
+                }
+                // Initialize lang. in new group.
+                if (!this.subtitleSegments[subtitleGroupId][itemLang]) {
+                  this.subtitleSegments[subtitleGroupId][itemLang] = [];
+                }
+                return (item = itemLang);
+              });
+  
+              // # Inject "default" language's segments to every new language relative to previous VOD.
+              // # For the case when this is a VOD following another, every language new or old should
+              // # start with some segments from the previous VOD's last sequence.
+              const newLanguages = subLanguages.filter((lang) => {
+                return !previousVODLanguages.includes(lang);
+              });
+              // # Only inject if there were prior tracks.
+              if (previousVODLanguages.length > 0) {
+                for (let i = 0; i < newLanguages.length; i++) {
+                  const newLanguage = newLanguages[i];
+                  const defaultLanguage = this._getFirstSubtitleLanguageWithSegments(subtitleGroupId);
+                  this.subtitleSegments[subtitleGroupId][newLanguage] = [...this.subtitleSegments[subtitleGroupId][defaultLanguage]];
+                }
+              }
+  
+              let allLangs = Object.keys(this.subtitleSegments[subtitleGroupId]);
+              let toRemove = [];
+              allLangs.map((junkLang) => {
+                if (!subLanguages.includes(junkLang)) {
+                  toRemove.push(junkLang);
+                }
+              });
+              toRemove.map((junkLang) => {
+                delete this.subtitleSegments[subtitleGroupId][junkLang];
+              });
+         
+              for (let j = 0; j < subLanguages.length; j++) {
+                let subLang = subLanguages[j];
+                let subUri = subGroupItems[j].attributes.attributes.uri;
+                if (!subUri) {
+                  //# if mediaItems dont have uris
+                  let subVariant = m3u.items.StreamItem.find((item) => {
+                    return !item.attributes.attributes.resolution && item.attributes.attributes["SUBTITLES"] === subtitleGroupId;
+                  });
+                  if (subVariant) {
+                    subUri = subVariant.properties.uri;
+                  }
+                }
+                if (subUri) {
+                  let subtitleManifestUrl = url.resolve(baseUrl, subUri);
+                  if (!subGroups[subtitleGroupId]) {
+                    subGroups[subtitleGroupId] = {};
+                  }
+                  if (!subGroups[subtitleGroupId][subLang]) {
+                    subGroups[subtitleGroupId][subLang] = true;
+                    subtitleManifestPromises.push(this._loadSubtitleManifest(subtitleManifestUrl, subtitleGroupId, subLang, _injectSubtitleManifest));
+                  } else {
+                    debug(`Subtitle manifest for language "${subLang}" from '${subtitleGroupId}' in already loaded, skipping`);
+                  }
+                } else {
+                  debug(`No media item for '${subGroupItems}' in "${subLang}" was found, skipping`);
+                }
+              }
+            }
           }
-          return Promise.all(audioManifestPromises)
+          return Promise.all(audioManifestPromises.concat(subtitleManifestPromises))
         }).then(this._cleanupUnused.bind(this))
           .then(this._createMediaSequences.bind(this))
           .then(resolve)
@@ -340,13 +444,13 @@ class HLSVod {
    *
    * @param {HLSVod} previousVod - the previous VOD to concatenate to
    */
-  loadAfter(previousVod, _injectMasterManifest, _injectMediaManifest, _injectAudioManifest) {
+  loadAfter(previousVod, _injectMasterManifest, _injectMediaManifest, _injectAudioManifest, _injectSubtitleManifest) {
     debug(`Initializing Load VOD After VOD...`);
     return new Promise((resolve, reject) => {
       this.previousVod = previousVod;
       try {
         this._loadPrevious();
-        this.load(_injectMasterManifest, _injectMediaManifest, _injectAudioManifest)
+        this.load(_injectMasterManifest, _injectMediaManifest, _injectAudioManifest, _injectSubtitleManifest)
           .then(() => {
             previousVod.releasePreviousVod();
             resolve();
@@ -539,12 +643,22 @@ class HLSVod {
     return Object.keys(this.audioSegments[groupId]);
   }
 
+  getSubtitleGroups() {
+    return Object.keys(this.subtitleSegments);
+  }
+
+  getSubtitleLangsForSubtitleGroup(groupId) {
+    return Object.keys(this.subtitleSegments[groupId]);
+  }
+
   /**
    * Get the number of media sequences for this VOD
    */
   getLiveMediaSequencesCount(media = "video") {
     if (media === "audio") {
       return this.audioSequencesCount;
+    } else if (media === "subtitle") {
+      return this.subtitleSequencesCount;
     }
     return this.videoSequencesCount;
   }
@@ -563,6 +677,14 @@ class HLSVod {
   getLastSequenceMediaSequenceValueAudio() {
     const end = Object.keys(this.mediaSequenceValuesAudio).length - 1;
     return this.mediaSequenceValuesAudio[end];
+  }
+
+  /**
+   * Get the media-sequence value for the last subtitle media sequence of this VOD
+   */
+  getLastSequenceMediaSequenceValueSubtitle() {
+    const end = Object.keys(this.mediaSequenceValuesSubtitle).length - 1;
+    return this.mediaSequenceValuesSubtitle[end];
   }
 
   /**
