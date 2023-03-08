@@ -198,11 +198,18 @@ class HLSVod {
           for (let i = 0; i < m3u.items.StreamItem.length; i++) {
             const streamItem = m3u.items.StreamItem[i];
             if (streamItem.attributes.attributes["audio"]) {
-              let audioGroupId = streamItem.attributes.attributes["audio"];
+              const sourceAudioGroupId = streamItem.attributes.attributes["audio"];
+              let codecs = streamItem.attributes.attributes["codecs"];
+              let audioCodec = codecs.split(",")[1];
+              let audioGroupId = sourceAudioGroupId;
+              if (audioCodec) {
+                audioGroupId += "_" + audioCodec;
+              }
+              
               if (!HAS_AUDIO_DEFAULTS && !this.audioSegments[audioGroupId]) {
                 this.audioSegments[audioGroupId] = {};
               }
-              debug(`Lookup media item for '${audioGroupId}'`);
+              debug(`Lookup media item for '${audioGroupId}' '${codecs}' (source=${sourceAudioGroupId})`);
 
               // # Needed for the case when loading after another VOD.
               const previousVODLanguages = HAS_AUDIO_DEFAULTS
@@ -210,7 +217,7 @@ class HLSVod {
                 : Object.keys(this.audioSegments[audioGroupId]);
 
               let audioGroupItems = m3u.items.MediaItem.filter((item) => {
-                return item.attributes.attributes.type === "AUDIO" && item.attributes.attributes["group-id"] === audioGroupId;
+                return item.attributes.attributes.type === "AUDIO" && item.attributes.attributes["group-id"] === sourceAudioGroupId;
               });
               // # Find all langs amongst the mediaItems that have this group id.
               // # It extracts each mediaItems language attribute value.
@@ -228,7 +235,7 @@ class HLSVod {
                 }
                 return (item = itemLang);
               });
-
+              
               // # Inject "default" language's segments to every new language relative to previous VOD.
               // # For the case when this is a VOD following another, every language new or old should
               // # start with some segments from the previous VOD's last sequence.
