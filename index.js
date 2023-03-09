@@ -938,12 +938,18 @@ class HLSVod {
     return this.discontinuitiesAudio[this.audioSequencesCount - 1];
   }
 
+  getLastDiscontinuitySubtitle() {
+    return this.discontinuitiesSubtitle[this.subtitleSequencesCount - 1];
+  }
+
   /**
    * Get the delta times for each media sequence.
    */
   getDeltaTimes(media = "video") {
     if (media === "audio") {
       return this.deltaTimesAudio.map((o) => o.interval);
+    } else if (media === "subtitle") {
+      return this.deltaTimesSubtitle.map((o) => o.interval);
     }
     return this.deltaTimes.map((o) => o.interval);
   }
@@ -954,6 +960,8 @@ class HLSVod {
   getPlayheadPositions(media = "video") {
     if (media === "audio") {
       return this.deltaTimesAudio.map((o) => o.position);
+    } else if (media === "subtitle") {
+      return this.deltaTimesSubtitle.map((o) => o.position);
     }
     return this.deltaTimes.map((o) => o.position);
   }
@@ -996,6 +1004,7 @@ class HLSVod {
       this._copyFromPrevious(bw);
     }
     this._copyAudioGroupsFromPrevious();
+    this._copySubtitleGroupsFromPrevious();
   }
 
   _hasMediaSequences(bandwidth) {
@@ -1095,6 +1104,57 @@ class HLSVod {
     }
   }
 
+  /**
+   * Gets previous VOD's audio -groupIds, -langs, -segments from its last sequence
+   * and adds them to the current VOD's this.audioSegments property.
+   */
+   _copySubtitleGroupsFromPrevious() {
+    const previousVodSeqCount = this.previousVod.getLiveMediaSequencesCount("subtitle");
+    const subtitleGroups = this.previousVod.getSubtitleGroups();
+    if (subtitleGroups.length > 0) {
+      for (let i = 0; i < subtitleGroups.length; i++) {
+        const subtitleGroupId = subtitleGroups[i];
+        const subtitleLangs = this.previousVod.getSubtitleLangsForSubtitleGroup(subtitleGroupId);
+        if (subtitleGroups.length === 1 && subtitleLangs.length === 1) {
+          /**
+           * TODO: Handle case where prevVod and nextVod have many groups and languages, but none of them match.
+           * Currently, it only sets a default if there is only one possible group and lang to match with on
+           * the prevVod.
+           */
+          this.defaultSubtitleGroupAndLang = {
+            subtitleGroupId: subtitleGroups[0],
+            subtitleLanguage: subtitleLangs[0],
+          };
+          debug(`Loading from previous - Default GroupID and lang selected=${JSON.stringify(this.defaultSubtitleGroupAndLang)}`);
+        }
+        for (let k = 0; k < subtitleLangs.length; k++) {
+          const subtitleLang = subtitleLangs[k];
+          const lastMediaSubtitleSequence = this.previousVod.getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLang, previousVodSeqCount - 1);
+          if (!this.subtitleSegments[subtitleGroupId]) {
+            this.subtitleSegments[subtitleGroupId] = {};
+          }
+          if (!this.subtitleSegments[subtitleGroupId][subtitleLang]) {
+            this.subtitleSegments[subtitleGroupId][subtitleLang] = [];
+          }
+          if (lastMediaSubtitleSequence && lastMediaSubtitleSequence.length > 0) {
+            let start = 1;
+            if (lastMediaSubtitleSequence[0] && lastMediaSubtitleSequence[0].discontinuity) {
+              start = 2;
+            }
+            for (let idx = start; idx < lastMediaSubtitleSequence.length; idx++) {
+              let q = lastMediaSubtitleSequence[idx];
+              this.subtitleSegments[subtitleGroupId][subtitleLang].push(q);
+            }
+          }
+          this.subtitleSegments[subtitleGroupId][subtitleLang].push({
+            discontinuity: true,
+            daterange: this.rangeMetadata ? this.rangeMetadata : null,
+          });
+        }
+      }
+    }
+  }
+
   _cleanupUnused() {
     return new Promise((resolve, reject) => {
       // Remove all bandwidths that are remaining from previous VOD and has not been initiated
@@ -1119,20 +1179,30 @@ class HLSVod {
       let segOffsetAudio = 0;
       let segIdxAudio = 0;
       let seqIndexAudio = 0;
+      let segOffsetSubtitle = 0;
+      let segIdxSubtitle = 0;
+      let seqIndexSubtitle = 0;
       let totalRemovedDiscTags = 0;
       let totalRemovedAudioDiscTags = 0;
+      let totalRemovedSubtitleDiscTags = 0;
       let totalRemovedSegments = 0;
       let totalSeqDurVideo = 0;
       let totalSeqDurAudio = 0;
+      let totalSeqDurSubtitle = 0;
       let video_duration = 0;
       let audio_duration = 0;
+      let subtitle_duration = 0;
       const bw = this._getFirstBwWithSegments();
       const audioGroupId = this._getFirstAudioGroupWithSegments();
-      const firstLanguage = audioGroupId ? this._getFirstAudioLanguageWithSegments(audioGroupId) : null;
+      const firstAudioLanguage = audioGroupId ? this._getFirstAudioLanguageWithSegments(audioGroupId) : null;
+      const subtitleGroupId = this._getFirstSubtitleGroupWithSegments();
+      const firstSubtitleLanguage = subtitleGroupId ? this._getFirstSubtitleLanguageWithSegments(subtitleGroupId) : null;
       let sequence = {};
       let audioSequence = {};
+      let subtitleSequence = {};
       let video_sequence_list = []; // list of sequences
       let audio_sequence_list = []; // list of audioSequence
+      let subtitle_sequence_list = []; // list of subtitleSequence
 
       // Remove all double discontinuities (video)
       const bandwidths = Object.keys(this.segments);
@@ -1167,9 +1237,28 @@ class HLSVod {
           }
         }
       }
+      if (subtitleGroupId) {
+        const subtitleGroupIds = Object.keys(this.subtitleSegments);
+        for (let i = 0; i < subtitleGroupIds.length; i++) {
+          const subtitleGroupId = subtitleGroupIds[i];
+          const subtitleLangs = Object.keys(this.subtitleSegments[subtitleGroupId]);
+          for (let k = 0; k < subtitleLangs.length; k++) {
+            const subLang = subtitleLangs[k];
+            this.subtitleSegments[subtitleGroupId][subLang] = this.subtitleSegments[subtitleGroupId][subLang].filter((elem, idx, arr) => {
+              if (idx > 0 && arr[idx - 1] && arr[idx]) {
+                if (arr[idx - 1].discontinuity && arr[idx].discontinuity) {
+                  return false;
+                }
+              }
+              return true;
+            });
+          }
+        }
+      }
 
       let length = this.segments[bw].length;
-      let a_length = firstLanguage ? this.audioSegments[audioGroupId][firstLanguage].length : 0;
+      let a_length = firstAudioLanguage ? this.audioSegments[audioGroupId][firstAudioLanguage].length : 0;
+      let s_length = firstAudioLanguage ? this.subtitleSegments[subtitleDuration][firstSubtitleLanguage].length : 0;
       if (!this.sequenceAlwaysContainNewSegments) {
         /*---------------------------------------------.
          * Generate Sequences out of segments (type-A) |
@@ -1225,9 +1314,9 @@ class HLSVod {
           }
         }
         // Audio Version
-        while (firstLanguage && this.audioSegments[audioGroupId][firstLanguage][segIdxAudio] && segIdxAudio != a_length) {
-          if (this.audioSegments[audioGroupId][firstLanguage][segIdxAudio].uri) {
-            audio_duration += this.audioSegments[audioGroupId][firstLanguage][segIdxAudio].duration;
+        while (firstAudioLanguage && this.audioSegments[audioGroupId][firstAudioLanguage][segIdxAudio] && segIdxAudio != a_length) {
+          if (this.audioSegments[audioGroupId][firstAudioLanguage][segIdxAudio].uri) {
+            audio_duration += this.audioSegments[audioGroupId][firstAudioLanguage][segIdxAudio].duration;
           }
           if (audio_duration < this.SEQUENCE_DURATION) {
             if (audioGroupId) {
@@ -1253,7 +1342,7 @@ class HLSVod {
             }
             segIdxAudio++;
           } else {
-            if (!audioSequence[audioGroupId][firstLanguage][0].uri) {
+            if (!audioSequence[audioGroupId][firstAudioLanguage][0].uri) {
               // If first element in the sequence is a discontinuity or a cue tag we need to 'skip' the following element that
               // contains the segment uri and is the actual playlist item to roll over the top.
               segOffsetAudio++;
@@ -1266,6 +1355,49 @@ class HLSVod {
             segOffsetAudio++;
 
             segIdxAudio = segOffsetAudio;
+          }
+        }
+        while (firstSubtitleLanguage && this.subtitleSegments[subtitleGroupId][firstSubtitleLanguage][segIdxSubtitle] && segIdxSubtitle != a_length) {
+          if (this.subtitleSegments[subtitleGroupId][firstSubtitleLanguage][segIdxSubtitle].uri) {
+            subtitle_duration += this.subtitleSegments[subtitleGroupId][firstAudioLanguage][segIdxSubtitle].duration;
+          }
+          if (subtitle_duration < this.SEQUENCE_DURATION) {
+            if (subtitleGroupId) {
+              const subtitleGroupIds = Object.keys(this.subtitleSegments);
+              for (let i = 0; i < subtitleGroupIds.length; i++) {
+                const subtitleGroupId = subtitleGroupIds[i];
+                if (!subtitleSequence[subtitleGroupId]) {
+                  subtitleSequence[subtitleGroupId] = {};
+                }
+                const subtitleLangs = Object.keys(this.audioSegments[subtitleGroupId]);
+                for (let k = 0; k < subtitleLangs.length; k++) {
+                  const subtitleLang = subtitleLangs[k];
+                  if (!subtitleSequence[subtitleGroupId][subtitleLang]) {
+                    subtitleSequence[subtitleGroupId][subtitleLang] = [];
+                  }
+                  let seg = this.subtitleSegments[subtitleGroupId][subtitleLang][segIdxAudio];
+                  if (!seg) {
+                    debug(seqIndexSubtitle, `WARNING! The subtitleSequence[id=${subtitleGroupId}][lang=${subtitleLang}] pushed seg=${seg}`);
+                  }
+                  subtitleSequence[subtitleGroupId][subtitleLang].push(seg);
+                }
+              }
+            }
+            segIdxSubtitle++;
+          } else {
+            if (!subtitleSequence[subtitleGroupId][firstSubtitleLanguage][0].uri) {
+              // If first element in the sequence is a discontinuity or a cue tag we need to 'skip' the following element that
+              // contains the segment uri and is the actual playlist item to roll over the top.
+              segOffsetSubtitle++;
+            }
+            subtitle_duration = 0;
+            subtitle_sequence_list.push(subtitleSequence);
+            this.mediaSequenceValuesSubtitle[seqIndexSubtitle] = seqIndexSubtitle;
+            seqIndexSubtitle++;
+            subtitleSequence = {};
+            segOffsetSubtitle++;
+
+            segIdxSubtitle = segOffsetSubtitle;
           }
         }
 
@@ -1286,10 +1418,19 @@ class HLSVod {
           audioSequence = {};
         }
 
+        if (subtitle_duration < this.SEQUENCE_DURATION) {
+          // We are out of segments but have not reached the full duration of a sequence
+          subtitle_duration = 0;
+          subtitle_sequence_list.push(subtitleSequence);
+          this.mediaSequenceValuesSubtitle[seqIndexSubtitle] = seqIndexSubtitle;
+          subtitleSequence = {};
+        }
+
         video_sequence_list.map((_, index) => {
           this.mediaSequences.push({
             segments: video_sequence_list[index],
             audioSegments: {},
+            subtitleSegments: {}
           });
         });
         for (let i = 0; i < audio_sequence_list.length; i++) {
@@ -1302,9 +1443,20 @@ class HLSVod {
             });
           }
         }
+        for (let i = 0; i < subtitle_sequence_list.length; i++) {
+          if (i < this.mediaSequences.length) {
+            this.mediaSequences[i].subtitleSegments = subtitle_sequence_list[i] ? subtitle_sequence_list[i] : {};
+          } else {
+            this.mediaSequences.push({
+              segments: {},
+              subtitleSegments: subtitle_sequence_list[i] ? subtitle_sequence_list[i] : {},
+            });
+          }
+        }
         // Set Sequences Counts
         this.videoSequencesCount = video_sequence_list.length;
         this.audioSequencesCount = audio_sequence_list.length;
+        this.subtitleSequencesCount = subtitle_sequence_list.length;
       } else {
         /*---------------------------------------------.
          * Generate Sequences out of segments (type-B) |
@@ -1453,19 +1605,19 @@ class HLSVod {
           let segIdxAudio = 0;
           let seqIndex = 0;
           totalRemovedSegments = 0;
-          const SIZEAUDIO = this.audioSegments[audioGroupId][firstLanguage].length;
+          const SIZEAUDIO = this.audioSegments[audioGroupId][firstAudioLanguage].length;
           // Generate audio segments
-          while (this.audioSegments[audioGroupId][firstLanguage][segIdxAudio] && segIdxAudio < SIZEAUDIO) {
+          while (this.audioSegments[audioGroupId][firstAudioLanguage][segIdxAudio] && segIdxAudio < SIZEAUDIO) {
             try {
               totalSeqDurAudio = 0;
               const _audioSequence = JSON.parse(JSON.stringify(audioSequence));
               if (
                 _audioSequence[audioGroupId] &&
-                _audioSequence[audioGroupId][firstLanguage] &&
-                _audioSequence[audioGroupId][firstLanguage].length > 0
+                _audioSequence[audioGroupId][firstAudioLanguage] &&
+                _audioSequence[audioGroupId][firstAudioLanguage].length > 0
               ) {
                 let temp = 0;
-                _audioSequence[audioGroupId][firstLanguage].forEach((seg) => {
+                _audioSequence[audioGroupId][firstAudioLanguage].forEach((seg) => {
                   if (seg && seg.duration) {
                     temp += seg.duration;
                   }
@@ -1594,7 +1746,7 @@ class HLSVod {
                         const audioLangs = Object.keys(this.audioSegments[groupId]);
                         audioLangs.forEach((lang) => {
                           let seg = _audioSequence[groupId][lang].pop();
-                          if (groupId === audioGroupId && lang === firstLanguage) {
+                          if (groupId === audioGroupId && lang === firstAudioLanguage) {
                             timeToRemove = seg.duration;
                           }
                         });
@@ -1645,6 +1797,7 @@ class HLSVod {
 
         this.videoSequencesCount = videoSequences.length;
         this.audioSequencesCount = audioSequences.length;
+        this.subtitleSequencesCount = subtitleSequences.length
       }
 
       if (!this.mediaSequences) {
@@ -1839,6 +1992,108 @@ class HLSVod {
                   lastPositionIncrement = audioSegment[audioSegment.length - 1].discontinuity
                     ? audioSegment[audioSegment.length - 2].duration
                     : audioSegment[audioSegment.length - 1].duration;
+                }
+              }
+            }
+          }
+        }
+
+        //Subtitle version
+        if (this.mediaSequences[0].subtitleSegments) {
+          let prevLastSegmentUri = null;
+          let discSeqNo = 0;
+          this.deltaTimesSubtitle.push({
+            interval: 0,
+            position: 0,
+          });
+          let lastPosition = 0;
+          let lastPositionIncrement = 0;
+          for (let seqNo = 0; seqNo < this.subtitleSequencesCount; seqNo++) {
+            const mseq = this.mediaSequences[seqNo];
+            const sgid = Object.keys(mseq.subtitleSegments)[0];
+            if (!sgid) {
+              continue;
+            }
+            const slang = Object.keys(mseq.subtitleSegments[sgid])[0];
+            if (!slang) {
+              continue;
+            }
+            const subtitleSegment = mseq.subtitleSegments[sgid][slang];
+            if (subtitleSegment && subtitleSegment[0] && subtitleSegment[0].discontinuity) {
+              debug(`Discontinuity in first segment of media seq ${seqNo}`);
+              discSeqNo++;
+              debug(`Increasing discont sequence ${discSeqNo}`);
+            }
+            if (this.sequenceAlwaysContainNewSegments) {
+              this.discontinuitiesSubtitle[seqNo] += discSeqNo;
+              discSeqNo = 0;
+            } else {
+              this.discontinuitiesSubtitle[seqNo] = discSeqNo;
+            }
+
+            if (this.sequenceAlwaysContainNewSegments) {
+              if (seqNo > 0) {
+                let tpi = 0; // Total Position Increment (total newly added content in seconds)
+                const prevLastSegIdx = findIndexReversed(subtitleSegment, (seg) => {
+                  if (seg.uri) {
+                    return seg.uri === prevLastSegmentUri;
+                  }
+                  return false;
+                });
+                for (let i = prevLastSegIdx + 1; i < subtitleSegment.length; i++) {
+                  const seg = subtitleSegment[i];
+                  if (seg && seg.duration) {
+                    tpi += seg.duration;
+                  }
+                }
+                let lastSegment = subtitleSegment[subtitleSegment.length - 1];
+                if (lastSegment && lastSegment.discontinuity) {
+                  lastSegment = subtitleSegment[subtitleSegment.length - 2];
+                }
+                const positionIncrement = lastSegment.duration;
+                const interval = tpi - lastPositionIncrement;
+                this.deltaTimesSubtitle.push({
+                  interval: interval,
+                  position: positionIncrement ? lastPosition + tpi : lastPosition,
+                });
+                if (positionIncrement) {
+                  lastPosition += tpi;
+                  lastPositionIncrement = positionIncrement;
+                }
+                if (lastSegment && lastSegment.uri) {
+                  prevLastSegmentUri = lastSegment.uri;
+                }
+              } else {
+                if (subtitleSegment) {
+                  let lastSegment = subtitleSegment[subtitleSegment.length - 1];
+                  if (lastSegment && lastSegment.discontinuity) {
+                    lastSegment = subtitleSegment[subtitleSegment.length - 2];
+                  }
+                  if (lastSegment && lastSegment.uri) {
+                    prevLastSegmentUri = lastSegment.uri;
+                  }
+                  lastPositionIncrement = lastSegment.duration;
+                }
+              }
+            } else {
+              if (seqNo > 0) {
+                const positionIncrement = subtitleSegment[subtitleSegment.length - 1].discontinuity
+                  ? subtitleSegment[subtitleSegment.length - 2].duration
+                  : subtitleSegment[subtitleSegment.length - 1].duration;
+                const interval = positionIncrement - lastPositionIncrement;
+                this.deltaTimes.push({
+                  interval: interval,
+                  position: positionIncrement ? lastPosition + positionIncrement : lastPosition,
+                });
+                if (positionIncrement) {
+                  lastPosition += positionIncrement;
+                  lastPositionIncrement = positionIncrement;
+                }
+              } else {
+                if (subtitleSegment) {
+                  lastPositionIncrement = subtitleSegment[subtitleSegment.length - 1].discontinuity
+                    ? subtitleSegment[subtitleSegment.length - 2].duration
+                    : subtitleSegment[subtitleSegment.length - 1].duration;
                 }
               }
             }
