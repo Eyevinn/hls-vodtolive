@@ -673,6 +673,14 @@ class HLSVod {
           if (v.cue && v.cue.in) {
             m3u8 += "#EXT-X-CUE-IN" + "\n";
           }
+          if (v.key) {
+            m3u8 += `#EXT-X-KEY:METHOD=${v.key.method}`;
+            m3u8 += v.key.uri ? `,URI="${v.key.uri}"` : "";
+            m3u8 += v.key.keyid ? `,KEYID=${v.key.keyid}` : "";
+            m3u8 += v.key.keyformatversions ? `,KEYFORMATVERSIONS="${v.key.keyformatversions}"` : "";
+            m3u8 += v.key.keyformat ? `,KEYFORMAT="${v.key.keyformat}"` : "";
+            m3u8 += "\n";
+          }
           if (v.uri) {
             m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
             if (v.byteRange) {
@@ -791,6 +799,14 @@ class HLSVod {
             } else {
               m3u8 += "#EXT-X-CUE-IN" + "\n";
             }
+          }
+          if (v.key) {
+            m3u8 += `#EXT-X-KEY:METHOD=${v.key.method}`;
+            m3u8 += v.key.uri ? `,URI="${v.key.uri}"` : "";
+            m3u8 += v.key.keyid ? `,KEYID=${v.key.keyid}` : "";
+            m3u8 += v.key.keyformatversions ? `,KEYFORMATVERSIONS="${v.key.keyformatversions}"` : "";
+            m3u8 += v.key.keyformat ? `,KEYFORMAT="${v.key.keyformat}"` : "";
+            m3u8 += "\n";
           }
           if (v.uri) {
             m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
@@ -1899,6 +1915,7 @@ class HLSVod {
               let segmentUri;
               let baseUrl;
               let byteRange = undefined;
+              let key = undefined;
 
               const m = mediaManifestUri.match("^(.*)/.*?$");
               if (m) {
@@ -1933,6 +1950,16 @@ class HLSVod {
               if (playlistItem.properties.byteRange) {
                 byteRange = playlistItem.properties.byteRange;
               }
+              if (playlistItem.get("key-method")) {
+                key = {
+                  method: playlistItem.get("key-method"),
+                  uri: playlistItem.get("key-uri"),
+                  keyid: playlistItem.get("key-id"),
+                  keyformat: playlistItem.get("key-keyformat"),
+                  keyformatversions: playlistItem.get("key-keyformatversions"),
+                };
+              }
+
               let diff = 0;
               if (nextSplicePosition != null && position + playlistItem.properties.duration > nextSplicePosition) {
                 debug(`Inserting splice at ${bw}:${position} (${i})`);
@@ -1953,6 +1980,7 @@ class HLSVod {
                       timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                       discontinuity: false,
                       byteRange: byteRange,
+                      key: key,
                     };
 
                     this.segments[bw].push(q);
@@ -2007,6 +2035,7 @@ class HLSVod {
                   timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                   cue: cue,
                   byteRange: byteRange,
+                  key: key,
                 };
                 if (initSegment) {
                   q.initSegment = initSegment;
@@ -2145,6 +2174,8 @@ class HLSVod {
               const playlistItem = m3u.items.PlaylistItem[i];
               let segmentUri;
               let byteRange = undefined;
+              let key = undefined;
+
               if (m3u.items.PlaylistItem[i].attributes.attributes["map-uri"]) {
                 initSegment = m3u.items.PlaylistItem[i].attributes.attributes["map-uri"];
                 initSegmentByteRange = m3u.items.PlaylistItem[i].attributes.attributes["map-byterange"];
@@ -2169,6 +2200,16 @@ class HLSVod {
               if (playlistItem.properties.byteRange) {
                 byteRange = playlistItem.properties.byteRange;
               }
+              if (playlistItem.get("key-method")) {
+                key = {
+                  method: playlistItem.get("key-method"),
+                  uri: playlistItem.get("key-uri"),
+                  keyid: playlistItem.get("key-id"),
+                  keyformat: playlistItem.get("key-keyformat"),
+                  keyformatversions: playlistItem.get("key-keyformatversions"),
+                };
+              }
+
               let assetData = playlistItem.get("assetdata");
               let cueOut = playlistItem.get("cueout");
               let cueIn = playlistItem.get("cuein");
@@ -2196,6 +2237,7 @@ class HLSVod {
                 timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                 cue: cue,
                 byteRange: byteRange,
+                key: key,
               };
               if (segmentUri) {
                 q.uri = segmentUri;

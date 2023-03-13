@@ -39,7 +39,7 @@
     "nyc": "^15.0.1"
   },
   "dependencies": {
-    "@eyevinn/m3u8": "^0.5.3",
+    "@eyevinn/m3u8": "^0.5.5",
     "abort-controller": "^3.0.0",
     "debug": "^4.1.1",
     "node-fetch": "2.6.7"
