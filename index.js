@@ -673,13 +673,17 @@ class HLSVod {
           if (v.cue && v.cue.in) {
             m3u8 += "#EXT-X-CUE-IN" + "\n";
           }
-          if (v.key) {
-            m3u8 += `#EXT-X-KEY:METHOD=${v.key.method}`;
-            m3u8 += v.key.uri ? `,URI="${v.key.uri}"` : "";
-            m3u8 += v.key.keyid ? `,KEYID=${v.key.keyid}` : "";
-            m3u8 += v.key.keyformatversions ? `,KEYFORMATVERSIONS="${v.key.keyformatversions}"` : "";
-            m3u8 += v.key.keyformat ? `,KEYFORMAT="${v.key.keyformat}"` : "";
-            m3u8 += "\n";
+          if (v.keys) {
+            for (const keyFormat of Object.keys(v.keys)) {
+              const key = v.keys[keyFormat];
+              m3u8 += `#EXT-X-KEY:METHOD=${key.method}`;
+              m3u8 += key.uri ? `,URI=${key.uri}` : "";
+              m3u8 += key.iv ? `,IV=${key.iv}` : "";
+              m3u8 += key.keyId ? `,KEYID=${key.keyId}` : "";
+              m3u8 += key.keyFormatVersions ? `,KEYFORMATVERSIONS=${key.keyFormatVersions}` : "";
+              m3u8 += key.keyFormat ? `,KEYFORMAT=${key.keyFormat}` : "";
+              m3u8 += "\n";
+            }
           }
           if (v.uri) {
             m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
@@ -800,13 +804,17 @@ class HLSVod {
               m3u8 += "#EXT-X-CUE-IN" + "\n";
             }
           }
-          if (v.key) {
-            m3u8 += `#EXT-X-KEY:METHOD=${v.key.method}`;
-            m3u8 += v.key.uri ? `,URI="${v.key.uri}"` : "";
-            m3u8 += v.key.keyid ? `,KEYID=${v.key.keyid}` : "";
-            m3u8 += v.key.keyformatversions ? `,KEYFORMATVERSIONS="${v.key.keyformatversions}"` : "";
-            m3u8 += v.key.keyformat ? `,KEYFORMAT="${v.key.keyformat}"` : "";
-            m3u8 += "\n";
+          if (v.keys) {
+            for (const keyFormat of Object.keys(v.keys)) {
+              const key = v.keys[keyFormat];
+              m3u8 += `#EXT-X-KEY:METHOD=${key.method}`;
+              m3u8 += key.uri ? `,URI=${key.uri}` : "";
+              m3u8 += key.iv ? `,IV=${key.iv}` : "";
+              m3u8 += key.keyId ? `,KEYID=${key.keyId}` : "";
+              m3u8 += key.keyFormatVersions ? `,KEYFORMATVERSIONS=${key.keyFormatVersions}` : "";
+              m3u8 += key.keyFormat ? `,KEYFORMAT=${key.keyFormat}` : "";
+              m3u8 += "\n";
+            }
           }
           if (v.uri) {
             m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
@@ -1902,7 +1910,6 @@ class HLSVod {
               this.mediaStartExecessTime = Math.abs(remain);
             }
             
-
             for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
               if (this.splices[spliceIdx]) {
                 nextSplicePosition = this.splices[spliceIdx].position;
@@ -1915,7 +1922,7 @@ class HLSVod {
               let segmentUri;
               let baseUrl;
               let byteRange = undefined;
-              let key = undefined;
+              let keys = undefined;
 
               const m = mediaManifestUri.match("^(.*)/.*?$");
               if (m) {
@@ -1950,14 +1957,8 @@ class HLSVod {
               if (playlistItem.properties.byteRange) {
                 byteRange = playlistItem.properties.byteRange;
               }
-              if (playlistItem.get("key-method")) {
-                key = {
-                  method: playlistItem.get("key-method"),
-                  uri: playlistItem.get("key-uri"),
-                  keyid: playlistItem.get("key-id"),
-                  keyformat: playlistItem.get("key-keyformat"),
-                  keyformatversions: playlistItem.get("key-keyformatversions"),
-                };
+              if (playlistItem.get("keys")) {
+                keys = playlistItem.get("keys");
               }
 
               let diff = 0;
@@ -1980,7 +1981,7 @@ class HLSVod {
                       timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                       discontinuity: false,
                       byteRange: byteRange,
-                      key: key,
+                      keys: keys,
                     };
 
                     this.segments[bw].push(q);
@@ -2035,7 +2036,7 @@ class HLSVod {
                   timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                   cue: cue,
                   byteRange: byteRange,
-                  key: key,
+                  keys: keys,
                 };
                 if (initSegment) {
                   q.initSegment = initSegment;
@@ -2174,7 +2175,7 @@ class HLSVod {
               const playlistItem = m3u.items.PlaylistItem[i];
               let segmentUri;
               let byteRange = undefined;
-              let key = undefined;
+              let keys = undefined;
 
               if (m3u.items.PlaylistItem[i].attributes.attributes["map-uri"]) {
                 initSegment = m3u.items.PlaylistItem[i].attributes.attributes["map-uri"];
@@ -2200,14 +2201,8 @@ class HLSVod {
               if (playlistItem.properties.byteRange) {
                 byteRange = playlistItem.properties.byteRange;
               }
-              if (playlistItem.get("key-method")) {
-                key = {
-                  method: playlistItem.get("key-method"),
-                  uri: playlistItem.get("key-uri"),
-                  keyid: playlistItem.get("key-id"),
-                  keyformat: playlistItem.get("key-keyformat"),
-                  keyformatversions: playlistItem.get("key-keyformatversions"),
-                };
+              if (playlistItem.get("keys")) {
+                keys = playlistItem.get("keys");
               }
 
               let assetData = playlistItem.get("assetdata");
@@ -2237,7 +2232,7 @@ class HLSVod {
                 timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                 cue: cue,
                 byteRange: byteRange,
-                key: key,
+                keys: keys,
               };
               if (segmentUri) {
                 q.uri = segmentUri;

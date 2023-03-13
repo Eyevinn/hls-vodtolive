@@ -41,7 +41,7 @@ describe("HLSVod DRM standalone", () => {
       .then(() => {
         const seqSegments = mockVod.getLiveMediaSequenceSegments(0);
         expect(seqSegments["8065760"][2].discontinuity).toEqual(true);
-        expect(seqSegments["8065760"][3].key).not.toBeUndefined();
+        expect(seqSegments["8065760"][3].keys).not.toBeUndefined();
 
         let m3u8 = mockVod.getLiveMediaSequences(0, "8065760", 0);
         let lines = m3u8.split("\n");
@@ -49,7 +49,7 @@ describe("HLSVod DRM standalone", () => {
 
         const seqAudioSegments = mockVod.getLiveMediaSequenceAudioSegments("default-audio-group", "en", 0);
         expect(seqAudioSegments[2].discontinuity).toEqual(true);
-        expect(seqAudioSegments[3].key).not.toBeUndefined();
+        expect(seqAudioSegments[3].keys).not.toBeUndefined();
 
         m3u8 = mockVod.getLiveMediaAudioSequences(0, "default-audio-group", "en", 0);
         lines = m3u8.split("\n");
@@ -147,18 +147,72 @@ describe("HLSVod Fairplay TS standalone", () => {
       .load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
       .then(() => {
         const seqSegments = mockVod.getLiveMediaSequenceSegments(0);
-        expect(seqSegments["1044594"][0].key).not.toBeUndefined();
+        expect(seqSegments["1044594"][0].keys).not.toBeUndefined();
 
         let m3u8 = mockVod.getLiveMediaSequences(0, "1044594", 0);
         let lines = m3u8.split("\n");
         expect(lines[6]).toEqual('#EXT-X-KEY:METHOD=SAMPLE-AES,URI="skd://twelve",KEYFORMATVERSIONS="1",KEYFORMAT="com.apple.streamingkeydelivery"');
 
         const seqAudioSegments = mockVod.getLiveMediaSequenceAudioSegments("audio", "en", 0);
-        expect(seqAudioSegments[0].key).not.toBeUndefined();
+        expect(seqAudioSegments[0].keys).not.toBeUndefined();
 
         m3u8 = mockVod.getLiveMediaAudioSequences(0, "audio", "en", 0);
         lines = m3u8.split("\n");
         expect(lines[6]).toEqual('#EXT-X-KEY:METHOD=SAMPLE-AES,URI="skd://twelve",KEYFORMATVERSIONS="1",KEYFORMAT="com.apple.streamingkeydelivery"');
+
+        done();
+      })
+      .catch((err) => {
+        done(err);
+      });
+  });
+});
+
+describe("HLSVod Fairplay and CENC standalone", () => {
+  let mockMasterManifest;
+  let mockMediaManifest;
+  let mockAudioManifest;
+
+  beforeEach(() => {
+    mockMasterManifest = function () {
+      return fs.createReadStream("testvectors/hls_wv_fairplay/index.m3u8");
+    };
+
+    mockMediaManifest = function (bandwidth) {
+      const fname = {
+        "1044594": "video_index",
+      };
+      return fs.createReadStream("testvectors/hls_wv_fairplay/" + fname[bandwidth] + ".m3u8");
+    };
+
+    mockAudioManifest = function (groupId, lang) {
+      const fname = {
+        "audio": "audio_index",
+      };
+      return fs.createReadStream("testvectors/hls_wv_fairplay/" + fname[groupId] + ".m3u8");
+    };
+  });
+
+  it("passes through the KEY tags correctly", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod
+      .load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
+      .then(() => {
+        const seqSegments = mockVod.getLiveMediaSequenceSegments(0);
+        expect(seqSegments["1044594"][3].keys).not.toBeUndefined();
+
+        let m3u8 = mockVod.getLiveMediaSequences(0, "1044594", 0);
+        let lines = m3u8.split("\n");
+        expect(lines[13]).toEqual('#EXT-X-KEY:METHOD=SAMPLE-AES,URI="skd://dummy",IV=0xe4f4c12d42d269912a8bb26db5535752,KEYFORMATVERSIONS="1",KEYFORMAT="com.apple.streamingkeydelivery"');
+        expect(lines[14]).toEqual('#EXT-X-KEY:METHOD=SAMPLE-AES-CTR,URI="data:text/plain;base64,AAAAPnBzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAAB4iFnNoYWthX2NlYzJmNjRhYTc4OTBhMTFI49yVmwY=",KEYID=0x800AACAA522958AE888062B5695DB6BF,KEYFORMATVERSIONS="1",KEYFORMAT="urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"');
+
+        const seqAudioSegments = mockVod.getLiveMediaSequenceAudioSegments("audio", "en", 0);
+        expect(seqAudioSegments[3].keys).not.toBeUndefined();
+
+        m3u8 = mockVod.getLiveMediaAudioSequences(0, "audio", "en", 0);
+        lines = m3u8.split("\n");
+        expect(lines[13]).toEqual('#EXT-X-KEY:METHOD=SAMPLE-AES,URI="skd://dummy",IV=0xe4f4c12d42d269912a8bb26db5535752,KEYFORMATVERSIONS="1",KEYFORMAT="com.apple.streamingkeydelivery"');
+        expect(lines[14]).toEqual('#EXT-X-KEY:METHOD=SAMPLE-AES-CTR,URI="data:text/plain;base64,AAAAPnBzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAAB4iFnNoYWthX2NlYzJmNjRhYTc4OTBhMTFI49yVmwY=",KEYID=0x67B30C86756F57C5A0A38A23AC8C9178,KEYFORMATVERSIONS="1",KEYFORMAT="urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"');
 
         done();
       })
