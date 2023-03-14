@@ -1,7 +1,6 @@
 const m3u8 = require("@eyevinn/m3u8");
 const fetch = require("node-fetch");
 const { AbortController } = require("abort-controller");
-const url = require("url");
 const { deserialize } = require("v8");
 const debug = require("debug")("hls-vodtolive");
 const verbose = require("debug")("hls-vodtolive-verbose");
@@ -15,6 +14,16 @@ const daterangeAttribute = (key, attr) => {
     return key.toUpperCase() + "=" + `"${attr}"`;
   }
 };
+
+function urlResolve(from, to) {
+  const resolvedUrl = new URL(to, new URL(from, 'resolve://'));
+  if (resolvedUrl.protocol === 'resolve:') {
+    // `from` is a relative URL.
+    const { pathname, search, hash } = resolvedUrl;
+    return pathname + search + hash;
+  }
+  return resolvedUrl.toString();
+}
 
 class HLSVod {
   /**
@@ -159,8 +168,8 @@ class HLSVod {
           this.usageProfileMapping = {};
           this.usageProfileMappingRev = {};
           const bandwidths = m3u.items.StreamItem.sort((a, b) => {
-            return a.attributes.attributes["bandwidth"] - b.attributes.attributes["bandwidth"];
-          }).map((v) => v.attributes.attributes["bandwidth"]);
+            return a.get("bandwidth") - b.get("bandwidth");
+          }).map((v) => v.get("bandwidth"));
           debug(`${previousBandwidths} : ${bandwidths}`);
           for (let i = 0; i < previousBandwidths.length; i++) {
             this.usageProfileMapping[previousBandwidths[i]] = bandwidths[i] + "";
@@ -172,7 +181,7 @@ class HLSVod {
 
         for (let i = 0; i < m3u.items.StreamItem.length; i++) {
           const streamItem = m3u.items.StreamItem[i];
-          let mediaManifestUrl = url.resolve(baseUrl, streamItem.properties.uri);
+          let mediaManifestUrl = urlResolve(baseUrl, streamItem.get("uri"));
 
           if (streamItem.get("bandwidth")) {
             let usageProfile = {
@@ -197,8 +206,8 @@ class HLSVod {
         Promise.all(mediaManifestPromises).then(() => {
           for (let i = 0; i < m3u.items.StreamItem.length; i++) {
             const streamItem = m3u.items.StreamItem[i];
-            if (streamItem.attributes.attributes["audio"]) {
-              let audioGroupId = streamItem.attributes.attributes["audio"];
+            if (streamItem.get("audio")) {
+              let audioGroupId = streamItem.get("audio");
               if (!HAS_AUDIO_DEFAULTS && !this.audioSegments[audioGroupId]) {
                 this.audioSegments[audioGroupId] = {};
               }
@@ -210,17 +219,17 @@ class HLSVod {
                 : Object.keys(this.audioSegments[audioGroupId]);
 
               let audioGroupItems = m3u.items.MediaItem.filter((item) => {
-                return item.attributes.attributes.type === "AUDIO" && item.attributes.attributes["group-id"] === audioGroupId;
+                return item.get("type") === "AUDIO" && item.get("group-id") === audioGroupId;
               });
               // # Find all langs amongst the mediaItems that have this group id.
               // # It extracts each mediaItems language attribute value.
               // # ALSO initialize in this.audioSegments a lang. property whos value is an array [{seg1}, {seg2}, ...].
               let audioLanguages = audioGroupItems.map((item) => {
                 let itemLang;
-                if (!item.attributes.attributes["language"]) {
-                  itemLang = item.attributes.attributes["name"];
+                if (!item.get("language")) {
+                  itemLang = item.get("name");
                 } else {
-                  itemLang = item.attributes.attributes["language"];
+                  itemLang = item.get("language");
                 }
                 // Initialize lang. in new group.
                 if (!HAS_AUDIO_DEFAULTS && !this.audioSegments[audioGroupId][itemLang]) {
@@ -263,18 +272,18 @@ class HLSVod {
               // # For each lang, find the lang playlist uri and do _loadAudioManifest() on it.
               for (let j = 0; j < audioLanguages.length; j++) {
                 let audioLang = audioLanguages[j];
-                let audioUri = audioGroupItems[j].attributes.attributes.uri;
+                let audioUri = audioGroupItems[j].get("uri");
                 if (!audioUri) {
                   //# if mediaItems dont have uris
                   let audioVariant = m3u.items.StreamItem.find((item) => {
-                    return !item.attributes.attributes.resolution && item.attributes.attributes["audio"] === audioGroupId;
+                    return !item.get("resolution") && item.get("audio") === audioGroupId;
                   });
                   if (audioVariant) {
-                    audioUri = audioVariant.properties.uri;
+                    audioUri = audioVariant.get("uri");
                   }
                 }
                 if (audioUri) {
-                  let audioManifestUrl = url.resolve(baseUrl, audioUri);
+                  let audioManifestUrl = urlResolve(baseUrl, audioUri);
                   if (!audioGroups[audioGroupId]) {
                     audioGroups[audioGroupId] = {};
                   }
@@ -1895,16 +1904,16 @@ class HLSVod {
                 if (!removed) {
                   remain = 0;
                 } else {
-                  if (removed.attributes.attributes["map-uri"]) {
-                    initSegment = removed.attributes.attributes["map-uri"];
+                  if (removed.get("map-uri")) {
+                    initSegment = removed.get("map-uri");
                     if (!initSegment.match("^http")) {
                       const n = mediaManifestUri.match("^(.*)/.*?$");
                       if (n) {
-                        initSegment = url.resolve(n[1] + "/", initSegment);
+                        initSegment = urlResolve(n[1] + "/", initSegment);
                       }
                     }
                   }
-                  remain -= removed.properties.duration * 1000;
+                  remain -= removed.get("duration") * 1000;
                 }
               }
               this.mediaStartExecessTime = Math.abs(remain);
@@ -1929,40 +1938,40 @@ class HLSVod {
                 baseUrl = m[1] + "/";
               }
 
-              if (playlistItem.attributes.attributes["map-uri"]) {
-                initSegment = playlistItem.attributes.attributes["map-uri"];
-                initSegmentByteRange = playlistItem.attributes.attributes["map-byterange"];
+              if (playlistItem.get("map-uri")) {
+                initSegment = playlistItem.get("map-uri");
+                initSegmentByteRange = playlistItem.get("map-byterange");
                 if (!initSegment.match("^http")) {
                   const n = mediaManifestUri.match("^(.*)/.*?$");
                   if (n) {
-                    initSegment = url.resolve(n[1] + "/", initSegment);
+                    initSegment = urlResolve(n[1] + "/", initSegment);
                   }
                 }
               }
 
               // some items such as CUE-IN parse as a PlaylistItem
               // but have no URI
-              if (playlistItem.properties.uri) {
-                if (playlistItem.properties.uri.match("^http")) {
-                  segmentUri = playlistItem.properties.uri;
+              if (playlistItem.get("uri")) {
+                if (playlistItem.get("uri").match("^http")) {
+                  segmentUri = playlistItem.get("uri");
                 } else {
-                  segmentUri = url.resolve(baseUrl, playlistItem.properties.uri);
+                  segmentUri = urlResolve(baseUrl, playlistItem.get("uri"));
                 }
               }
-              if (playlistItem.properties.discontinuity) {
+              if (playlistItem.get("discontinuity")) {
                 this.segments[bw].push({
                   discontinuity: true,
                 });
               }
-              if (playlistItem.properties.byteRange) {
-                byteRange = playlistItem.properties.byteRange;
+              if (playlistItem.get("byteRange")) {
+                byteRange = playlistItem.get("byteRange");
               }
               if (playlistItem.get("keys")) {
                 keys = playlistItem.get("keys");
               }
 
               let diff = 0;
-              if (nextSplicePosition != null && position + playlistItem.properties.duration > nextSplicePosition) {
+              if (nextSplicePosition != null && position + playlistItem.get("duration") > nextSplicePosition) {
                 debug(`Inserting splice at ${bw}:${position} (${i})`);
                 diff = position - nextSplicePosition;
                 if (this.segments[bw].length > 0 && !this.segments[bw][this.segments[bw].length - 1].discontinuity) {
@@ -2032,7 +2041,7 @@ class HLSVod {
                     }
                     : null;
                 let q = {
-                  duration: playlistItem.properties.duration,
+                  duration: playlistItem.get("duration"),
                   timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                   cue: cue,
                   byteRange: byteRange,
@@ -2150,16 +2159,16 @@ class HLSVod {
               if (!removed) {
                 remain = 0;
               } else {
-                if (removed.attributes.attributes["map-uri"]) {
-                  initSegment = removed.attributes.attributes["map-uri"];
+                if (removed.get("map-uri")) {
+                  initSegment = removed.get("map-uri");
                   if (!initSegment.match("^http")) {
                     const n = audioManifestUri.match("^(.*)/.*?$");
                     if (n) {
-                      initSegment = url.resolve(n[1] + "/", initSegment);
+                      initSegment = urlResolve(n[1] + "/", initSegment);
                     }
                   }
                 }
-                remain -= removed.properties.duration * 1000;
+                remain -= removed.get("duration") * 1000;
               }
             }
           }
@@ -2177,29 +2186,29 @@ class HLSVod {
               let byteRange = undefined;
               let keys = undefined;
 
-              if (m3u.items.PlaylistItem[i].attributes.attributes["map-uri"]) {
-                initSegment = m3u.items.PlaylistItem[i].attributes.attributes["map-uri"];
-                initSegmentByteRange = m3u.items.PlaylistItem[i].attributes.attributes["map-byterange"];
+              if (m3u.items.PlaylistItem[i].get("map-uri")) {
+                initSegment = m3u.items.PlaylistItem[i].get("map-uri");
+                initSegmentByteRange = m3u.items.PlaylistItem[i].get("map-byterange");
                 if (!initSegment.match("^http")) {
-                  initSegment = url.resolve(baseUrl, initSegment);
+                  initSegment = urlResolve(baseUrl, initSegment);
                 }
               }
               // some items such as CUE-IN parse as a PlaylistItem
               // but have no URI
-              if (playlistItem.properties.uri) {
-                if (playlistItem.properties.uri.match("^http")) {
-                  segmentUri = playlistItem.properties.uri;
+              if (playlistItem.get("uri")) {
+                if (playlistItem.get("uri").match("^http")) {
+                  segmentUri = playlistItem.get("uri");
                 } else {
-                  segmentUri = url.resolve(baseUrl, playlistItem.properties.uri);
+                  segmentUri = urlResolve(baseUrl, playlistItem.get("uri"));
                 }
               }
-              if (playlistItem.properties.discontinuity) {
+              if (playlistItem.get("discontinuity")) {
                 this.audioSegments[groupId][language].push({
                   discontinuity: true,
                 });
               }
-              if (playlistItem.properties.byteRange) {
-                byteRange = playlistItem.properties.byteRange;
+              if (playlistItem.get("byteRange")) {
+                byteRange = playlistItem.get("byteRange");
               }
               if (playlistItem.get("keys")) {
                 keys = playlistItem.get("keys");
@@ -2228,7 +2237,7 @@ class HLSVod {
                   }
                   : null;
               let q = {
-                duration: playlistItem.properties.duration,
+                duration: playlistItem.get("duration"),
                 timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                 cue: cue,
                 byteRange: byteRange,
