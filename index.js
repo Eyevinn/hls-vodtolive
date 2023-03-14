@@ -2,7 +2,6 @@ const m3u8 = require("@eyevinn/m3u8");
 const fetch = require("node-fetch");
 const { AbortController } = require("abort-controller");
 const url = require("url");
-const { deserialize } = require("v8");
 const debug = require("debug")("hls-vodtolive");
 const verbose = require("debug")("hls-vodtolive-verbose");
 
@@ -15,16 +14,6 @@ const daterangeAttribute = (key, attr) => {
     return key.toUpperCase() + "=" + `"${attr}"`;
   }
 };
-
-function urlResolve(from, to) {
-  const resolvedUrl = new URL(to, new URL(from, 'resolve://'));
-  if (resolvedUrl.protocol === 'resolve:') {
-    // `from` is a relative URL.
-    const { pathname, search, hash } = resolvedUrl;
-    return pathname + search + hash;
-  }
-  return resolvedUrl.toString();
-}
 
 class HLSVod {
   /**
@@ -188,8 +177,8 @@ class HLSVod {
           this.usageProfileMapping = {};
           this.usageProfileMappingRev = {};
           const bandwidths = m3u.items.StreamItem.sort((a, b) => {
-            return a.get("bandwidth") - b.get("bandwidth");
-          }).map((v) => v.get("bandwidth"));
+            return a.attributes.attributes["bandwidth"] - b.attributes.attributes["bandwidth"];
+          }).map((v) => v.attributes.attributes["bandwidth"]);
           debug(`${previousBandwidths} : ${bandwidths}`);
           for (let i = 0; i < previousBandwidths.length; i++) {
             this.usageProfileMapping[previousBandwidths[i]] = bandwidths[i] + "";
@@ -202,7 +191,7 @@ class HLSVod {
 
         for (let i = 0; i < m3u.items.StreamItem.length; i++) {
           const streamItem = m3u.items.StreamItem[i];
-          let mediaManifestUrl = urlResolve(baseUrl, streamItem.get("uri"));
+          let mediaManifestUrl = url.resolve(baseUrl, streamItem.properties.uri);
 
           if (streamItem.get("bandwidth")) {
             let usageProfile = {
@@ -227,8 +216,8 @@ class HLSVod {
         Promise.all(mediaManifestPromises).then(() => {
           for (let i = 0; i < m3u.items.StreamItem.length; i++) {
             const streamItem = m3u.items.StreamItem[i];
-            if (streamItem.get("audio")) {
-              let audioGroupId = streamItem.get("audio");
+            if (streamItem.attributes.attributes["audio"]) {
+              let audioGroupId = streamItem.attributes.attributes["audio"];
               if (!HAS_AUDIO_DEFAULTS && !this.audioSegments[audioGroupId]) {
                 this.audioSegments[audioGroupId] = {};
               }
@@ -240,17 +229,17 @@ class HLSVod {
                 : Object.keys(this.audioSegments[audioGroupId]);
 
               let audioGroupItems = m3u.items.MediaItem.filter((item) => {
-                return item.get("type") === "AUDIO" && item.get("group-id") === audioGroupId;
+                return item.attributes.attributes.type === "AUDIO" && item.attributes.attributes["group-id"] === audioGroupId;
               });
               // # Find all langs amongst the mediaItems that have this group id.
               // # It extracts each mediaItems language attribute value.
               // # ALSO initialize in this.audioSegments a lang. property whos value is an array [{seg1}, {seg2}, ...].
               let audioLanguages = audioGroupItems.map((item) => {
                 let itemLang;
-                if (!item.get("language")) {
-                  itemLang = item.get("name");
+                if (!item.attributes.attributes["language"]) {
+                  itemLang = item.attributes.attributes["name"];
                 } else {
-                  itemLang = item.get("language");
+                  itemLang = item.attributes.attributes["language"];
                 }
                 // Initialize lang. in new group.
                 if (!HAS_AUDIO_DEFAULTS && !this.audioSegments[audioGroupId][itemLang]) {
@@ -293,18 +282,18 @@ class HLSVod {
               // # For each lang, find the lang playlist uri and do _loadAudioManifest() on it.
               for (let j = 0; j < audioLanguages.length; j++) {
                 let audioLang = audioLanguages[j];
-                let audioUri = audioGroupItems[j].get("uri");
+                let audioUri = audioGroupItems[j].attributes.attributes.uri;
                 if (!audioUri) {
                   //# if mediaItems dont have uris
                   let audioVariant = m3u.items.StreamItem.find((item) => {
-                    return !item.get("resolution") && item.get("audio") === audioGroupId;
+                    return !item.attributes.attributes.resolution && item.attributes.attributes["audio"] === audioGroupId;
                   });
                   if (audioVariant) {
-                    audioUri = audioVariant.get("uri");
+                    audioUri = audioVariant.properties.uri;
                   }
                 }
                 if (audioUri) {
-                  let audioManifestUrl = urlResolve(baseUrl, audioUri);
+                  let audioManifestUrl = url.resolve(baseUrl, audioUri);
                   if (!audioGroups[audioGroupId]) {
                     audioGroups[audioGroupId] = {};
                   }
@@ -780,11 +769,7 @@ class HLSVod {
         if (previousSegment != null) {
           if (previousSegment.discontinuity) {
             if (v.initSegment) {
-              let byteRangeStr = "";
-              if (v.initSegmentByteRange) {
-                byteRangeStr = `,BYTERANGE="${v.initSegmentByteRange}"`;
-              }
-              m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRangeStr}\n`;
+              m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"\n`;
             }
             if (v.timelinePosition) {
               const d = new Date(v.timelinePosition);
@@ -795,11 +780,7 @@ class HLSVod {
 
         if (i === 0) {
           if (v.initSegment) {
-            let byteRangeStr = "";
-            if (v.initSegmentByteRange) {
-              byteRangeStr = `,BYTERANGE="${v.initSegmentByteRange}"`;
-            }
-            m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRangeStr}\n`;
+            m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"\n`;
           }
         }
 
@@ -833,23 +814,8 @@ class HLSVod {
           if (v.cue && v.cue.in) {
             m3u8 += "#EXT-X-CUE-IN" + "\n";
           }
-          if (v.keys) {
-            for (const keyFormat of Object.keys(v.keys)) {
-              const key = v.keys[keyFormat];
-              m3u8 += `#EXT-X-KEY:METHOD=${key.method}`;
-              m3u8 += key.uri ? `,URI=${key.uri}` : "";
-              m3u8 += key.iv ? `,IV=${key.iv}` : "";
-              m3u8 += key.keyId ? `,KEYID=${key.keyId}` : "";
-              m3u8 += key.keyFormatVersions ? `,KEYFORMATVERSIONS=${key.keyFormatVersions}` : "";
-              m3u8 += key.keyFormat ? `,KEYFORMAT=${key.keyFormat}` : "";
-              m3u8 += "\n";
-            }
-          }
           if (v.uri) {
             m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
-            if (v.byteRange) {
-              m3u8 += `#EXT-X-BYTERANGE:${v.byteRange}\n`;
-            }
             m3u8 += v.uri + "\n";
           }
         } else {
@@ -920,11 +886,7 @@ class HLSVod {
         if (previousSegment != null) {
           if (previousSegment.discontinuity) {
             if (v.initSegment) {
-              let byteRangeStr = "";
-              if (v.initSegmentByteRange) {
-                byteRangeStr = `,BYTERANGE="${v.initSegmentByteRange}"`;
-              }
-              m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRangeStr}\n`;
+              m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"\n`;
             }
             if (v.timelinePosition) {
               const d = new Date(v.timelinePosition);
@@ -935,11 +897,7 @@ class HLSVod {
 
         if (i === 0) {
           if (v.initSegment) {
-            let byteRangeStr = "";
-            if (v.initSegmentByteRange) {
-              byteRangeStr = `,BYTERANGE="${v.initSegmentByteRange}"`;
-            }
-            m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRangeStr}\n`;
+            m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"\n`;
           }
         }
 
@@ -963,23 +921,8 @@ class HLSVod {
               m3u8 += "#EXT-X-CUE-IN" + "\n";
             }
           }
-          if (v.keys) {
-            for (const keyFormat of Object.keys(v.keys)) {
-              const key = v.keys[keyFormat];
-              m3u8 += `#EXT-X-KEY:METHOD=${key.method}`;
-              m3u8 += key.uri ? `,URI=${key.uri}` : "";
-              m3u8 += key.iv ? `,IV=${key.iv}` : "";
-              m3u8 += key.keyId ? `,KEYID=${key.keyId}` : "";
-              m3u8 += key.keyFormatVersions ? `,KEYFORMATVERSIONS=${key.keyFormatVersions}` : "";
-              m3u8 += key.keyFormat ? `,KEYFORMAT=${key.keyFormat}` : "";
-              m3u8 += "\n";
-            }
-          }
           if (v.uri) {
             m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
-            if (v.byteRange) {
-              m3u8 += `#EXT-X-BYTERANGE:${v.byteRange}\n`;
-            }
             m3u8 += v.uri + "\n";
           }
         } else {
@@ -2191,7 +2134,7 @@ class HLSVod {
       if (!this.mediaSequences) {
         reject("Failed to init media sequences");
       } else {
-        let prevLastSegment = null;
+        let prevLastSegmentUri = null;
         let discSeqNo = 0;
         this.deltaTimes.push({
           interval: 0,
@@ -2221,14 +2164,8 @@ class HLSVod {
             if (seqNo > 0) {
               let tpi = 0; // Total Position Increment (total newly added content in seconds)
               const prevLastSegIdx = findIndexReversed(mseq.segments[bwIdx], (seg) => {
-                if (seg.byteRange) {
-                  if (seg.uri) {
-                    return seg.uri === prevLastSegment.uri && seg.byteRange === prevLastSegment.byteRange;
-                  }
-                } else {
-                  if (seg.uri) {
-                    return seg.uri === prevLastSegment.uri;
-                  }
+                if (seg.uri) {
+                  return seg.uri === prevLastSegmentUri;
                 }
                 return false;
               });
@@ -2253,7 +2190,7 @@ class HLSVod {
                 lastPositionIncrement = positionIncrement;
               }
               if (lastSegment && lastSegment.uri) {
-                prevLastSegment = lastSegment;
+                prevLastSegmentUri = lastSegment.uri;
               }
             } else {
               if (mseq.segments[bwIdx]) {
@@ -2262,7 +2199,7 @@ class HLSVod {
                   lastSegment = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2];
                 }
                 if (lastSegment && lastSegment.uri) {
-                  prevLastSegment = lastSegment;
+                  prevLastSegmentUri = lastSegment.uri;
                 }
                 lastPositionIncrement = lastSegment.duration;
               }
@@ -2292,7 +2229,7 @@ class HLSVod {
         }
         // Audio Version
         if (this.mediaSequences[0].audioSegments) {
-          let prevLastSegment = null;
+          let prevLastSegmentUri = null;
           let discSeqNo = 0;
           this.deltaTimesAudio.push({
             interval: 0,
@@ -2327,14 +2264,8 @@ class HLSVod {
               if (seqNo > 0) {
                 let tpi = 0; // Total Position Increment (total newly added content in seconds)
                 const prevLastSegIdx = findIndexReversed(audioSegment, (seg) => {
-                  if (seg.byteRange) {
-                    if (seg.uri) {
-                      return seg.uri === prevLastSegment.uri && seg.byteRange === prevLastSegment.byteRange;
-                    }
-                  } else {
-                    if (seg.uri) {
-                      return seg.uri === prevLastSegment.uri;
-                    }
+                  if (seg.uri) {
+                    return seg.uri === prevLastSegmentUri;
                   }
                   return false;
                 });
@@ -2359,7 +2290,7 @@ class HLSVod {
                   lastPositionIncrement = positionIncrement;
                 }
                 if (lastSegment && lastSegment.uri) {
-                  prevLastSegment = lastSegment;
+                  prevLastSegmentUri = lastSegment.uri;
                 }
               } else {
                 if (audioSegment) {
@@ -2368,7 +2299,7 @@ class HLSVod {
                     lastSegment = audioSegment[audioSegment.length - 2];
                   }
                   if (lastSegment && lastSegment.uri) {
-                    prevLastSegment = lastSegment;
+                    prevLastSegmentUri = lastSegment.uri;
                   }
                   lastPositionIncrement = lastSegment.duration;
                 }
@@ -2645,7 +2576,6 @@ class HLSVod {
             let nextSplicePosition = null;
             let spliceIdx = 0;
             let initSegment = undefined;
-            let initSegmentByteRange = undefined;
             // Remove segments in the beginning if we have a start time offset
             if (this.startTimeOffset != null) {
               let remain = this.startTimeOffset;
@@ -2654,20 +2584,21 @@ class HLSVod {
                 if (!removed) {
                   remain = 0;
                 } else {
-                  if (removed.get("map-uri")) {
-                    initSegment = removed.get("map-uri");
+                  if (removed.attributes.attributes["map-uri"]) {
+                    initSegment = removed.attributes.attributes["map-uri"];
                     if (!initSegment.match("^http")) {
                       const n = mediaManifestUri.match("^(.*)/.*?$");
                       if (n) {
-                        initSegment = urlResolve(n[1] + "/", initSegment);
+                        initSegment = url.resolve(n[1] + "/", initSegment);
                       }
                     }
                   }
-                  remain -= removed.get("duration") * 1000;
+                  remain -= removed.properties.duration * 1000;
                 }
               }
               this.mediaStartExecessTime = Math.abs(remain);
             }
+
 
             for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
               if (this.splices[spliceIdx]) {
@@ -2680,48 +2611,38 @@ class HLSVod {
               const playlistItem = m3u.items.PlaylistItem[i];
               let segmentUri;
               let baseUrl;
-              let byteRange = undefined;
-              let keys = undefined;
 
               const m = mediaManifestUri.match("^(.*)/.*?$");
               if (m) {
                 baseUrl = m[1] + "/";
               }
 
-              if (playlistItem.get("map-uri")) {
-                initSegment = playlistItem.get("map-uri");
-                initSegmentByteRange = playlistItem.get("map-byterange");
+              if (m3u.items.PlaylistItem[i].attributes.attributes["map-uri"]) {
+                initSegment = m3u.items.PlaylistItem[i].attributes.attributes["map-uri"];
                 if (!initSegment.match("^http")) {
                   const n = mediaManifestUri.match("^(.*)/.*?$");
                   if (n) {
-                    initSegment = urlResolve(n[1] + "/", initSegment);
+                    initSegment = url.resolve(n[1] + "/", initSegment);
                   }
                 }
               }
 
               // some items such as CUE-IN parse as a PlaylistItem
               // but have no URI
-              if (playlistItem.get("uri")) {
-                if (playlistItem.get("uri").match("^http")) {
-                  segmentUri = playlistItem.get("uri");
+              if (playlistItem.properties.uri) {
+                if (playlistItem.properties.uri.match("^http")) {
+                  segmentUri = playlistItem.properties.uri;
                 } else {
-                  segmentUri = urlResolve(baseUrl, playlistItem.get("uri"));
+                  segmentUri = url.resolve(baseUrl, playlistItem.properties.uri);
                 }
               }
-              if (playlistItem.get("discontinuity")) {
+              if (playlistItem.properties.discontinuity) {
                 this.segments[bw].push({
                   discontinuity: true,
                 });
               }
-              if (playlistItem.get("byteRange")) {
-                byteRange = playlistItem.get("byteRange");
-              }
-              if (playlistItem.get("keys")) {
-                keys = playlistItem.get("keys");
-              }
-
               let diff = 0;
-              if (nextSplicePosition != null && position + playlistItem.get("duration") > nextSplicePosition) {
+              if (nextSplicePosition != null && position + playlistItem.properties.duration > nextSplicePosition) {
                 debug(`Inserting splice at ${bw}:${position} (${i})`);
                 diff = position - nextSplicePosition;
                 if (this.segments[bw].length > 0 && !this.segments[bw][this.segments[bw].length - 1].discontinuity) {
@@ -2739,8 +2660,6 @@ class HLSVod {
                       uri: v[1],
                       timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                       discontinuity: false,
-                      byteRange: byteRange,
-                      keys: keys,
                     };
 
                     this.segments[bw].push(q);
@@ -2791,17 +2710,12 @@ class HLSVod {
                     }
                     : null;
                 let q = {
-                  duration: playlistItem.get("duration"),
+                  duration: playlistItem.properties.duration,
                   timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                   cue: cue,
-                  byteRange: byteRange,
-                  keys: keys,
                 };
                 if (initSegment) {
                   q.initSegment = initSegment;
-                }
-                if (initSegmentByteRange) {
-                  q.initSegmentByteRange = initSegmentByteRange;
                 }
                 if (segmentUri) {
                   q.uri = segmentUri;
@@ -2894,7 +2808,6 @@ class HLSVod {
       parser.on("m3u", (m3u) => {
         try {
           let initSegment = undefined;
-          let initSegmentByteRange = undefined;
           // Remove segments in the beginning if we have a start time offset
           if (this.startTimeOffset != null) {
             let remain = this._similarSegItemDuration(m3u.items.PlaylistItem) ? this.startTimeOffset : (this.startTimeOffset + this.mediaStartExecessTime);
@@ -2909,16 +2822,16 @@ class HLSVod {
               if (!removed) {
                 remain = 0;
               } else {
-                if (removed.get("map-uri")) {
-                  initSegment = removed.get("map-uri");
+                if (removed.attributes.attributes["map-uri"]) {
+                  initSegment = removed.attributes.attributes["map-uri"];
                   if (!initSegment.match("^http")) {
                     const n = audioManifestUri.match("^(.*)/.*?$");
                     if (n) {
-                      initSegment = urlResolve(n[1] + "/", initSegment);
+                      initSegment = url.resolve(n[1] + "/", initSegment);
                     }
                   }
                 }
-                remain -= removed.get("duration") * 1000;
+                remain -= removed.properties.duration * 1000;
               }
             }
           }
@@ -2933,37 +2846,26 @@ class HLSVod {
             for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
               const playlistItem = m3u.items.PlaylistItem[i];
               let segmentUri;
-              let byteRange = undefined;
-              let keys = undefined;
-
-              if (m3u.items.PlaylistItem[i].get("map-uri")) {
-                initSegment = m3u.items.PlaylistItem[i].get("map-uri");
-                initSegmentByteRange = m3u.items.PlaylistItem[i].get("map-byterange");
+              if (m3u.items.PlaylistItem[i].attributes.attributes["map-uri"]) {
+                initSegment = m3u.items.PlaylistItem[i].attributes.attributes["map-uri"];
                 if (!initSegment.match("^http")) {
-                  initSegment = urlResolve(baseUrl, initSegment);
+                  initSegment = url.resolve(baseUrl, initSegment);
                 }
               }
               // some items such as CUE-IN parse as a PlaylistItem
               // but have no URI
-              if (playlistItem.get("uri")) {
-                if (playlistItem.get("uri").match("^http")) {
-                  segmentUri = playlistItem.get("uri");
+              if (playlistItem.properties.uri) {
+                if (playlistItem.properties.uri.match("^http")) {
+                  segmentUri = playlistItem.properties.uri;
                 } else {
-                  segmentUri = urlResolve(baseUrl, playlistItem.get("uri"));
+                  segmentUri = url.resolve(baseUrl, playlistItem.properties.uri);
                 }
               }
-              if (playlistItem.get("discontinuity")) {
+              if (playlistItem.properties.discontinuity) {
                 this.audioSegments[groupId][language].push({
                   discontinuity: true,
                 });
               }
-              if (playlistItem.get("byteRange")) {
-                byteRange = playlistItem.get("byteRange");
-              }
-              if (playlistItem.get("keys")) {
-                keys = playlistItem.get("keys");
-              }
-
               let assetData = playlistItem.get("assetdata");
               let cueOut = playlistItem.get("cueout");
               let cueIn = playlistItem.get("cuein");
@@ -2987,20 +2889,15 @@ class HLSVod {
                   }
                   : null;
               let q = {
-                duration: playlistItem.get("duration"),
+                duration: playlistItem.properties.duration,
                 timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                 cue: cue,
-                byteRange: byteRange,
-                keys: keys,
               };
               if (segmentUri) {
                 q.uri = segmentUri;
               }
               if (initSegment) {
                 q.initSegment = initSegment;
-              }
-              if (initSegmentByteRange) {
-                q.initSegmentByteRange = initSegmentByteRange;
               }
               if (this.audioSegments[groupId][language].length === 0) {
                 // Add daterange metadata if this is the first segment
