@@ -2763,16 +2763,16 @@ class HLSVod {
     });
   }
 
-  _similarSegItemDuration(audioPlaylistItems) {
-    let totalAudioDuration = 0;
-    let audioCount = 0;
-    audioPlaylistItems.map(seg => {
+  _similarSegItemDuration(playlistItems) {
+    let totalSegmentDuration = 0;
+    let segmentCount = 0;
+    playlistItems.map(seg => {
       if (seg.get("duration")) {
-        audioCount++;
-        totalAudioDuration += seg.get("duration");
+        segmentCount++;
+        totalSegmentDuration += seg.get("duration");
       }
     })
-    const avgAudioDuration = totalAudioDuration / audioCount;
+    const avgSegmentDuration = totalSegmentDuration / segmentCount;
 
     const bandwidths = Object.keys(this.segments);
     if (bandwidths.length === 0) {
@@ -2788,7 +2788,7 @@ class HLSVod {
       }
     })
     const avgVideoDuration = totalVideoDuration / videoCount;
-    const diff = Math.abs(avgVideoDuration - avgAudioDuration);
+    const diff = Math.abs(avgVideoDuration - avgSegmentDuration);
     if (diff > 0.250) {
       return false;
     }
@@ -2954,14 +2954,13 @@ class HLSVod {
           let initSegment = undefined;
           // Remove segments in the beginning if we have a start time offset
           if (this.startTimeOffset != null) {
-            let remain = this._similarSegItemDuration(m3u.items.PlaylistItem) ? this.startTimeOffset : (this.startTimeOffset + this.mediaStartExecessTime);
+            let similarSegItemDuration = this._similarSegItemDuration(m3u.items.PlaylistItem);
+            let remain = similarSegItemDuration ? this.startTimeOffset : (this.startTimeOffset + this.mediaStartExecessTime);
 
-            let count = 0;
             while (remain > 0) {
               let removed;
-              if (m3u.items.PlaylistItem[0].get("duration") * 1000 < remain) {
+              if (m3u.items.PlaylistItem[0].get("duration") * 1000 < remain || similarSegItemDuration) {
                 removed = m3u.items.PlaylistItem.shift();
-                count++;
               }
               if (!removed) {
                 remain = 0;

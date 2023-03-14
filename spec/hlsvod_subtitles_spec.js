@@ -87,9 +87,10 @@ describe("HLSVod with subtitles", () => {
                 
                 const m3u8_2 = mockVod.getLiveMediaSequences(0, "455000", 0);
                 const subStrings2 = m3u8_2.split("\n")
-                subStrings2.map((i,o) => console.log(i,o))
+                //subStrings2.map((i,o) => console.log(i,o))
+                //subStrings.map((i,o) => console.log(i,o))
                 expect(subStrings[7]).toEqual("https://d3t8zrj2x5ol3r.cloudfront.net/u/file~text_vtt~dummy.vtt/1/s/webvtt.vtt");
-                expect(subStrings2[8]).toEqual("https://vod.streaming.a2d.tv/ys/1/4/0/1/88485/u-6600-a-128-1-1.mp4");
+                expect(subStrings2[8]).toEqual("https://vod.streaming.a2d.tv/ys/1/4/0/1/88485/u-6600-a-128-1-2.mp4");
                 done();
             });
         });
