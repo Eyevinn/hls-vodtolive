@@ -5,6 +5,8 @@ const { deserialize } = require("v8");
 const debug = require("debug")("hls-vodtolive");
 const verbose = require("debug")("hls-vodtolive-verbose");
 
+const { keysToM3u8 } = require("./utils.js");
+
 const timer = (ms) => new Promise((res) => setTimeout(res, ms));
 
 const daterangeAttribute = (key, attr) => {
@@ -635,6 +637,9 @@ class HLSVod {
               }
               m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRangeStr}\n`;
             }
+            if (v.keys) {
+              m3u8 += keysToM3u8(v.keys);
+            }  
             if (v.timelinePosition) {
               const d = new Date(v.timelinePosition);
               m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + d.toISOString() + "\n";
@@ -649,6 +654,9 @@ class HLSVod {
               byteRangeStr = `,BYTERANGE="${v.initSegmentByteRange}"`;
             }
             m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRangeStr}\n`;
+          }
+          if (v.keys) {
+            m3u8 += keysToM3u8(v.keys);
           }
         }
 
@@ -681,18 +689,6 @@ class HLSVod {
           }
           if (v.cue && v.cue.in) {
             m3u8 += "#EXT-X-CUE-IN" + "\n";
-          }
-          if (v.keys) {
-            for (const keyFormat of Object.keys(v.keys)) {
-              const key = v.keys[keyFormat];
-              m3u8 += `#EXT-X-KEY:METHOD=${key.method}`;
-              m3u8 += key.uri ? `,URI=${key.uri}` : "";
-              m3u8 += key.iv ? `,IV=${key.iv}` : "";
-              m3u8 += key.keyId ? `,KEYID=${key.keyId}` : "";
-              m3u8 += key.keyFormatVersions ? `,KEYFORMATVERSIONS=${key.keyFormatVersions}` : "";
-              m3u8 += key.keyFormat ? `,KEYFORMAT=${key.keyFormat}` : "";
-              m3u8 += "\n";
-            }
           }
           if (v.uri) {
             m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
@@ -776,6 +772,9 @@ class HLSVod {
               }
               m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRangeStr}\n`;
             }
+            if (v.keys) {
+              m3u8 += keysToM3u8(v.keys);
+            }  
             if (v.timelinePosition) {
               const d = new Date(v.timelinePosition);
               m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + d.toISOString() + "\n";
@@ -790,6 +789,9 @@ class HLSVod {
               byteRangeStr = `,BYTERANGE="${v.initSegmentByteRange}"`;
             }
             m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRangeStr}\n`;
+          }
+          if (v.keys) {
+            m3u8 += keysToM3u8(v.keys);
           }
         }
 
@@ -811,18 +813,6 @@ class HLSVod {
               // Do not add a closing cue-in if next is not a segment and last one in the list
             } else {
               m3u8 += "#EXT-X-CUE-IN" + "\n";
-            }
-          }
-          if (v.keys) {
-            for (const keyFormat of Object.keys(v.keys)) {
-              const key = v.keys[keyFormat];
-              m3u8 += `#EXT-X-KEY:METHOD=${key.method}`;
-              m3u8 += key.uri ? `,URI=${key.uri}` : "";
-              m3u8 += key.iv ? `,IV=${key.iv}` : "";
-              m3u8 += key.keyId ? `,KEYID=${key.keyId}` : "";
-              m3u8 += key.keyFormatVersions ? `,KEYFORMATVERSIONS=${key.keyFormatVersions}` : "";
-              m3u8 += key.keyFormat ? `,KEYFORMAT=${key.keyFormat}` : "";
-              m3u8 += "\n";
             }
           }
           if (v.uri) {
@@ -1896,6 +1886,8 @@ class HLSVod {
             let spliceIdx = 0;
             let initSegment = undefined;
             let initSegmentByteRange = undefined;
+            let keys = undefined;
+
             // Remove segments in the beginning if we have a start time offset
             if (this.startTimeOffset != null) {
               let remain = this.startTimeOffset;
@@ -1931,7 +1923,6 @@ class HLSVod {
               let segmentUri;
               let baseUrl;
               let byteRange = undefined;
-              let keys = undefined;
 
               const m = mediaManifestUri.match("^(.*)/.*?$");
               if (m) {
@@ -2045,7 +2036,6 @@ class HLSVod {
                   timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                   cue: cue,
                   byteRange: byteRange,
-                  keys: keys,
                 };
                 if (initSegment) {
                   q.initSegment = initSegment;
@@ -2055,6 +2045,9 @@ class HLSVod {
                 }
                 if (segmentUri) {
                   q.uri = segmentUri;
+                }
+                if (keys) {
+                  q.keys = keys;
                 }
                 if (this.segments[bw].length === 0) {
                   // Add daterange metadata if this is the first segment
@@ -2145,6 +2138,7 @@ class HLSVod {
         try {
           let initSegment = undefined;
           let initSegmentByteRange = undefined;
+          let keys = undefined;
           // Remove segments in the beginning if we have a start time offset
           if (this.startTimeOffset != null) {
             let remain = this._similarSegItemDuration(m3u.items.PlaylistItem) ? this.startTimeOffset : (this.startTimeOffset + this.mediaStartExecessTime);
@@ -2184,7 +2178,6 @@ class HLSVod {
               const playlistItem = m3u.items.PlaylistItem[i];
               let segmentUri;
               let byteRange = undefined;
-              let keys = undefined;
 
               if (m3u.items.PlaylistItem[i].get("map-uri")) {
                 initSegment = m3u.items.PlaylistItem[i].get("map-uri");
@@ -2241,7 +2234,6 @@ class HLSVod {
                 timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                 cue: cue,
                 byteRange: byteRange,
-                keys: keys,
               };
               if (segmentUri) {
                 q.uri = segmentUri;
@@ -2251,6 +2243,9 @@ class HLSVod {
               }
               if (initSegmentByteRange) {
                 q.initSegmentByteRange = initSegmentByteRange;
+              }
+              if (keys) {
+                q.keys = keys;
               }
               if (this.audioSegments[groupId][language].length === 0) {
                 // Add daterange metadata if this is the first segment
