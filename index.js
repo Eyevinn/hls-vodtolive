@@ -182,6 +182,7 @@ class HLSVod {
           baseUrl = m[1] + "/";
         }
         const HAS_AUDIO_DEFAULTS = this.defaultAudioGroupAndLang === null ? false : true;
+        const HAS_SUBTITLE_DEFAULTS = this.defaultSubtitleGroupAndLang === null ? false : true;
         if (this.previousVod && this.previousVod.getBandwidths().length === m3u.items.StreamItem.length) {
           debug(`Previous VOD bandwidths matches amount of current. A mapping is possible`);
           const previousBandwidths = this.previousVod.getBandwidths().sort((a, b) => a - b);
@@ -198,7 +199,7 @@ class HLSVod {
         }
 
         let audioGroups = {};
-        let subGroups = {};
+        let subtitleGroups = {};
 
         for (let i = 0; i < m3u.items.StreamItem.length; i++) {
           const streamItem = m3u.items.StreamItem[i];
@@ -332,30 +333,32 @@ class HLSVod {
             }
 
             if (streamItem.attributes.attributes["subtitles"]) {
-              let subtitleGroupId = streamItem.attributes.attributes["subtitles"];
-
-              if (!this.subtitleSegments[subtitleGroupId]) {
+              let subtitleGroupId = streamItem.get("subtitles");
+              if (!HAS_SUBTITLE_DEFAULTS && !this.subtitleSegments[subtitleGroupId]) {
                 this.subtitleSegments[subtitleGroupId] = {};
-
               }
-              //debug(`Lookup media item for '${subtitleGroupId}'`);
-
+              debug(`Lookup media item for '${subtitleGroupId}'`);
 
               // # Needed for the case when loading after another VOD.
-              const previousVODLanguages = Object.keys(this.subtitleSegments[subtitleGroupId]);
+              const previousVODLanguages = HAS_SUBTITLE_DEFAULTS
+                ? Object.keys(this.subtitleSegments[this.defaultSubtitleGroupAndLang.subtitleGroupId])
+                : Object.keys(this.subtitleSegments[subtitleGroupId]);
 
-              let subGroupItems = m3u.items.MediaItem.filter((item) => {
-                return item.attributes.attributes.type === "SUBTITLES" && item.attributes.attributes["group-id"] === subtitleGroupId;
+              let subtitleGroupItems = m3u.items.MediaItem.filter((item) => {
+                return item.get("type") === "SUBTITLES" && item.get("group-id") === subtitleGroupId;
               });
-              let subLanguages = subGroupItems.map((item) => {
+              // # Find all langs amongst the mediaItems that have this group id.
+              // # It extracts each mediaItems language attribute value.
+              // # ALSO initialize in this.subtitleSegments a lang. property whos value is an array [{seg1}, {seg2}, ...].
+              let subtitleLanguages = subtitleGroupItems.map((item) => {
                 let itemLang;
-                if (!item.attributes.attributes["language"]) {
-                  itemLang = null;
+                if (!item.get("language")) {
+                  itemLang = item.get("name");
                 } else {
-                  itemLang = item.attributes.attributes["language"];
+                  itemLang = item.get("language");
                 }
                 // Initialize lang. in new group.
-                if (!this.subtitleSegments[subtitleGroupId][itemLang]) {
+                if (!HAS_SUBTITLE_DEFAULTS && !this.subtitleSegments[subtitleGroupId][itemLang]) {
                   this.subtitleSegments[subtitleGroupId][itemLang] = [];
                 }
                 return (item = itemLang);
@@ -364,11 +367,11 @@ class HLSVod {
               // # Inject "default" language's segments to every new language relative to previous VOD.
               // # For the case when this is a VOD following another, every language new or old should
               // # start with some segments from the previous VOD's last sequence.
-              const newLanguages = subLanguages.filter((lang) => {
+              const newLanguages = subtitleLanguages.filter((lang) => {
                 return !previousVODLanguages.includes(lang);
               });
               // # Only inject if there were prior tracks.
-              if (previousVODLanguages.length > 0) {
+              if (previousVODLanguages.length > 0 && !HAS_SUBTITLE_DEFAULTS) {
                 for (let i = 0; i < newLanguages.length; i++) {
                   const newLanguage = newLanguages[i];
                   const defaultLanguage = this._getFirstSubtitleLanguageWithSegments(subtitleGroupId);
@@ -376,42 +379,57 @@ class HLSVod {
                 }
               }
 
-              let allLangs = Object.keys(this.subtitleSegments[subtitleGroupId]);
-              let toRemove = [];
-              allLangs.map((junkLang) => {
-                if (!subLanguages.includes(junkLang)) {
-                  toRemove.push(junkLang);
-                }
-              });
-              toRemove.map((junkLang) => {
-                delete this.subtitleSegments[subtitleGroupId][junkLang];
-              });
+              // # Need to clean up langs. loaded from prev. VOD that current VOD doesn't have.
+              // # Necessary, for the case when getLiveMediaSequenceSubtitleSegments() tries to
+              // # access an subtitleGroup's language that the current VOD never had. A False-Positive.
+              if (!HAS_SUBTITLE_DEFAULTS) {
+                let allLangs = Object.keys(this.subtitleSegments[subtitleGroupId]);
+                let toRemove = [];
+                allLangs.map((junkLang) => {
+                  if (!subtitleLanguages.includes(junkLang)) {
+                    toRemove.push(junkLang);
+                  }
+                });
+                toRemove.map((junkLang) => {
+                  delete this.subtitleSegments[subtitleGroupId][junkLang];
+                });
+              }
 
-              for (let j = 0; j < subLanguages.length; j++) {
-                let subLang = subLanguages[j];
-                let subUri = subGroupItems[j].attributes.attributes.uri;
-                if (!subUri) {
+              // # For each lang, find the lang playlist uri and do _loadSubtitleManifest() on it.
+              for (let j = 0; j < subtitleLanguages.length; j++) {
+                let subtitleLang = subtitleLanguages[j];
+                let subtitleUri = subtitleGroupItems[j].get("uri");
+                if (!subtitleUri) {
                   //# if mediaItems dont have uris
-                  let subVariant = m3u.items.StreamItem.find((item) => {
-                    return !item.attributes.attributes.resolution && item.attributes.attributes["SUBTITLES"] === subtitleGroupId;
+                  let subtitleVariant = m3u.items.StreamItem.find((item) => {
+                    return !item.get("resolution") && item.get("subtitle") === subtitleGroupId;
                   });
-                  if (subVariant) {
-                    subUri = subVariant.properties.uri;
+                  if (subtitleVariant) {
+                    subtitleUri = subtitleVariant.get("uri");
                   }
                 }
-                if (subUri) {
-                  let subtitleManifestUrl = url.resolve(baseUrl, subUri);
-                  if (!subGroups[subtitleGroupId]) {
-                    subGroups[subtitleGroupId] = {};
+                if (subtitleUri) {
+                  let subtitleManifestUrl = urlResolve(baseUrl, subtitleUri);
+                  if (!subtitleGroups[subtitleGroupId]) {
+                    subtitleGroups[subtitleGroupId] = {};
                   }
-                  if (!subGroups[subtitleGroupId][subLang]) {
-                    subGroups[subtitleGroupId][subLang] = true;
-                    subtitleManifestPromises.push(this._loadSubtitleManifest(subtitleManifestUrl, subtitleGroupId, subLang, _injectSubtitleManifest));
+                  // # Prevents 'loading' an subtitle track with same GroupID and LANG.
+                  // # otherwise it just would've loaded OVER the latest occurrent of the LANG in GroupID.
+                  if (!subtitleGroups[subtitleGroupId][subtitleLang]) {
+                    let targetGroup = subtitleGroupId;
+                    let targetLang = subtitleLang;
+                    subtitleGroups[subtitleGroupId][subtitleLang] = true;
+                    if (HAS_SUBTITLE_DEFAULTS) {
+                      targetGroup = this.defaultSubtitleGroupAndLang.subtitleGroupId;
+                      targetLang = this.defaultSubtitleGroupAndLang.subtitleLanguage;
+                      debug(`Loading Subtitle manifest onto Default GroupID=${targetGroup} and Language=${targetLang}`);
+                    }
+                    subtitleManifestPromises.push(this._loadSubtitleManifest(subtitleManifestUrl, targetGroup, targetLang, _injectSubtitleManifest));
                   } else {
-                    debug(`Subtitle manifest for language "${subLang}" from '${subtitleGroupId}' in already loaded, skipping`);
+                    debug(`Subtitle manifest for language "${subtitleLang}" from '${subtitleGroupId}' in already loaded, skipping`);
                   }
                 } else {
-                  debug(`No media item for '${subGroupItems}' in "${subLang}" was found, skipping`);
+                  debug(`No media item for '${subtitleGroupId}' in "${subtitleLang}" was found, skipping`);
                 }
               }
             }
@@ -1539,8 +1557,10 @@ class HLSVod {
         }
 
         // Subtitle version
+        console.log(this.subtitleSegments[subtitleGroupId][firstSubtitleLanguage][15])
+        console.log(this.subtitleSegments[subtitleGroupId][firstSubtitleLanguage][16])
         while (firstSubtitleLanguage && this.subtitleSegments[subtitleGroupId][firstSubtitleLanguage][segIdxSubtitle] && segIdxSubtitle != s_length) {
-          console.log(this.subtitleSegments[subtitleGroupId][firstSubtitleLanguage][segIdxSubtitle])
+
           if (this.subtitleSegments[subtitleGroupId][firstSubtitleLanguage][segIdxSubtitle].uri) {
             subtitle_duration += this.subtitleSegments[subtitleGroupId][firstSubtitleLanguage][segIdxSubtitle].duration;
           }
@@ -3054,7 +3074,7 @@ class HLSVod {
 
             while (remain > 0) {
               let removed;
-              if (m3u.items.PlaylistItem[0].get("duration") * 1000 < remain || similarSegItemDuration) {
+              if (m3u.items.PlaylistItem[0].get("duration") * 1000 <= remain || similarSegItemDuration) {
                 removed = m3u.items.PlaylistItem.shift();
               }
               if (!removed) {
