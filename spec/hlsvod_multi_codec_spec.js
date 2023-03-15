@@ -49,5 +49,19 @@ describe("HLSVod Multi Audio Codec standalone", () => {
       .catch((err) => {
         done(err);
       });
-    });
   });
+
+  it("handles missing audio codec", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod
+      .load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
+      .then(() => {
+        expect(mockVod.getAudioGroupIdForCodecs("eac-3", "6")).toBeUndefined();
+        expect(mockVod.getAudioCodecsAndChannelsForGroupId("audio16_t0")).toEqual([undefined, undefined]);
+        done();
+      })
+      .catch((err) => {
+        done(err);
+      });
+  });
+});
