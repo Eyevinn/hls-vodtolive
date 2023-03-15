@@ -691,7 +691,7 @@ class HLSVod {
             m3u8 += "#EXT-X-CUE-IN" + "\n";
           }
           if (v.uri) {
-            m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
+            m3u8 += "#EXTINF:" + v.duration.toFixed(5) + ",\n";
             if (v.byteRange) {
               m3u8 += `#EXT-X-BYTERANGE:${v.byteRange}\n`;
             }
@@ -816,7 +816,7 @@ class HLSVod {
             }
           }
           if (v.uri) {
-            m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
+            m3u8 += "#EXTINF:" + v.duration.toFixed(5) + ",\n";
             if (v.byteRange) {
               m3u8 += `#EXT-X-BYTERANGE:${v.byteRange}\n`;
             }
