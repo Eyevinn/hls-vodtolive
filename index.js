@@ -572,6 +572,9 @@ class HLSVod {
     //   ]
     // }
     let audioGroupId;
+    if (!this.audioCodecsMap[audioCodecs]) {
+      return undefined;
+    }
     Object.keys(this.audioCodecsMap[audioCodecs]).map(channelsKey => {
       if (channelsKey === channels) {
         audioGroupId = this.audioCodecsMap[audioCodecs][channelsKey];
