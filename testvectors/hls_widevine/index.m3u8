@@ -3,11 +3,6 @@
 
 #EXT-X-MEDIA:TYPE=AUDIO,URI="playlist_a-eng-0384k-aac-6c.mp4.m3u8",GROUP-ID="default-audio-group",LANGUAGE="en",NAME="stream_6",DEFAULT=YES,AUTOSELECT=YES,CHANNELS="6"
 
-#EXT-X-MEDIA:TYPE=SUBTITLES,URI="playlist_s-en.webvtt.m3u8",GROUP-ID="default-text-group",LANGUAGE="en",NAME="stream_0",DEFAULT=YES,AUTOSELECT=YES
-#EXT-X-MEDIA:TYPE=SUBTITLES,URI="playlist_s-el.webvtt.m3u8",GROUP-ID="default-text-group",LANGUAGE="el",NAME="stream_1",AUTOSELECT=YES
-#EXT-X-MEDIA:TYPE=SUBTITLES,URI="playlist_s-fr.webvtt.m3u8",GROUP-ID="default-text-group",LANGUAGE="fr",NAME="stream_2",AUTOSELECT=YES
-#EXT-X-MEDIA:TYPE=SUBTITLES,URI="playlist_s-pt-BR.webvtt.m3u8",GROUP-ID="default-text-group",LANGUAGE="pt-BR",NAME="stream_3",AUTOSELECT=YES
-
 #EXT-X-STREAM-INF:BANDWIDTH=831086,AVERAGE-BANDWIDTH=487727,CODECS="avc1.42c01e,mp4a.40.2",RESOLUTION=192x144,AUDIO="default-audio-group",SUBTITLES="default-text-group"
 playlist_v-0144p-0100k-libx264.mp4.m3u8
 #EXT-X-STREAM-INF:BANDWIDTH=8065760,AVERAGE-BANDWIDTH=1830288,CODECS="avc1.4d401f,mp4a.40.2",RESOLUTION=768x576,AUDIO="default-audio-group",SUBTITLES="default-text-group"

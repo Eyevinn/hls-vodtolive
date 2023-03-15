@@ -1319,7 +1319,6 @@ class HLSVod {
         for (let k = 0; k < subtitleLangs.length; k++) {
           const subtitleLang = subtitleLangs[k];
           const lastMediaSubtitleSequence = this.previousVod.getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLang, previousVodSeqCount - 1);
-          console.log(lastMediaSubtitleSequence)
           if (!this.subtitleSegments[subtitleGroupId]) {
             this.subtitleSegments[subtitleGroupId] = {};
           }
@@ -1361,6 +1360,25 @@ class HLSVod {
     });
   }
 
+  _removeDoublediscontinuitiesFromExtraMedia(segementList) {
+    const groupIds = Object.keys(segementList);
+    for (let i = 0; i < groupIds.length; i++) {
+      const groupId = groupIds[i];
+      const langs = Object.keys(segementList[groupId]);
+      for (let k = 0; k < langs.length; k++) {
+        const lang = langs[k];
+        segementList[groupId][lang] = segementList[groupId][lang].filter((elem, idx, arr) => {
+          if (idx > 0 && arr[idx - 1] && arr[idx]) {
+            if (arr[idx - 1].discontinuity && arr[idx].discontinuity) {
+              return false;
+            }
+          }
+          return true;
+        });
+      }
+    }
+  }
+
   _createMediaSequences() {
     return new Promise((resolve, reject) => {
       let segOffset = 0;
@@ -1382,7 +1400,7 @@ class HLSVod {
       let video_duration = 0;
       let audio_duration = 0;
       let subtitle_duration = 0;
-      let firstSubtileSegment = true;
+      let firstSubtileSegmentOfSequence = true;
       const bw = this._getFirstBwWithSegments();
       const audioGroupId = this._getFirstAudioGroupWithSegments();
       const firstAudioLanguage = audioGroupId ? this._getFirstAudioLanguageWithSegments(audioGroupId) : null;
@@ -1411,40 +1429,11 @@ class HLSVod {
       }
       // Remove all double discontinuities (audio)
       if (audioGroupId) {
-        const audioGroupIds = Object.keys(this.audioSegments);
-        for (let i = 0; i < audioGroupIds.length; i++) {
-          const audioGroupId = audioGroupIds[i];
-          const audioLangs = Object.keys(this.audioSegments[audioGroupId]);
-          for (let k = 0; k < audioLangs.length; k++) {
-            const audioLang = audioLangs[k];
-            this.audioSegments[audioGroupId][audioLang] = this.audioSegments[audioGroupId][audioLang].filter((elem, idx, arr) => {
-              if (idx > 0 && arr[idx - 1] && arr[idx]) {
-                if (arr[idx - 1].discontinuity && arr[idx].discontinuity) {
-                  return false;
-                }
-              }
-              return true;
-            });
-          }
-        }
+        this._removeDoublediscontinuitiesFromExtraMedia(this.audioSegments)
       }
+      // Remove all double discontinuities (subtitle)
       if (subtitleGroupId) {
-        const subtitleGroupIds = Object.keys(this.subtitleSegments);
-        for (let i = 0; i < subtitleGroupIds.length; i++) {
-          const subtitleGroupId = subtitleGroupIds[i];
-          const subtitleLangs = Object.keys(this.subtitleSegments[subtitleGroupId]);
-          for (let k = 0; k < subtitleLangs.length; k++) {
-            const subLang = subtitleLangs[k];
-            this.subtitleSegments[subtitleGroupId][subLang] = this.subtitleSegments[subtitleGroupId][subLang].filter((elem, idx, arr) => {
-              if (idx > 0 && arr[idx - 1] && arr[idx]) {
-                if (arr[idx - 1].discontinuity && arr[idx].discontinuity) {
-                  return false;
-                }
-              }
-              return true;
-            });
-          }
-        }
+        this._removeDoublediscontinuitiesFromExtraMedia(this.subtitleSegments)
       }
 
       let length = this.segments[bw].length;
@@ -1550,12 +1539,13 @@ class HLSVod {
         }
 
         // Subtitle version
-        while (subtitleGroupId && firstSubtitleLanguage && this.subtitleSegments[subtitleGroupId][firstSubtitleLanguage][segIdxSubtitle] && segIdxSubtitle != s_length) {
+        while (firstSubtitleLanguage && this.subtitleSegments[subtitleGroupId][firstSubtitleLanguage][segIdxSubtitle] && segIdxSubtitle != s_length) {
+          console.log(this.subtitleSegments[subtitleGroupId][firstSubtitleLanguage][segIdxSubtitle])
           if (this.subtitleSegments[subtitleGroupId][firstSubtitleLanguage][segIdxSubtitle].uri) {
             subtitle_duration += this.subtitleSegments[subtitleGroupId][firstSubtitleLanguage][segIdxSubtitle].duration;
           }
-          if (subtitle_duration < this.SEQUENCE_DURATION || firstSubtileSegment) {
-            firstSubtileSegment = false;
+          if (subtitle_duration < this.SEQUENCE_DURATION || firstSubtileSegmentOfSequence) {
+            firstSubtileSegmentOfSequence = false;
             const subtitleGroupIds = Object.keys(this.subtitleSegments);
             for (let i = 0; i < subtitleGroupIds.length; i++) {
               const subtitleGroupId = subtitleGroupIds[i];
@@ -1583,7 +1573,7 @@ class HLSVod {
               segOffsetSubtitle++;
             }
             subtitle_duration = 0;
-            firstSubtileSegment = true;
+            firstSubtileSegmentOfSequence = true;
             subtitle_sequence_list.push(subtitleSequence);
             this.mediaSequenceValuesSubtitle[seqIndexSubtitle] = seqIndexSubtitle;
             seqIndexSubtitle++;
@@ -1617,6 +1607,7 @@ class HLSVod {
           audioSequence = {};
         }
 
+        // Final step (subtitle)
         if (subtitle_duration < this.SEQUENCE_DURATION) {
           // We are out of segments but have not reached the full duration of a sequence
           subtitle_duration = 0;
@@ -2479,12 +2470,12 @@ class HLSVod {
               if (seqNo > 0) {
                 let positionIncrement;
                 if (subtitleSegment.length > 1) {
-                positionIncrement = subtitleSegment[subtitleSegment.length - 1].discontinuity
-                  ? subtitleSegment[subtitleSegment.length - 2].duration
-                  : subtitleSegment[subtitleSegment.length - 1].duration;
-              } else {
-                positionIncrement = subtitleSegment[subtitleSegment.length - 1].duration
-              }
+                  positionIncrement = subtitleSegment[subtitleSegment.length - 1].discontinuity
+                    ? subtitleSegment[subtitleSegment.length - 2].duration
+                    : subtitleSegment[subtitleSegment.length - 1].duration;
+                } else {
+                  positionIncrement = subtitleSegment[subtitleSegment.length - 1].duration
+                }
                 const interval = positionIncrement - lastPositionIncrement;
                 this.deltaTimes.push({
                   interval: interval,
@@ -2897,12 +2888,13 @@ class HLSVod {
           let initSegmentByteRange = undefined;
           // Remove segments in the beginning if we have a start time offset
           if (this.startTimeOffset != null) {
-            let remain = this._similarSegItemDuration(m3u.items.PlaylistItem) ? this.startTimeOffset : (this.startTimeOffset + this.mediaStartExecessTime);
+            const similarSegItemDuration = this._similarSegItemDuration(m3u.items.PlaylistItem)
+            let remain = similarSegItemDuration ? this.startTimeOffset : (this.startTimeOffset + this.mediaStartExecessTime);
 
             let count = 0;
             while (remain > 0) {
               let removed;
-              if (m3u.items.PlaylistItem[0].get("duration") * 1000 < remain) {
+              if (m3u.items.PlaylistItem[0].get("duration") * 1000 <= remain || similarSegItemDuration) {
                 removed = m3u.items.PlaylistItem.shift();
                 count++;
               }

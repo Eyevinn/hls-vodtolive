@@ -79,7 +79,7 @@ describe("HLSVod with subtitles", () => {
                 done();
             });
         });
-        fit("returns the correct segment when using offset (27sec)", (done) => {
+        it("returns the correct segment when using offset (27sec) with even segments", (done) => {
             mockVod = new HLSVod("http://mock.com/mock.m3u8",null, null, 27 * 1000);
             mockVod.load(mockMasterManifest2, mockMediaManifest2, null, mockSubtitleManifest2).then(() => {
                 const m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "fr", 0);
@@ -91,6 +91,21 @@ describe("HLSVod with subtitles", () => {
                 //subStrings.map((i,o) => console.log(i,o))
                 expect(subStrings[7]).toEqual("https://d3t8zrj2x5ol3r.cloudfront.net/u/file~text_vtt~dummy.vtt/1/s/webvtt.vtt");
                 expect(subStrings2[8]).toEqual("https://vod.streaming.a2d.tv/ys/1/4/0/1/88485/u-6600-a-128-1-2.mp4");
+                done();
+            });
+        });
+        xit("returns the correct segment when using offset (150sec) with uneven seg,ents", (done) => {
+            mockVod = new HLSVod("http://mock.com/mock.m3u8",null, null, 150 * 1000);
+            mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest, mockSubtitleManifest).then(() => {
+                const m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "fr", 0);
+                const subStrings = m3u8.split("\n")
+                
+                const m3u8_2 = mockVod.getLiveMediaSequences(0, "455000", 0);
+                const subStrings2 = m3u8_2.split("\n")
+                //subStrings2.map((i,o) => console.log(i,o))
+                //subStrings.map((i,o) => console.log(i,o))
+                expect(subStrings[7]).toEqual("http://mock.com/subtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA==_25.webvtt");
+                expect(subStrings2[7]).toEqual("http://mock.com/media/media_w1204859437_b2962000_vo_slen_t64TWFpbg==_25.ts");
                 done();
             });
         });
@@ -107,16 +122,47 @@ describe("HLSVod with subtitles", () => {
                 done();
             });
         });
-        it("subs after vod with subs", (done) => {
+        it("subs after vod with subs with short segments", (done) => {
+            mockVod = new HLSVod("http://mock.com/mock.m3u8");
+            mockVod2 = new HLSVod("http://mock.com/mock.m3u8");
+            mockVod.load(mockMasterManifest2, mockMediaManifest2, null, mockSubtitleManifest2).then(() => {
+                mockVod2.loadAfter(mockVod, mockMasterManifest2, mockMediaManifest2, null, mockSubtitleManifest2).then(() => {
+                const m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "textstream", "sv", 0);
+                const subStrings = m3u8.split("\n")
+                expect(subStrings[7]).toEqual("https://d3t8zrj2x5ol3r.cloudfront.net/u/file~text_vtt~dummy.vtt/1/s/webvtt.vtt");
+                const m3u8_2 = mockVod2.getLiveMediaSubtitleSequences(0, "textstream", "sv", 2);
+                const subStrings2 = m3u8_2.split("\n")
+                expect(subStrings2[33]).toEqual("#EXTINF:3.000,");
+                expect(subStrings2[34]).toEqual("https://d3t8zrj2x5ol3r.cloudfront.net/u/file~text_vtt~dummy.vtt/1/s/webvtt.vtt");
+                done();
+                });
+            });
+        });
+        fit("subs with long segments after vod with subs with short segments", (done) => {
             mockVod = new HLSVod("http://mock.com/mock.m3u8");
             mockVod2 = new HLSVod("http://mock.com/mock.m3u8");
             mockVod.load(mockMasterManifest2, mockMediaManifest2, null, mockSubtitleManifest2).then(() => {
                 mockVod2.loadAfter(mockVod, mockMasterManifest, mockMediaManifest, mockAudioManifest, mockSubtitleManifest).then(() => {
+                const m3u8_2 = mockVod2.getLiveMediaSubtitleSequences(0, "subs", "fr", 2);
+                const subStrings2 = m3u8_2.split("\n")
+                subStrings2.map((i,o) => console.log(i,o))
+                expect(subStrings2[6]).toEqual("#EXTINF:150.000,");
+                expect(subStrings2[7]).toEqual("https://d3t8zrj2x5ol3r.cloudfront.net/u/file~text_vtt~dummy.vtt/1/s/webvtt.vtt");
+                done();
+                });
+            });
+        });
+        it("subs with short segments after vod with subs with long segments", (done) => {
+            mockVod = new HLSVod("http://mock.com/mock.m3u8");
+            mockVod2 = new HLSVod("http://mock.com/mock.m3u8");
+            mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest, mockSubtitleManifest).then(() => {
+                mockVod2.loadAfter(mockVod, mockMasterManifest2, mockMediaManifest2, null, mockSubtitleManifest2).then(() => {
                 const m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "fr", 0);
                 const subStrings = m3u8.split("\n")
                 expect(subStrings[7]).toEqual("http://mock.com/subtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA==_0.webvtt");
                 const m3u8_2 = mockVod2.getLiveMediaSubtitleSequences(0, "textstream", "sv", 2);
                 const subStrings2 = m3u8_2.split("\n")
+                subStrings2.map((i,o) => console.log(i,o))
                 expect(subStrings2[6]).toEqual("#EXTINF:3.000,");
                 expect(subStrings2[7]).toEqual("https://d3t8zrj2x5ol3r.cloudfront.net/u/file~text_vtt~dummy.vtt/1/s/webvtt.vtt");
                 done();
