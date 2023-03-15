@@ -247,7 +247,7 @@ class HLSVod {
                 if (!this.audioCodecsMap[audioCodecs]) {
                   this.audioCodecsMap[audioCodecs] = {};
                 }
-                const itemChannels = item.get("channels");
+                const itemChannels = item.get("channels") ? item.get("channels") : "2";
                 this.audioCodecsMap[audioCodecs][itemChannels] = audioGroupId;
                 return (item = itemLang);
               });
