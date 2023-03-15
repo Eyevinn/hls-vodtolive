@@ -74,6 +74,7 @@ class HLSVod {
     this.audioSequencesCount = 0;
     this.defaultAudioGroupAndLang = null;
     this.mediaStartExecessTime = 0;
+    this.audioCodecsMap = {};
   }
 
   toJSON() {
@@ -106,6 +107,7 @@ class HLSVod {
       videoSequencesCount: this.videoSequencesCount,
       audioSequencesCount: this.audioSequencesCount,
       mediaStartExecessTime: this.mediaStartExecessTime,
+      audioCodecsMap: this.audioCodecsMap,
     };
     return JSON.stringify(serialized);
   }
@@ -146,6 +148,7 @@ class HLSVod {
     this.videoSequencesCount = de.videoSequencesCount;
     this.audioSequencesCount = de.audioSequencesCount;
     this.mediaStartExecessTime = de.mediaStartExecessTime;
+    this.audioCodecsMap = de.audioCodecsMap;
   }
 
   /**
@@ -213,6 +216,10 @@ class HLSVod {
               if (!HAS_AUDIO_DEFAULTS && !this.audioSegments[audioGroupId]) {
                 this.audioSegments[audioGroupId] = {};
               }
+              const audioCodecs = streamItem.get("codecs").split(",").find(c => {
+                return c.match(/^mp4a/) || c.match(/^ac-3/) || c.match(/^ec-3/);
+              });
+
               debug(`Lookup media item for '${audioGroupId}'`);
 
               // # Needed for the case when loading after another VOD.
@@ -237,6 +244,11 @@ class HLSVod {
                 if (!HAS_AUDIO_DEFAULTS && !this.audioSegments[audioGroupId][itemLang]) {
                   this.audioSegments[audioGroupId][itemLang] = [];
                 }
+                if (!this.audioCodecsMap[audioCodecs]) {
+                  this.audioCodecsMap[audioCodecs] = {};
+                }
+                const itemChannels = item.get("channels");
+                this.audioCodecsMap[audioCodecs][itemChannels] = audioGroupId;
                 return (item = itemLang);
               });
 
@@ -312,6 +324,9 @@ class HLSVod {
               reject(new Error("The vod is not a demux vod"));
             }
           }
+          debug("Codec to Audio Group Id mapping");
+          debug(this.audioCodecsMap);
+
           return Promise.all(audioManifestPromises)
         }).then(this._cleanupUnused.bind(this))
           .then(this._createMediaSequences.bind(this))
@@ -548,6 +563,35 @@ class HLSVod {
 
   getAudioLangsForAudioGroup(groupId) {
     return Object.keys(this.audioSegments[groupId]);
+  }
+
+  getAudioGroupIdForCodecs(audioCodecs, channels) {
+    // {
+    //   "ec-3": [
+    //     { "6": "audio1" }
+    //   ]
+    // }
+    let audioGroupId;
+    Object.keys(this.audioCodecsMap[audioCodecs]).map(channelsKey => {
+      if (channelsKey === channels) {
+        audioGroupId = this.audioCodecsMap[audioCodecs][channelsKey];
+      }
+    });
+    return audioGroupId;
+  }
+
+  getAudioCodecsAndChannelsForGroupId(groupId) {
+    let audioCodecs;
+    let channels;
+    Object.keys(this.audioCodecsMap).map(codecKey => {
+      Object.keys(this.audioCodecsMap[codecKey]).map(channelsKey => {
+        if (this.audioCodecsMap[codecKey][channelsKey] === groupId) {
+          audioCodecs = codecKey;
+          channels = channelsKey;
+        }
+      });
+    });
+    return [audioCodecs, channels];
   }
 
   /**
@@ -2129,7 +2173,8 @@ class HLSVod {
     // # Updated input args for _injectAudioManifest().
     return new Promise((resolve, reject) => {
       const parser = m3u8.createStream();
-      debug(`Loading audio manifest for lang=${language} of group=${groupId}`);
+      const [audioCodecs, _] = this.getAudioCodecsAndChannelsForGroupId(groupId);
+      debug(`Loading audio manifest for lang=${language} of group=${groupId} (codecs=${audioCodecs})`);
       debug(`Audio manifest URI: ${audioManifestUri}`);
 
       let timelinePosition = 1;
