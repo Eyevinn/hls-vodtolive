@@ -424,7 +424,17 @@ class HLSVod {
                       targetLang = this.defaultSubtitleGroupAndLang.subtitleLanguage;
                       debug(`Loading Subtitle manifest onto Default GroupID=${targetGroup} and Language=${targetLang}`);
                     }
-                    subtitleManifestPromises.push(this._loadSubtitleManifest(subtitleManifestUrl, targetGroup, targetLang, _injectSubtitleManifest));
+                    const groupIds = Object.keys(this.subtitleSegments);
+                    for (let j = 0; j < groupIds.length; j++) {
+                      subtitleManifestPromises.push(this._loadSubtitleManifest(subtitleManifestUrl, groupIds[j], targetLang, _injectSubtitleManifest));
+                      if (this.previousVod) {
+                        const oldgroups = this.previousVod.getSubtitleGroups()
+                        const oldLangs = this.previousVod.getSubtitleLangsForSubtitleGroup(oldgroups[0])
+                        for (let o = 0; o < oldLangs.length; o++) {
+                          subtitleManifestPromises.push(this._loadSubtitleManifest(subtitleManifestUrl, groupIds[j], oldLangs[o], _injectSubtitleManifest));
+                        }
+                      }
+                    }
                   } else {
                     debug(`Subtitle manifest for language "${subtitleLang}" from '${subtitleGroupId}' in already loaded, skipping`);
                   }
@@ -1328,6 +1338,7 @@ class HLSVod {
            * Currently, it only sets a default if there is only one possible group and lang to match with on
            * the prevVod.
            */
+
           this.defaultSubtitleGroupAndLang = {
             subtitleGroupId: subtitleGroups[0],
             subtitleLanguage: subtitleLangs[0],
@@ -1344,9 +1355,9 @@ class HLSVod {
             this.subtitleSegments[subtitleGroupId][subtitleLang] = [];
           }
           if (lastMediaSubtitleSequence && lastMediaSubtitleSequence.length > 0) {
-            let start = 1;
+            let start = 0;
             if (lastMediaSubtitleSequence[0] && lastMediaSubtitleSequence[0].discontinuity) {
-              start = 2;
+              start = 1;
             }
             for (let idx = start; idx < lastMediaSubtitleSequence.length; idx++) {
               let q = lastMediaSubtitleSequence[idx];
@@ -1557,15 +1568,15 @@ class HLSVod {
         }
 
         // Subtitle version
-        console.log(this.subtitleSegments[subtitleGroupId][firstSubtitleLanguage][15])
-        console.log(this.subtitleSegments[subtitleGroupId][firstSubtitleLanguage][16])
         while (firstSubtitleLanguage && this.subtitleSegments[subtitleGroupId][firstSubtitleLanguage][segIdxSubtitle] && segIdxSubtitle != s_length) {
 
           if (this.subtitleSegments[subtitleGroupId][firstSubtitleLanguage][segIdxSubtitle].uri) {
             subtitle_duration += this.subtitleSegments[subtitleGroupId][firstSubtitleLanguage][segIdxSubtitle].duration;
           }
           if (subtitle_duration < this.SEQUENCE_DURATION || firstSubtileSegmentOfSequence) {
-            firstSubtileSegmentOfSequence = false;
+            if (subtitle_duration > 0) {
+              firstSubtileSegmentOfSequence = false;
+            }
             const subtitleGroupIds = Object.keys(this.subtitleSegments);
             for (let i = 0; i < subtitleGroupIds.length; i++) {
               const subtitleGroupId = subtitleGroupIds[i];
@@ -1993,7 +2004,8 @@ class HLSVod {
           let seqIndex = 0;
           totalRemovedSegments = 0;
           const SIZESUBTITLE = this.subtitleSegments[subtitleGroupId][firstSubtitleLanguage].length;
-          // Generate audio segments
+          let firstSubtileSegmentOfSequence = false;
+          // Generate subtitle segments
           while (this.subtitleSegments[subtitleGroupId][firstSubtitleLanguage][segIdxSubtitle] && segIdxSubtitle < SIZESUBTITLE) {
             try {
               totalSeqDurSubtitle = 0;
@@ -2047,7 +2059,8 @@ class HLSVod {
                 // Creating the rest of the sequences
                 let newPushedSegmentsCount = 0;
                 // 1 - Add new segments until we overflow (per variant)
-                while (totalSeqDurSubtitle < this.SEQUENCE_DURATION && segIdxSubtitle < SIZESUBTITLE) {
+                while ((totalSeqDurSubtitle < this.SEQUENCE_DURATION && segIdxSubtitle < SIZESUBTITLE) || firstSubtileSegmentOfSequence ) {
+                  firstSubtileSegmentOfSequence = false;
                   let first = true;
                   const subtitleGroupIds = Object.keys(this.subtitleSegments);
                   subtitleGroupIds.forEach((groupId) => {
@@ -2075,9 +2088,11 @@ class HLSVod {
                 }
                 let shiftOnce = true;
                 let shiftedSegmentsCount = 0;
+                let canShift = true;
                 // 2 - Shift excess segments and keep count of what has been removed (per variant)
-                while (totalSeqDurSubtitle >= this.SEQUENCE_DURATION || (shiftOnce && segIdxSubtitle !== 0)) {
+                while ((totalSeqDurSubtitle >= this.SEQUENCE_DURATION || (shiftOnce && segIdxSubtitle !== 0)) && canShift) {
                   shiftOnce = false;
+                  firstSubtileSegmentOfSequence = false;
                   let timeToRemove = 0;
                   let incrementSubtitleDiscSeqCount = false;
                   const subtitleGroupIds = Object.keys(this.subtitleSegments);
@@ -2091,11 +2106,13 @@ class HLSVod {
                       if (!_subtitleSequence[groupId][lang]) {
                         _subtitleSequence[groupId][lang] = [];
                       }
-                      let seg = _subtitleSequence[groupId][lang].shift();
-                      if (!seg) {
-                        // Should not happen, debug
-                        debug(`WARNING! The _subtitleSequence[id=${groupId}][lang=${lang}] shifted seg=${seg}`);
+                      let seg;
+                      if (_subtitleSequence[groupId][lang].length > 1) {
+                        seg = _subtitleSequence[groupId][lang].shift();
                       } else {
+                        canShift = false;
+                      }
+                      if (seg) {
                         while (seg && !seg.duration && _subtitleSequence[groupId][lang].length > 0) {
                           incrementSubtitleDiscSeqCount = true;
                           seg = _subtitleSequence[groupId][lang].shift();
@@ -2126,7 +2143,7 @@ class HLSVod {
                     newPushedSegmentsCount > 1 &&
                     totalSeqDurSubtitle >= this.SEQUENCE_DURATION
                   ) {
-                    // pop audio...
+                    // pop subtitle...
                     if (subtitleGroupId) {
                       const subtitleGroupIds = Object.keys(this.subtitleSegments);
                       subtitleGroupIds.forEach((groupId) => {
@@ -2146,9 +2163,10 @@ class HLSVod {
                   }
                 }
               }
-
+              firstSubtileSegmentOfSequence = true;
+              if (_subtitleSequence[subtitleGroupId][firstSubtitleLanguage].length > 0) {
               subtitleSequences.push(_subtitleSequence);
-
+              }
               this.mediaSequenceValuesSubtitle[seqIndex] = totalRemovedSegments;
               if (seqIndex === 0) {
                 // Compensate for hlsvod loaded after another.
