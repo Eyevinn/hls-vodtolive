@@ -280,7 +280,7 @@ describe("HLSVod after another VOD", () => {
       });
   });
 
-  it("never contains duplicate segments for two consecutive media sequences", async (done) => {
+  it("never contains duplicate segments for two consecutive media sequences", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8");
     mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
     mockVod
