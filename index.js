@@ -335,7 +335,7 @@ class HLSVod {
               reject(new Error("The vod is not a demux vod"));
             }
 
-            if (streamItem.attributes.attributes["subtitles"]) {
+            if (streamItem.get("subtitles")) {
               let subtitleGroupId = streamItem.get("subtitles");
               if (!HAS_SUBTITLE_DEFAULTS && !this.subtitleSegments[subtitleGroupId]) {
                 this.subtitleSegments[subtitleGroupId] = {};
@@ -1043,12 +1043,25 @@ class HLSVod {
   getLiveMediaSubtitleSequences(offset, subtitleGroupId, subtitleLanguage, seqIdx, discOffset, padding, forceTargetDuration) {
     debug(`Get live subtitle media sequence [${seqIdx}] for subtitleGroupId=${subtitleGroupId}`);
     const mediaSeqSubtitleSegments = this.getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage, seqIdx);
-
-    // # If failed to find segments for given language,
+    // # If failed to find segments for given ulanguage,
     // We assume it is a vod without subtitles and create a fake manifest with a url to specific target
-    if (!mediaSeqSubtitleSegments) {
+    if (mediaSeqSubtitleSegments.length <= 1 && mediaSeqSubtitleSegments[0].discontinuity) {
+      let duration = this.getDuration();
+      if (this.previousVod) {
+        const bandwidths = this.previousVod.getBandwidths();
+        const previousVodSeqCount = this.previousVod.getLiveMediaSequencesCount();
+        const lastMediaSequence = this.previousVod.getLiveMediaSequenceSegments(previousVodSeqCount - 1)[bandwidths[0]];
+        let tempdurr = 0;
+        for(let i = 1; i < lastMediaSequence.length; i++) {
+          if (lastMediaSequence[0].duration) {
+            tempdurr += lastMediaSequence[0].duration
+          }
+        }
+        duration -= tempdurr
+
+      }
       mediaSeqSubtitleSegments.push({
-        duration: this.getDuration(),
+        duration: duration,
         timelinePosition: 0,
         cue: null,
         uri: process.env.DEFAULT_SUBTITLE_URL ? process.env.DEFAULT_SUBTITLE_URL : "localhost", //temp waiting for better url
@@ -2050,7 +2063,7 @@ class HLSVod {
                         first = false;
                         seqDur += seq_seg.duration;
                       }
-                      if (seqDur < this.SEQUENCE_DURATION) {
+                      if (seqDur < this.SEQUENCE_DURATION || firstSubtileSegmentOfSequence) {
                         if (!seq_seg) {
                           debug(segIdxSubtitle, `WARNING! The _subtitleSequence[id=${groupId}][lang=${lang}] pushed seg=${seq_seg}`);
                         }
@@ -2058,7 +2071,8 @@ class HLSVod {
                       }
                     });
                   });
-                  if (seqDur < this.SEQUENCE_DURATION) {
+                  if (seqDur < this.SEQUENCE_DURATION || firstSubtileSegmentOfSequence) {
+                    firstSubtileSegmentOfSequence = false;
                     segIdxSubtitle++;
                   }
                 }
@@ -2098,10 +2112,6 @@ class HLSVod {
                 let canShift = true;
                 // 2 - Shift excess segments and keep count of what has been removed (per variant)
                 while ((totalSeqDurSubtitle >= this.SEQUENCE_DURATION || (shiftOnce && segIdxSubtitle !== 0)) && canShift) {
-                  console.log("hej", se)
-                if (this.previousVod) {
-                console.log("hej",200)
-                }
                   shiftOnce = false;
                   firstSubtileSegmentOfSequence = false;
                   let timeToRemove = 0;
@@ -2120,7 +2130,7 @@ class HLSVod {
                       let seg;
 
                       if (_subtitleSequence[groupId][lang].length > 1) {
-                          seg = _subtitleSequence[groupId][lang].shift();
+                        seg = _subtitleSequence[groupId][lang].shift();
                       } else {
                         canShift = false;
                       }
@@ -3085,7 +3095,7 @@ class HLSVod {
   }
 
   _loadSubtitleManifest(subtitleManifestUri, groupId, language, _injectSubtitleManifest) {
-    
+
     // # Updated so that segment objects are pushed to Language array instead.
     // # Updated input args for _injectSubtitleManifest().
     return new Promise((resolve, reject) => {

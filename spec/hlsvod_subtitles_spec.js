@@ -167,7 +167,7 @@ describe("HLSVod with subtitles", () => {
                 });
             });
         });
-        xit("subs with long segments after vod with subs with short segments and alwaysNewSegments(true)", (done) => {
+        it("subs with long segments after vod with subs with short segments and alwaysNewSegments(true)", (done) => {
             let bool = 1;
             mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: bool });
             mockVod2 = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: bool });
@@ -185,7 +185,7 @@ describe("HLSVod with subtitles", () => {
                 });
             });
         });
-        fit("subs with short segments after vod with subs with long segments and alwaysNewSegments(true)", (done) => {
+        it("subs with short segments after vod with subs with long segments and alwaysNewSegments(true)", (done) => {
             let bool = 1;
             mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: bool });
             mockVod2 = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: bool });
@@ -212,14 +212,13 @@ describe("HLSVod with subtitles", () => {
         let mockSubtitleManifest;
         let mockMasterManifest2;
         let mockMediaManifest2;
-        let mockAudioManifest2;
         beforeEach(() => {
             mockMasterManifest = function () {
                 return fs.createReadStream("testvectors/hls_subs/master.m3u8");
             };
 
             mockMasterManifest2 = function () {
-                return fs.createReadStream("testvectors/hls_subs2/master.m3u8");
+                return fs.createReadStream("testvectors/hls15/master.m3u8");
             };
 
 
@@ -228,7 +227,7 @@ describe("HLSVod with subtitles", () => {
             };
 
             mockMediaManifest2 = function () {
-                return fs.createReadStream("testvectors/hls_subs2/video.m3u8");
+                return fs.createReadStream("testvectors/hls15/index_1010931.m3u8");
             };
 
             mockSubtitleManifest = function (_, lang) {
@@ -246,22 +245,19 @@ describe("HLSVod with subtitles", () => {
             mockAudioManifest = function () {
                 return fs.createReadStream(`testvectors/hls_subs/b160000-english.m3u8`);
             }
-            mockAudioManifest2 = function () {
-                return fs.createReadStream(`testvectors/hls_subs/b160000-english.m3u8`);
-            }
         });
-        xit("no subs after vod with subs", (done) => {
+        it("no subs after vod with subs", (done) => {
             mockVod = new HLSVod("http://mock.com/mock.m3u8");
             mockVod2 = new HLSVod("http://mock.com/mock.m3u8");
-            mockVod.load(mockMasterManifest, mockMediaManifest, null, mockSubtitleManifest).then(() => {
-                mockVod2.load(mockMasterManifest2, mockMediaManifest2, mockAudioManifest2).then(() => {
-                    const m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "fr", 1);
+            mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest, mockSubtitleManifest).then(() => {
+                mockVod2.loadAfter(mockVod, mockMasterManifest2, mockMediaManifest2).then(() => {
+                    const m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "fr", 3);
                     const subStrings = m3u8.split("\n")
-                    expect(subStrings[5]).toEqual("http://mock.com/subtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA==_75.webvtt");
-                    const m3u82 = mockVod2.getLiveMediaSubtitleSequences(0, "subs", "fr", 1);
-                    const subStrings2 = m3u8.split("\n")
-                    subStrings2.map((i, o) => console.log(i, o))
-                    expect(subStrings2[8]).toEqual("##EXTINF:77");
+                    expect(subStrings[7]).toEqual("http://mock.com/subtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA==_75.webvtt");
+                    const m3u8_2 = mockVod2.getLiveMediaSubtitleSequences(0, "subs", "fr", 1);
+                    const subStrings2 = m3u8_2.split("\n")
+                    expect(subStrings2[6]).toEqual("#EXTINF:15.500,");
+                    expect(subStrings2[7]).toEqual("localhost");
                     done();
                 });
             });
