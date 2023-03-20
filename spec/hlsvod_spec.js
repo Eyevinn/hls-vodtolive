@@ -1154,7 +1154,6 @@ describe("HLSVod with not equal usage profiles", () => {
       });
   });
 });
-
 /**
  *  Changes:
  *  - Read from new mock manifests and

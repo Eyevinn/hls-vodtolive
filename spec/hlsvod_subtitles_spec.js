@@ -8,10 +8,10 @@ describe("HLSVod with subtitles", () => {
         let mockMasterManifest;
         let mockMediaManifest;
         let mockAudioManifest;
-        let mockSubtitleManifest; // id subs  lang zh fr
+        let mockSubtitleManifest;
         let mockMasterManifest2;
         let mockMediaManifest2;
-        let mockSubtitleManifest2; // id text lang sv
+        let mockSubtitleManifest2;
 
         beforeEach(() => {
             mockMasterManifest = function () {

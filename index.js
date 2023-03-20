@@ -78,7 +78,7 @@ class HLSVod {
     this.audioSequencesCount = 0;
     this.defaultAudioGroupAndLang = null;
     this.SubtitleSequencesCount = 0;
-    this.defaultSubtitleGroupAndLang = null;// ?
+    this.defaultSubtitleGroupAndLang = null;
     this.mediaStartExecessTime = 0;
   }
 
@@ -226,9 +226,6 @@ class HLSVod {
           }
         }
         Promise.all(mediaManifestPromises).then(() => {
-          let newSubGroup = false;
-          let newSubLang = false;
-          let newSubLangs = [];
           for (let i = 0; i < m3u.items.StreamItem.length; i++) {
             const streamItem = m3u.items.StreamItem[i];
             if (streamItem.get("audio")) {
@@ -1671,7 +1668,7 @@ class HLSVod {
           this.mediaSequences.push({
             segments: video_sequence_list[index],
             audioSegments: {},
-            subtitleSegments: {}
+            subtitleSegments: {},
           });
         });
         for (let i = 0; i < audio_sequence_list.length; i++) {
@@ -1681,6 +1678,7 @@ class HLSVod {
             this.mediaSequences.push({
               segments: {},
               audioSegments: audio_sequence_list[i] ? audio_sequence_list[i] : {},
+              subtitleSegments: {},
             });
           }
         }
@@ -2219,6 +2217,7 @@ class HLSVod {
             this.mediaSequences.push({
               segments: {},
               audioSegments: audioSequences[i] ? audioSequences[i] : {},
+              subtitleSegments: {}
             });
           }
         }
