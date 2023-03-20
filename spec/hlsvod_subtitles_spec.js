@@ -246,9 +246,10 @@ describe("HLSVod with subtitles", () => {
                 return fs.createReadStream(`testvectors/hls_subs/b160000-english.m3u8`);
             }
         });
-        it("no subs after vod with subs", (done) => {
-            mockVod = new HLSVod("http://mock.com/mock.m3u8");
-            mockVod2 = new HLSVod("http://mock.com/mock.m3u8");
+        it("no subs after vod with subs with fallback URL", (done) => {
+            let url = "localhost";
+            mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { defaultSubtitleUrl: url });
+            mockVod2 = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { defaultSubtitleUrl: url });
             mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest, mockSubtitleManifest).then(() => {
                 mockVod2.loadAfter(mockVod, mockMasterManifest2, mockMediaManifest2).then(() => {
                     const m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "fr", 3);
@@ -258,6 +259,16 @@ describe("HLSVod with subtitles", () => {
                     const subStrings2 = m3u8_2.split("\n")
                     expect(subStrings2[6]).toEqual("#EXTINF:15.500,");
                     expect(subStrings2[7]).toEqual("localhost");
+                    done();
+                });
+            });
+        });
+        it("no subs after vod with subs without fallback URL", (done) => {
+            mockVod = new HLSVod("http://mock.com/mock.m3u8");
+            mockVod2 = new HLSVod("http://mock.com/mock.m3u8");
+            mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest, mockSubtitleManifest).then(() => {
+                mockVod2.loadAfter(mockVod, mockMasterManifest2, mockMediaManifest2).catch((e) => {
+                    expect(e.message).toEqual("This vod does not contain subtiles and there is no fallback url");
                     done();
                 });
             });

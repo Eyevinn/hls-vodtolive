@@ -55,6 +55,9 @@ class HLSVod {
     if (opts && opts.forcedDemuxMode) {
       this.forcedDemuxMode = opts.forcedDemuxMode;
     }
+    if (opts && opts.defaultSubtitleUrl) {
+      this.defaultSubtitleUrl = opts.defaultSubtitleUrl;
+    }
     this.videoSequencesCount = 0;
     this.audioSequencesCount = 0;
     this.defaultAudioGroupAndLang = null;
@@ -95,6 +98,7 @@ class HLSVod {
       mediaSequenceValuesAudio: this.mediaSequenceValuesAudio,
       sequenceAlwaysContainNewSegments: this.sequenceAlwaysContainNewSegments,
       forcedDemuxMode: this.forcedDemuxMode,
+      defaultSubtitleUrl: this.defaultSubtitleUrl,
       videoSequencesCount: this.videoSequencesCount,
       audioSequencesCount: this.audioSequencesCount,
       subtitleSequencesCount: this.subtitleSegments,
@@ -142,6 +146,7 @@ class HLSVod {
     this.mediaSequenceValuesSubtitle = de.mediaSequenceValuesSubtitle;
     this.sequenceAlwaysContainNewSegments = de.sequenceAlwaysContainNewSegments;
     this.forcedDemuxMode = de.forcedDemuxMode;
+    this.defaultSubtitleUrl = de.defaultSubtitleUrl;
     this.videoSequencesCount = de.videoSequencesCount;
     this.audioSequencesCount = de.audioSequencesCount;
     this.subtitleSequencesCount = de.subtitleSequencesCount
@@ -440,6 +445,8 @@ class HLSVod {
                   debug(`No media item for '${subtitleGroupId}' in "${subtitleLang}" was found, skipping`);
                 }
               }
+            } else if (!this.defaultSubtitleUrl && this.defaultSubtitleGroupAndLang) {
+              reject(new Error("This vod does not contain subtiles and there is no fallback url"));
             }
           }
           debug("Codec to Audio Group Id mapping");
@@ -926,7 +933,7 @@ class HLSVod {
         duration: duration,
         timelinePosition: 0,
         cue: null,
-        uri: process.env.DEFAULT_SUBTITLE_URL ? process.env.DEFAULT_SUBTITLE_URL : "localhost", //temp waiting for better url
+        uri: this.defaultSubtitleUrl,
       })
     }
 
@@ -957,63 +964,11 @@ class HLSVod {
     for (let i = 0; i < mediaSeqSubtitleSegments.length; i++) {
       const v = mediaSeqSubtitleSegments[i];
       if (v) {
-        if (previousSegment != null) {
-          if (previousSegment.discontinuity) {
-            if (v.initSegment) {
-              m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"\n`;
-            }
-            if (v.timelinePosition) {
-              const d = new Date(v.timelinePosition);
-              m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + d.toISOString() + "\n";
-            }
-          }
-        }
-
-        if (i === 0) {
-          if (v.initSegment) {
-            m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"\n`;
-          }
-        }
-
-        if (!v.discontinuity) {
-          if (v.daterange) {
-            const dateRangeAttributes = Object.keys(v.daterange)
-              .map((key) => daterangeAttribute(key, v.daterange[key]))
-              .join(",");
-            m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
-          }
-          if (v.cue && v.cue.out) {
-            m3u8 += "#EXT-X-CUE-OUT:DURATION=" + v.cue.duration + "\n";
-          }
-          if (v.cue && v.cue.cont) {
-            m3u8 += "#EXT-X-CUE-OUT-CONT:" + v.cue.cont + "/" + v.cue.duration + "\n";
-          }
-          if (v.cue && v.cue.in) {
-            if (mediaSeqSubtitleSegments[i + 1] && mediaSeqSubtitleSegments[i + 1].discontinuity && i + 1 == mediaSeqSubtitleSegments.length - 1) {
-              // Do not add a closing cue-in if next is not a segment and last one in the list
-            } else {
-              m3u8 += "#EXT-X-CUE-IN" + "\n";
-            }
-          }
-          if (v.uri) {
-            m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
-            m3u8 += v.uri + "\n";
-          }
-        } else {
-          if (i != 0 && i != mediaSeqSubtitleSegments.length - 1) {
-            m3u8 += "#EXT-X-DISCONTINUITY\n";
-          }
-          if (v.daterange && i != mediaSeqSubtitleSegments.length - 1) {
-            const dateRangeAttributes = Object.keys(v.daterange)
-              .map((key) => daterangeAttribute(key, v.daterange[key]))
-              .join(",");
-            m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
-          }
-        }
+        m3u8 += segToM3u8(v, i, mediaSeqSubtitleSegments.length, 
+          mediaSeqSubtitleSegments[i+1], previousSegment);
         previousSegment = v;
       }
     }
-
     return m3u8;
   }
 
