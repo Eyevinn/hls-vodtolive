@@ -54,6 +54,10 @@ class HLSVod {
     if (opts && opts.targetProfiles) {
       this.targetProfiles = opts.targetProfiles;
     }
+    this.storePreviousVod = false;
+    if (opts && opts.storePreviousVod) {
+      this.storePreviousVod = opts.storePreviousVod;
+    }
     this.videoSequencesCount = 0;
     this.audioSequencesCount = 0;
     this.defaultAudioGroupAndLang = null;
@@ -377,12 +381,16 @@ class HLSVod {
         this.load(_injectMasterManifest, _injectMediaManifest, _injectAudioManifest)
           .then(() => {
             previousVod.releasePreviousVod();
-            this.previousVod = null;
+            if (!this.storePreviousVod) {
+              this.releasePreviousVod()
+            }
             resolve();
           })
           .catch((err) => {
             previousVod.releasePreviousVod();
-            this.previousVod = null;
+            if (!this.storePreviousVod) {
+              this.releasePreviousVod
+            }
             reject(err);
           });
       } catch (exc) {
@@ -1925,13 +1933,13 @@ class HLSVod {
                 let cue =
                   cueOut || cueIn || cueOutCont || assetData
                     ? {
-                        out: typeof cueOut !== "undefined",
-                        cont: typeof cueOutCont !== "undefined" ? cueOutCont : null,
-                        scteData: typeof scteData !== "undefined" ? scteData : null,
-                        in: cueIn ? true : false,
-                        duration: duration,
-                        assetData: typeof assetData !== "undefined" ? assetData : null,
-                      }
+                      out: typeof cueOut !== "undefined",
+                      cont: typeof cueOutCont !== "undefined" ? cueOutCont : null,
+                      scteData: typeof scteData !== "undefined" ? scteData : null,
+                      in: cueIn ? true : false,
+                      duration: duration,
+                      assetData: typeof assetData !== "undefined" ? assetData : null,
+                    }
                     : null;
                 let q = {
                   duration: playlistItem.get("duration"),
@@ -2126,13 +2134,13 @@ class HLSVod {
               let cue =
                 cueOut || cueIn || cueOutCont || assetData
                   ? {
-                      out: typeof cueOut !== "undefined",
-                      cont: typeof cueOutCont !== "undefined" ? cueOutCont : null,
-                      scteData: typeof scteData !== "undefined" ? scteData : null,
-                      in: cueIn ? true : false,
-                      duration: duration,
-                      assetData: typeof assetData !== "undefined" ? assetData : null,
-                    }
+                    out: typeof cueOut !== "undefined",
+                    cont: typeof cueOutCont !== "undefined" ? cueOutCont : null,
+                    scteData: typeof scteData !== "undefined" ? scteData : null,
+                    in: cueIn ? true : false,
+                    duration: duration,
+                    assetData: typeof assetData !== "undefined" ? assetData : null,
+                  }
                   : null;
               let q = {
                 duration: playlistItem.get("duration"),
