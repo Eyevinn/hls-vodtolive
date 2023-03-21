@@ -59,7 +59,7 @@ describe("HLSVod standalone", () => {
     });
   });
 
-  fit("mesures serialized data size (with targetProfiles)", (done) => {
+  it("mesures serialized data size (with targetProfiles)", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8");
     mockVod2 = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { targetProfiles: [354000, 819000] })
     mockVod.load(mockMasterManifestNoUri, mockMediaManifest3, mockAudioManifest).then(() => {
@@ -76,7 +76,7 @@ describe("HLSVod standalone", () => {
     });
   });
 
-  fit("mesures serialized data size (store previous)", (done) => {
+  it("mesures serialized data size (store previous)", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8");
     mockVod2 = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { storePreviousVod: false })
     mockVod3 = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { storePreviousVod: true })
