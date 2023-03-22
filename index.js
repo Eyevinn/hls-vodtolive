@@ -55,8 +55,8 @@ class HLSVod {
     if (opts && opts.forcedDemuxMode) {
       this.forcedDemuxMode = opts.forcedDemuxMode;
     }
-    if (opts && opts.defaultSubtitleUrl) {
-      this.defaultSubtitleUrl = opts.defaultSubtitleUrl;
+    if (opts && opts.dummySubtitleUrl) {
+      this.dummySubtitleUrl = opts.dummySubtitleUrl;
     }
     this.videoSequencesCount = 0;
     this.audioSequencesCount = 0;
@@ -98,7 +98,7 @@ class HLSVod {
       mediaSequenceValuesAudio: this.mediaSequenceValuesAudio,
       sequenceAlwaysContainNewSegments: this.sequenceAlwaysContainNewSegments,
       forcedDemuxMode: this.forcedDemuxMode,
-      defaultSubtitleUrl: this.defaultSubtitleUrl,
+      dummySubtitleUrl: this.dummySubtitleUrl,
       videoSequencesCount: this.videoSequencesCount,
       audioSequencesCount: this.audioSequencesCount,
       subtitleSequencesCount: this.subtitleSegments,
@@ -146,7 +146,7 @@ class HLSVod {
     this.mediaSequenceValuesSubtitle = de.mediaSequenceValuesSubtitle;
     this.sequenceAlwaysContainNewSegments = de.sequenceAlwaysContainNewSegments;
     this.forcedDemuxMode = de.forcedDemuxMode;
-    this.defaultSubtitleUrl = de.defaultSubtitleUrl;
+    this.dummySubtitleUrl = de.dummySubtitleUrl;
     this.videoSequencesCount = de.videoSequencesCount;
     this.audioSequencesCount = de.audioSequencesCount;
     this.subtitleSequencesCount = de.subtitleSequencesCount
@@ -445,7 +445,7 @@ class HLSVod {
                   debug(`No media item for '${subtitleGroupId}' in "${subtitleLang}" was found, skipping`);
                 }
               }
-            } else if (!this.defaultSubtitleUrl && this.defaultSubtitleGroupAndLang) {
+            } else if (!this.dummySubtitleUrl && this.defaultSubtitleGroupAndLang) {
               reject(new Error("This vod does not contain subtiles and there is no fallback url"));
             }
           }
@@ -933,7 +933,7 @@ class HLSVod {
         duration: duration,
         timelinePosition: 0,
         cue: null,
-        uri: this.defaultSubtitleUrl,
+        uri: this.dummySubtitleUrl.toString(),
       })
     }
 
