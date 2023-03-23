@@ -14,15 +14,21 @@
     * [.getLiveMediaSequenceSegments(seqIdx)](#HLSVod+getLiveMediaSequenceSegments)
     * [.getMediaSegments()](#HLSVod+getMediaSegments)
     * [.getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx)](#HLSVod+getLiveMediaSequenceAudioSegments)
+    * [.getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage, seqIdx)](#HLSVod+getLiveMediaSequenceSubtitleSegments)
     * [.getBandwidths()](#HLSVod+getBandwidths)
-    * [.getLiveMediaSequencesCount()](#HLSVod+getLiveMediaSequencesCount)
+    * [.getSubtitleGroups(all?)](#HLSVod+getSubtitleGroups)
+    * [.getSubtitleLangsForSubtitleGroup(groupId, all?)](#HLSVod+getSubtitleLangsForSubtitleGroup)
+    * [.getLiveMediaSequencesCount(media?)](#HLSVod+getLiveMediaSequencesCount)
     * [.getLastSequenceMediaSequenceValue()](#HLSVod+getLastSequenceMediaSequenceValue)
     * [.getLastSequenceMediaSequenceValueAudio()](#HLSVod+getLastSequenceMediaSequenceValueAudio)
+    * [.getLastSequenceMediaSequenceValueSubtitle()](#HLSVod+getLastSequenceMediaSequenceValueSubtitle)
     * [.getLiveMediaSequences(offset, bandwidth, seqIdx, discOffset, padding, forceTargetDuration)](#HLSVod+getLiveMediaSequences)
-    * [.getLiveMediaAudioSequences()](#HLSVod+getLiveMediaAudioSequences)
+    * [.getLiveMediaAudioSequences(offset, bandwidth, seqIdx, discOffset, padding, forceTargetDuration)](#HLSVod+getLiveMediaAudioSequences)
+    * [.getLiveMediaSubtitleSequences(offset, bandwidth, seqIdx, discOffset, padding, forceTargetDuration)](#HLSVod+getLiveMediaSubtitleSequences)
     * [.getUsageProfiles()](#HLSVod+getUsageProfiles)
     * [.getLastDiscontinuity()](#HLSVod+getLastDiscontinuity)
     * [.getLastDiscontinuityAudio()](#HLSVod+getLastDiscontinuityAudio)
+    * [.getLastDiscontinuitySubtitle()](#HLSVod+getLastDiscontinuitySubtitle)
     * [.getDeltaTimes()](#HLSVod+getDeltaTimes)
     * [.getPlayheadPositions()](#HLSVod+getPlayheadPositions)
     * [.releasePreviousVod()](#HLSVod+releasePreviousVod)
@@ -136,15 +142,57 @@ Get all audio segments (duration, uri) for a specific media sequence
 | audioLanguage | <code>string</code> | audio language |
 | seqIdx | <code>number</code> | media sequence index (first is 0) |
 
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+getLiveMediaSequenceSubtitleSegments"></a>
+
+### hlsVod.getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage, seqIdx)
+Get all subtitle segments (duration, uri) for a specific media sequence
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| subtitleGroupId | <code>string</code> | subtitle group Id |
+| subtitleLanguage | <code>string</code> | subtitle language |
+| seqIdx | <code>number</code> | media sequence index (first is 0) |
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)
 <a name="HLSVod+getBandwidths"></a>
 
 ### hlsVod.getBandwidths()
 Get the available bandwidths for this VOD
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+getSubtitleGroups"></a>
+
+### hlsVod.getSubtitleGroups(all?)
+Get the available subtitle group for this VOD
+
+there exists a default group with a lang used to create dummy segments which can be filtered using all parameter
+
+| Param | Type | Description |
+| --- | --- | --- |
+| all | <code>boolean</code> | used to determine if you want all the langs or not, false by default |
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+getSubtitleLangsForSubtitleGroup"></a>
+
+### hlsVod.getSubtitleLangsForSubtitleGroup(groupId)
+Get the all language for a specific groupId
+
+| Param | Type | Description |
+| --- | --- | --- |
+| groupId | <code>string</code> | subtitle group Id |
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 <a name="HLSVod+getLiveMediaSequencesCount"></a>
 
-### hlsVod.getLiveMediaSequencesCount()
+### hlsVod.getLiveMediaSequencesCount(media?)
+
+| Param | Type | Description |
+| --- | --- | --- |
+| media | <code>string</code> | pass this variable to select video, audio or subtitle. If omitted video is assumed |
+
 Get the number of media sequences for this VOD
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
@@ -160,6 +208,22 @@ Get the media-sequence value for the last media sequence of this VOD
 Get the media-sequence value for the last audio media sequence of this VOD
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+getLastSequenceMediaSequenceValueSubtitle"></a>
+
+### hlsVod.getLastSequenceMediaSequenceValueSubtitle()
+Get the media-sequence value for the last subtitle media sequence of this VOD
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| offset | <code>number</code> | add this offset to all media sequences in the EXT-X-MEDIA-SEQUENCE tag |
+| bandwidth | <code>string</code> |  |
+| seqIdx | <code>number</code> |  |
+| discOffset | <code>number</code> | add this offset to all discontinuity sequences in the EXT-X-DISCONTINUITY-SEQUENCE tag |
+| padding | <code>number</code> | add extra seconds on the EXT-X-TARGETDURATION |
+| forceTargetDuration | <code>number</code> | enforce a fixed EXT-X-TARGETDURATION |
+
 <a name="HLSVod+getLiveMediaSequences"></a>
 
 ### hlsVod.getLiveMediaSequences(offset, bandwidth, seqIdx, discOffset, padding, forceTargetDuration)
@@ -178,8 +242,26 @@ Get the HLS live media sequence for a specific media sequence and bandwidth
 
 <a name="HLSVod+getLiveMediaAudioSequences"></a>
 
-### hlsVod.getLiveMediaAudioSequences()
+### hlsVod.getLiveMediaAudioSequences(offset, bandwidth, seqIdx, discOffset, padding, forceTargetDuration)
 Gets a hls/makes m3u8-file with all of the correct audio segments
+belonging to a given groupID & language for a particular sequence.
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| offset | <code>number</code> | add this offset to all media sequences in the EXT-X-MEDIA-SEQUENCE tag |
+| bandwidth | <code>string</code> |  |
+| seqIdx | <code>number</code> |  |
+| discOffset | <code>number</code> | add this offset to all discontinuity sequences in the EXT-X-DISCONTINUITY-SEQUENCE tag |
+| padding | <code>number</code> | add extra seconds on the EXT-X-TARGETDURATION |
+| forceTargetDuration | <code>number</code> | enforce a fixed EXT-X-TARGETDURATION |
+
+
+<a name="HLSVod+getLiveMediaSubtitleSequences"></a>
+
+### hlsVod.getLiveMediaSubtitleSequences(offset, bandwidth, seqIdx, discOffset, padding, forceTargetDuration)
+Gets a hls/makes m3u8-file with all of the correct subtitle segments
 belonging to a given groupID & language for a particular sequence.
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
@@ -199,6 +281,12 @@ Get the last discontinuity sequence number
 
 ### hlsVod.getLastDiscontinuityAudio()
 Get the last audio discontinuity sequence number
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+getLastDiscontinuitySubtitle"></a>
+
+### hlsVod.getLastDiscontinuitySubtitle()
+Get the last subtitle discontinuity sequence number
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 <a name="HLSVod+getDeltaTimes"></a>

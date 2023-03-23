@@ -12,7 +12,7 @@ npm install --save @eyevinn/hls-vodtolive
 
 ## Usage
 
-This library load and parses HLS VOD manifests and generates HLS Live manifests. The example below loads one HLS VOD and then another HLS VOD that is appendend to the first one. The `getLiveMediaSequences(mediaseq)` returns HLS Live media sequence slices, and in the example below outputs the last live media sequence representation of the first VOD.
+This library load and parses HLS VOD manifests and generates HLS Live manifests. The example below loads one HLS VOD and then another HLS VOD that is appended to the first one. The `getLiveMediaSequences(mediaseq)` returns HLS Live media sequence slices, and in the example below outputs the last live media sequence representation of the first VOD.
 
 ```
 const HLSVod = require('@eyevinn/hls-vodtolive');
@@ -114,6 +114,16 @@ segB1.ts
 segB2.ts
 #EXTINF:9
 segB3.ts
+```
+
+
+To use this library with subtitles the following options are required to be supplied when creating a new instance of HLSVod
+ ```
+shouldContainSubtitles: true, // says that the loaded VOD should contain subtitles and to create dummy if missing.
+expectedSubtitleTracks: subtitleTracks, // says that the loaded VOD should contain subtitles and to create dummy if missing
+dummySubtitleEndpoint: "/dummysubs.vtt", // it should link to an endpoint that will serve empty vtt files.
+subtitleSliceEndpoint: "/subtitlevtt.vtt", // it should link to an endpoint that can splice and vtt file and serve it in case a VOD contains
+    subtitle segments longer than video segments.
 ```
 
 # Documentation
