@@ -12,6 +12,9 @@ describe("HLSVod with subtitles", () => {
     let mockMasterManifest2;
     let mockMediaManifest2;
     let mockSubtitleManifest2;
+    let mockMasterManifest3;
+    let mockMediaManifest3;
+    let mockAudioManifest2;
 
     beforeEach(() => {
       mockMasterManifest = function () {
@@ -22,6 +25,9 @@ describe("HLSVod with subtitles", () => {
         return fs.createReadStream("testvectors/hls_subs2/master.m3u8");
       };
 
+      mockMasterManifest3 = function () {
+        return fs.createReadStream("testvectors/hls_subs_no_subs/master.m3u8");
+      };
 
       mockMediaManifest = function () {
         return fs.createReadStream("testvectors/hls_subs/b2962000-video.m3u8");
@@ -31,8 +37,16 @@ describe("HLSVod with subtitles", () => {
         return fs.createReadStream("testvectors/hls_subs2/video.m3u8");
       };
 
+      mockMediaManifest3 = function () {
+        return fs.createReadStream("testvectors/hls_subs_no_subs/video.m3u8");
+      };
+
       mockAudioManifest = function () {
         return fs.createReadStream(`testvectors/hls_subs/b160000-english.m3u8`);
+      }
+
+      mockAudioManifest2 = function () {
+        return fs.createReadStream(`testvectors/hls_subs_no_subs/b160000-english.m3u8`);
       }
 
       mockSubtitleManifest = function (_, lang) {
@@ -65,11 +79,19 @@ describe("HLSVod with subtitles", () => {
     });
     it("checks serialise size", (done) => {
       mockVod = new HLSVod("http://mock.com/mock.m3u8");
+      mockVod2 = new HLSVod("http://mock.com/mock.m3u8");
       mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest, mockSubtitleManifest)
       .then(() => {
+        return mockVod2.load(mockMasterManifest3, mockMasterManifest3, mockAudioManifest2)
+      })
+      .then(() =>{
         const serialized = mockVod.toJSON()
         const size = Buffer.byteLength(JSON.stringify(serialized))
         expect(size).toBe(311247);
+        const serialized2 = mockVod2.toJSON()
+        const size2 = Buffer.byteLength(JSON.stringify(serialized2))
+        expect(size2).toBe(156544);
+        expect(size2).toBeLessThan(size);
         done();
       });
     });
@@ -273,7 +295,7 @@ describe("HLSVod with subtitles", () => {
       }
     })
     it("no subs after vod with subs with fallback URL", (done) => {
-      let url = new URL("http://hej/sub.vtt");
+      let url = new URL("http://localhost.com/sub.vtt");
       mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { dummySubtitleUrl: url });
       mockVod2 = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { dummySubtitleUrl: url });
       mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest, mockSubtitleManifest)
@@ -287,7 +309,29 @@ describe("HLSVod with subtitles", () => {
           const m3u8_2 = mockVod2.getLiveMediaSubtitleSequences(0, "subs", "fr", 1);
           const subStrings2 = m3u8_2.split("\n")
           expect(subStrings2[6]).toEqual("#EXTINF:15.500,");
-          expect(subStrings2[7]).toEqual("http://hej/sub.vtt");
+          expect(subStrings2[7]).toEqual("http://localhost.com/sub.vtt");
+          done();
+        })
+        .catch((err) => {
+          done(err);
+        });
+    });
+    it("no subs after vod with subs with relative fallback URL", (done) => {
+      let url = new URL("/sub.vtt", "http://localhost.com?s=subs");
+      mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { dummySubtitleUrl: url });
+      mockVod2 = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { dummySubtitleUrl: url });
+      mockVod.load(mockMasterManifest, mockMediaManifest, mockAudioManifest, mockSubtitleManifest)
+        .then(() => {
+          return mockVod2.loadAfter(mockVod, mockMasterManifest2, mockMediaManifest2)
+        })
+        .then(() => {
+          const m3u8 = mockVod.getLiveMediaSubtitleSequences(0, "subs", "fr", 3);
+          const subStrings = m3u8.split("\n")
+          expect(subStrings[7]).toEqual("http://mock.com/subtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA==_75.webvtt");
+          const m3u8_2 = mockVod2.getLiveMediaSubtitleSequences(0, "subs", "fr", 1);
+          const subStrings2 = m3u8_2.split("\n")
+          expect(subStrings2[6]).toEqual("#EXTINF:15.500,");
+          expect(subStrings2[7]).toEqual("http://localhost.com/sub.vtt");
           done();
         })
         .catch((err) => {
