@@ -446,7 +446,7 @@ class HLSVod {
                 }
               }
             } else if (!this.dummySubtitleUrl && this.defaultSubtitleGroupAndLang) {
-              reject(new Error("This vod does not contain subtiles and there is no fallback url"));
+              reject(new Error("Loaded VOD does not contain subtitles and there is no dummy subtitle segment URL configured"));
             }
           }
           debug("Codec to Audio Group Id mapping");

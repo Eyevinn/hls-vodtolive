@@ -346,7 +346,7 @@ describe("HLSVod with subtitles", () => {
           return mockVod2.loadAfter(mockVod, mockMasterManifest2, mockMediaManifest2)
         })
         .catch((e) => {
-          expect(e.message).toEqual("This vod does not contain subtiles and there is no fallback url");
+          expect(e.message).toEqual("Loaded VOD does not contain subtitles and there is no dummy subtitle segment URL configured");
           done();
         });
 
