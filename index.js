@@ -933,7 +933,7 @@ class HLSVod {
         duration: duration,
         timelinePosition: 0,
         cue: null,
-        uri: this.dummySubtitleUrl.toString(),
+        uri: this.dummySubtitleUrl,
       })
     }
 
