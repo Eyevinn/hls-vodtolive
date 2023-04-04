@@ -819,9 +819,9 @@ class HLSVod {
       this.segments[destBw] = [];
     }
     if (lastMediaSequence && lastMediaSequence.length > 0) {
-      let start = 1;
+      let start = this.sequenceAlwaysContainNewSegments ? 0 : 1;
       if (lastMediaSequence[0] && lastMediaSequence[0].discontinuity) {
-        start = 2;
+        start = this.sequenceAlwaysContainNewSegments ? 1 : 2;
       }
       for (let idx = start; idx < lastMediaSequence.length; idx++) {
         let q = lastMediaSequence[idx];
@@ -876,9 +876,9 @@ class HLSVod {
             this.audioSegments[audioGroupId][audioLang] = [];
           }
           if (lastMediaAudioSequence && lastMediaAudioSequence.length > 0) {
-            let start = 1;
+            let start = this.sequenceAlwaysContainNewSegments ? 0 : 1;
             if (lastMediaAudioSequence[0] && lastMediaAudioSequence[0].discontinuity) {
-              start = 2;
+              start = this.sequenceAlwaysContainNewSegments ? 1 : 2;
             }
             for (let idx = start; idx < lastMediaAudioSequence.length; idx++) {
               let q = lastMediaAudioSequence[idx];

@@ -2519,6 +2519,7 @@ describe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
         const mseqs = mockVod.mediaSequenceValues;
         const dseqs = mockVod.discontinuities;
         const lastMseq = mockVod.mediaSequences[mockVod.mediaSequences.length - 1]["segments"][someBW];
+        const last2ndMseq = mockVod.mediaSequences[mockVod.mediaSequences.length - 1 - 1]["segments"][someBW];
         const lastMseqTopAndBottomSegURI = {
           top: lastMseq[0].uri,
           bottom: lastMseq[lastMseq.length - 1].uri,
@@ -2584,23 +2585,43 @@ describe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
         });
         topAndBottomSegURIList.push({
           top: mseq_2[0].uri,
-          bottom: mseq_2[mseq_2.length - 1].uri,
+          bottom: mseq_2[mseq_2.length - 1 - 1].uri,
         });
 
-        const expectedMseqVals = { 0: 1, 1: 3, 2: 5, 3: 7, 4: 11, 5: 12, 6: 13 };
-        const expectedDseqVals = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 1, 5: 2, 6: 2 };
+        const expectedMseqVals = {
+          0: 1,
+          1: 2,
+          2: 3,
+          3: 4,
+          4: 6,
+          5: 8,
+          6: 12,
+          7: 13,
+          8: 14,
+        };
+        const expectedDseqVals = {
+          0: 0,
+          1: 0,
+          2: 0,
+          3: 0,
+          4: 0,
+          5: 0,
+          6: 1,
+          7: 2,
+          8: 2,
+        };
         const expectedTopAndBottomSegURIList = [
           {
+            top: "http://mock.com/level0/seg_43.ts",
+            bottom: "http://mock.com/level0/seg_52.ts",
+          },
+          {
             top: "http://mock.com/level0/seg_44.ts",
+            bottom: "https://maitv-vod.lab.eyevinn.technology/ads/apotea-15s.mp4/level0/2000-00000.ts",
+          },
+          {
+            top: "http://mock.com/level0/seg_45.ts",
             bottom: "https://maitv-vod.lab.eyevinn.technology/ads/apotea-15s.mp4/level0/2000-00001.ts",
-          },
-          {
-            top: "http://mock.com/level0/seg_46.ts",
-            bottom: "http://mock.com/level0/seg_0000.ts",
-          },
-          {
-            top: "http://mock.com/level0/seg_48.ts",
-            bottom: "http://mock.com/level0/seg_0001.ts",
           },
         ];
         expect(mseqs).toEqual(expectedMseqVals);
@@ -2894,7 +2915,7 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
         const topAndBottomSegURIList = [];
         topAndBottomSegURIList.push({
           top: mseq_0_v[0].uri,
-          bottom: mseq_0_v[mseq_0_v.length - 1].uri,
+          bottom: mseq_0_v[mseq_0_v.length - 1 - 1].uri,
         });
         topAndBottomSegURIList.push({
           top: mseq_1_v[0].uri,
@@ -2908,7 +2929,7 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
         const topAndBottomSegURIListAudio = [];
         topAndBottomSegURIListAudio.push({
           top: mseq_0_a[0].uri,
-          bottom: mseq_0_a[mseq_0_a.length - 1].uri,
+          bottom: mseq_0_a[mseq_0_a.length - 1 - 1].uri,
         });
         topAndBottomSegURIListAudio.push({
           top: mseq_1_a[0].uri,
@@ -2922,12 +2943,13 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
         const expectedMseqVals = {
           0: 1,
           1: 2,
-          2: 4,
-          3: 6,
-          4: 8,
-          5: 10,
+          2: 3,
+          3: 5,
+          4: 7,
+          5: 9,
           6: 11,
           7: 12,
+          8: 13,
         };
         const expectedDseqVals = {
           0: 0,
@@ -2935,11 +2957,16 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
           2: 0,
           3: 0,
           4: 0,
-          5: 1,
-          6: 2,
+          5: 0,
+          6: 1,
           7: 2,
+          8: 2,
         };
         const expectedTopAndBottomSegURIList = [
+          {
+            top: "http://mock.com/level0/seg_44.ts",
+            bottom: "http://mock.com/level0/seg_52.ts",
+          },
           {
             top: "http://mock.com/level0/seg_45.ts",
             bottom: "https://maitv-vod.lab.eyevinn.technology/ads/apotea-15s.mp4/level0/2000-00000.ts",
@@ -2948,12 +2975,12 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
             top: "http://mock.com/level0/seg_46.ts",
             bottom: "https://maitv-vod.lab.eyevinn.technology/ads/apotea-15s.mp4/level0/2000-00001.ts",
           },
-          {
-            top: "http://mock.com/level0/seg_48.ts",
-            bottom: "http://mock.com/level0/seg_0000.ts",
-          },
         ];
         const expectedTopAndBottomSegURIListAudio = [
+          {
+            top: "http://mock.com/audio/seg_en_44.ts",
+            bottom: "http://mock.com/audio/seg_en_52.ts",
+          },
           {
             top: "http://mock.com/audio/seg_en_45.ts",
             bottom: "https://maitv-vod.lab.eyevinn.technology/ads/apotea-15s.mp4/audio/en-00000.ts",
@@ -2962,12 +2989,7 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
             top: "http://mock.com/audio/seg_en_46.ts",
             bottom: "https://maitv-vod.lab.eyevinn.technology/ads/apotea-15s.mp4/audio/en-00001.ts",
           },
-          {
-            top: "http://mock.com/audio/seg_en_48.ts",
-            bottom: "http://mock.com/audio/seg_en_0000.ts",
-          },
         ];
-
         expect(mseqs).toEqual(expectedMseqVals);
         expect(dseqs).toEqual(expectedDseqVals);
         expect(topAndBottomSegURIList).toEqual(expectedTopAndBottomSegURIList);
@@ -3261,17 +3283,17 @@ describe("HLSVod delta time and positions", () => {
         let allsegs = mockVod2.segments[bw_];
         const secondVodDuration = getDur(allsegs) - getDur(mockVod2.mediaSequences[0].segments[bw_]) + 3 + 3;
         const expectedPlayheadPositions = [
-          0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 49.5, 53.5, 57.5, 61.5, 65.5, 69.5, 72.5, 76.5, 80.5, 84.5, 88.5,
-          92.5, 96.5, 100.5, 104.5, 108.5, 112.5, 116.5, 120.5, 124.5, 128.5, 132.5, 136.5, 140.5, 146.5, 149.5, 152.5, 158.5, 161.5, 164.5,
-          170.5, 173.5, 176.5, 182.5, 185.5, 188.5, 194.5, 196,
+          0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 52.5, 56.5, 60.5, 64.5, 68.5, 72.5, 75.5, 79.5, 83.5, 87.5, 91.5,
+          95.5, 99.5, 103.5, 107.5, 111.5, 115.5, 119.5, 123.5, 127.5, 131.5, 135.5, 139.5, 143.5, 149.5, 152.5, 155.5, 161.5, 164.5, 167.5,
+          173.5, 176.5, 179.5, 185.5, 188.5, 191.5, 197.5, 199,
         ];
         const expectedDeltaTimes = [
-          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1.5, 3.5, 0, 0, 0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0,
-          0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, -1.5,
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1.5, 3.5, 0, 0, 0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+          0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, -1.5,
         ];
-        const expectedSeqcount = 55;
-        const expectedVodSegmentsCount = 87;
-        const expectedVodDuration = 202;
+        const expectedSeqcount = 56;
+        const expectedVodSegmentsCount = 88;
+        const expectedVodDuration = 205;
         const expectedSeqWithNoNewSegmentCount = 0;
 
         expect(playheadPositions).toEqual(expectedPlayheadPositions);
