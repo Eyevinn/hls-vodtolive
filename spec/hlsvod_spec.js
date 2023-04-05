@@ -2515,31 +2515,29 @@ describe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
       .load(mock1_MasterManifest, mock1_MediaManifest)
       .then(() => {
         const someBW = Object.keys(mockVod.segments)[0];
-        let seq = 1;
         const mseqs = mockVod.mediaSequenceValues;
         const dseqs = mockVod.discontinuities;
         const lastMseq = mockVod.mediaSequences[mockVod.mediaSequences.length - 1]["segments"][someBW];
-        const last2ndMseq = mockVod.mediaSequences[mockVod.mediaSequences.length - 1 - 1]["segments"][someBW];
         const lastMseqTopAndBottomSegURI = {
           top: lastMseq[0].uri,
           bottom: lastMseq[lastMseq.length - 1].uri,
         };
 
         const expectedMseqVals = {
-          0: 1,
-          1: 2,
-          2: 3,
-          3: 4,
-          4: 5,
-          5: 6,
-          6: 7,
-          7: 8,
-          8: 9,
-          9: 10,
-          10: 11,
-          11: 12,
-          12: 13,
-          13: 14,
+          0: 0,
+          1: 1,
+          2: 2,
+          3: 3,
+          4: 4,
+          5: 5,
+          6: 6,
+          7: 7,
+          8: 8,
+          9: 9,
+          10: 10,
+          11: 11,
+          12: 12,
+          13: 13,
         };
         const expectedDseqVals = {
           0: 0,
@@ -2587,17 +2585,16 @@ describe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
           top: mseq_2[0].uri,
           bottom: mseq_2[mseq_2.length - 1 - 1].uri,
         });
-
         const expectedMseqVals = {
-          0: 1,
-          1: 2,
-          2: 3,
-          3: 4,
-          4: 6,
-          5: 8,
-          6: 12,
-          7: 13,
-          8: 14,
+          0: 0,
+          1: 1,
+          2: 2,
+          3: 3,
+          4: 5,
+          5: 7,
+          6: 11,
+          7: 12,
+          8: 13,
         };
         const expectedDseqVals = {
           0: 0,
@@ -2815,38 +2812,38 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
           bottom: lastMseqAudio[lastMseqAudio.length - 1].uri,
         };
         const expectedMseqVals = {
-          0: 1,
-          1: 2,
-          2: 3,
-          3: 4,
-          4: 5,
-          5: 6,
-          6: 7,
-          7: 8,
-          8: 9,
-          9: 10,
-          10: 11,
-          11: 12,
-          12: 13,
-          13: 14,
-          14: 15,
+          0: 0,
+          1: 1,
+          2: 2,
+          3: 3,
+          4: 4,
+          5: 5,
+          6: 6,
+          7: 7,
+          8: 8,
+          9: 9,
+          10: 10,
+          11: 11,
+          12: 12,
+          13: 13,
+          14: 14,
         };
         const expectedMseqValsAudio = {
-          0: 1,
-          1: 2,
-          2: 3,
-          3: 4,
-          4: 5,
-          5: 6,
-          6: 7,
-          7: 8,
-          8: 9,
-          9: 10,
-          10: 11,
-          11: 12,
-          12: 13,
-          13: 14,
-          14: 15,
+          0: 0,
+          1: 1,
+          2: 2,
+          3: 3,
+          4: 4,
+          5: 5,
+          6: 6,
+          7: 7,
+          8: 8,
+          9: 9,
+          10: 10,
+          11: 11,
+          12: 12,
+          13: 13,
+          14: 14,
         };
         const expectedDseqVals = {
           0: 0,
@@ -2941,15 +2938,15 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
         });
 
         const expectedMseqVals = {
-          0: 1,
-          1: 2,
-          2: 3,
-          3: 5,
-          4: 7,
-          5: 9,
-          6: 11,
-          7: 12,
-          8: 13,
+          0: 0,
+          1: 1,
+          2: 2,
+          3: 4,
+          4: 6,
+          5: 8,
+          6: 10,
+          7: 11,
+          8: 12,
         };
         const expectedDseqVals = {
           0: 0,
@@ -3020,6 +3017,7 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
           top: lastMseqAudio[0].uri,
           bottom: lastMseqAudio[lastMseqAudio.length - 1].uri,
         };
+
         // Assert
         const expectedMseqVals = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, 11: 11, 12: 12, 13: 13, 14: 14 };
         const expectedDseqVals = {
