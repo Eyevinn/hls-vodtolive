@@ -1235,11 +1235,6 @@ class HLSVod {
             videoSequences.push(_sequence);
 
             this.mediaSequenceValues[seqIndex] = totalRemovedSegments;
-            if (seqIndex === 0) {
-              // Compensate for hlsvod loaded after another.
-              totalRemovedSegments++;
-              this.mediaSequenceValues[seqIndex] = totalRemovedSegments;
-            }
             this.discontinuities[seqIndex] = totalRemovedDiscTags;
             sequence = _sequence;
             seqIndex++;
@@ -1410,11 +1405,6 @@ class HLSVod {
               audioSequences.push(_audioSequence);
 
               this.mediaSequenceValuesAudio[seqIndex] = totalRemovedSegments;
-              if (seqIndex === 0) {
-                // Compensate for hlsvod loaded after another.
-                totalRemovedSegments++;
-                this.mediaSequenceValuesAudio[seqIndex] = totalRemovedSegments;
-              }
               this.discontinuitiesAudio[seqIndex] = totalRemovedAudioDiscTags;
               audioSequence = _audioSequence;
               seqIndex++;
