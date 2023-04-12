@@ -638,6 +638,31 @@ describe("HLSVod with timeline", () => {
     });
   });
 
+  it("inserts PDT on each segment", (done) => {
+    const now = Date.now();
+    let mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
+    mockVod.load(mockMasterManifest, mockMediaManifest).then(() => {
+      let m3u8 = mockVod.getLiveMediaSequences(0, "2497000", 0);
+      const lines = m3u8.split("\n");
+      expect(lines[6]).toEqual(`#EXT-X-PROGRAM-DATE-TIME:${(new Date(now)).toISOString()}`);
+      expect(lines[9]).toEqual(`#EXT-X-PROGRAM-DATE-TIME:${(new Date(now + 9 * 1000)).toISOString()}`);
+      done();
+    });
+  });
+
+  it("does inserts PDT on each segment if not initiated with unixts", (done) => {
+    const now = Date.now();
+    let mockVod = new HLSVod("http://mock.com/mock.m3u8", [], null);
+    mockVod.load(mockMasterManifest, mockMediaManifest).then(() => {
+      let m3u8 = mockVod.getLiveMediaSequences(0, "2497000", 0);
+      const lines = m3u8.split("\n");
+      expect(lines[6]).toEqual(`#EXTINF:9.000,`);
+      expect(lines[9]).toEqual(`https://tv4play-i.akamaihd.net/i/mp4root/2018-01-26/pid200032972(3953564_,T3MP445,T3MP435,T3MP425,T3MP415,T3MP48,T3MP43,T3MP4130,).mp4.csmil/segment2_2_av.ts`);
+      done();
+    });
+  });
+
+
   it("can handle vod after another vod", (done) => {
     const now = Date.now();
     mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
