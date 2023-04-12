@@ -49,10 +49,6 @@ function segToM3u8(v, i, len, nextSegment, previousSegment) {
       if (v.keys) {
         m3u8 += keysToM3u8(v.keys);
       }  
-      if (v.timelinePosition) {
-        const d = new Date(v.timelinePosition);
-        m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + d.toISOString() + "\n";
-      }
     }
   }
 
@@ -74,7 +70,7 @@ function segToM3u8(v, i, len, nextSegment, previousSegment) {
       const dateRangeAttributes = Object.keys(v.daterange)
         .map((key) => daterangeAttribute(key, v.daterange[key]))
         .join(",");
-      if (v.daterange["start-date"]) {
+      if (!v.timelinePosition && v.daterange["start-date"]) {
         m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + v.daterange["start-date"] + "\n";
       }
       m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
@@ -104,6 +100,10 @@ function segToM3u8(v, i, len, nextSegment, previousSegment) {
       }
     }
     if (v.uri) {
+      if (v.timelinePosition) {
+        const d = new Date(v.timelinePosition);
+        m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + d.toISOString() + "\n";
+      }
       m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
       if (v.byteRange) {
         m3u8 += `#EXT-X-BYTERANGE:${v.byteRange}\n`;
@@ -121,7 +121,7 @@ function segToM3u8(v, i, len, nextSegment, previousSegment) {
       const dateRangeAttributes = Object.keys(v.daterange)
         .map((key) => daterangeAttribute(key, v.daterange[key]))
         .join(",");
-      if (v.daterange["start-date"]) {
+      if (!v.timelinePosition && v.daterange["start-date"]) {
         m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + v.daterange["start-date"] + "\n";
       }
       m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
