@@ -236,8 +236,7 @@ describe("HLSVod CMAF after another CMAF VOD, for demuxed tracks with unmatching
         const playheadPositionsA = mockVod2.getPlayheadPositions("audio").map((i) => i.toFixed(2));
         function mapPositions(listA, listB) {
           // Function simulates how the CE will select mseq index for audio
-          const matches = {};
-          let uu = [];
+          let out = [];
           for (let i = 0; i < listA.length; i++) {
             let closestIndex = null;
             let closestDiff = Infinity;
@@ -249,16 +248,15 @@ describe("HLSVod CMAF after another CMAF VOD, for demuxed tracks with unmatching
               }
             }
             if (closestIndex !== null) {
-              uu.push({
+              out.push({
                 v_i: i,
                 a_i: closestIndex,
                 v_p: listA[i],
                 a_p: listB[closestIndex],
               });
-              matches[listA[i]] = { _a: listB[closestIndex], [`_z_${i}`]: closestIndex };
             }
           }
-          return uu;
+          return out;
         }
 
         const expectedPositionAndIndexMapping = [
