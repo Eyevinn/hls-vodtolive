@@ -71,7 +71,7 @@ function segToM3u8(v, i, len, nextSegment, previousSegment) {
       const dateRangeAttributes = Object.keys(v.daterange)
         .map((key) => daterangeAttribute(key, v.daterange[key]))
         .join(",");
-      if (!v.timelinePosition && v.daterange["start-date"]) {
+      if ((nextSegment && !nextSegment.timelinePosition) && v.daterange["start-date"]) {
         m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + v.daterange["start-date"] + "\n";
       }
       m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
@@ -122,7 +122,7 @@ function segToM3u8(v, i, len, nextSegment, previousSegment) {
       const dateRangeAttributes = Object.keys(v.daterange)
         .map((key) => daterangeAttribute(key, v.daterange[key]))
         .join(",");
-      if (!v.timelinePosition && v.daterange["start-date"]) {
+      if ((nextSegment && !nextSegment.timelinePosition) && v.daterange["start-date"]) {
         m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + v.daterange["start-date"] + "\n";
       }
       m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
