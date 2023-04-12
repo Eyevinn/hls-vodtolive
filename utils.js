@@ -1,5 +1,6 @@
 const fetch = require("node-fetch");
 const { AbortController } = require("abort-controller");
+const debug = require("debug")("hls-vodtolive");
 
 function keysToM3u8(keys) {
   let m3u8 = "";
