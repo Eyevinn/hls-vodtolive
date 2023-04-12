@@ -2610,7 +2610,7 @@ describe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
         const expectedTopAndBottomSegURIList = [
           {
             top: "http://mock.com/level0/seg_43.ts",
-            bottom: "http://mock.com/level0/seg_52.ts",
+            bottom: "http://mock.com/level0/seg_51.ts",
           },
           {
             top: "http://mock.com/level0/seg_44.ts",
@@ -2912,7 +2912,7 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
         const topAndBottomSegURIList = [];
         topAndBottomSegURIList.push({
           top: mseq_0_v[0].uri,
-          bottom: mseq_0_v[mseq_0_v.length - 1 - 1].uri,
+          bottom: mseq_0_v[mseq_0_v.length - 1].uri,
         });
         topAndBottomSegURIList.push({
           top: mseq_1_v[0].uri,
@@ -2926,7 +2926,7 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
         const topAndBottomSegURIListAudio = [];
         topAndBottomSegURIListAudio.push({
           top: mseq_0_a[0].uri,
-          bottom: mseq_0_a[mseq_0_a.length - 1 - 1].uri,
+          bottom: mseq_0_a[mseq_0_a.length - 1].uri,
         });
         topAndBottomSegURIListAudio.push({
           top: mseq_1_a[0].uri,
@@ -3279,19 +3279,19 @@ describe("HLSVod delta time and positions", () => {
           }
         });
         let allsegs = mockVod2.segments[bw_];
-        const secondVodDuration = getDur(allsegs) - getDur(mockVod2.mediaSequences[0].segments[bw_]) + 3 + 3;
+        const secondVodDuration = getDur(allsegs) - getDur(mockVod2.mediaSequences[0].segments[bw_]);
         const expectedPlayheadPositions = [
-          0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 52.5, 56.5, 60.5, 64.5, 68.5, 72.5, 75.5, 79.5, 83.5, 87.5, 91.5,
-          95.5, 99.5, 103.5, 107.5, 111.5, 115.5, 119.5, 123.5, 127.5, 131.5, 135.5, 139.5, 143.5, 149.5, 152.5, 155.5, 161.5, 164.5, 167.5,
-          173.5, 176.5, 179.5, 185.5, 188.5, 191.5, 197.5, 199,
+          0, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 55.5, 59.5, 63.5, 67.5, 71.5, 75.5, 78.5, 82.5, 86.5, 90.5, 94.5,
+          98.5, 102.5, 106.5, 110.5, 114.5, 118.5, 122.5, 126.5, 130.5, 134.5, 138.5, 142.5, 146.5, 152.5, 155.5, 158.5, 164.5, 167.5, 170.5,
+          176.5, 179.5, 182.5, 188.5, 191.5, 194.5, 200.5, 202,
         ];
         const expectedDeltaTimes = [
-          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1.5, 3.5, 0, 0, 0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
-          0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, -1.5,
+          0, 5.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1.5, 3.5, 0, 0, 0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          2, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, -1.5,
         ];
         const expectedSeqcount = 56;
         const expectedVodSegmentsCount = 88;
-        const expectedVodDuration = 205;
+        const expectedVodDuration = 202;
         const expectedSeqWithNoNewSegmentCount = 0;
 
         expect(playheadPositions).toEqual(expectedPlayheadPositions);
