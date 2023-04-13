@@ -1167,7 +1167,7 @@ class HLSVod {
                   if (seg && seg.duration && _bw === bw) {
                     seqDur += seg.duration;
                   }
-                  if (seg.vodtransition) {
+                  if (seg.vodTransition) {
                     loop = false;
                   } else {
                     if (seqDur < this.SEQUENCE_DURATION) {
@@ -1316,7 +1316,7 @@ class HLSVod {
                         first = false;
                         seqDur += seq_seg.duration;
                       }
-                      if (seq_seg.vodtransition) {
+                      if (seq_seg.vodTransition) {
                         loop = false;
                       } else {
                         if (seqDur < this.SEQUENCE_DURATION) {
