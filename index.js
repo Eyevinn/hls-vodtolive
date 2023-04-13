@@ -6,6 +6,14 @@ const verbose = require("debug")("hls-vodtolive-verbose");
 const { findIndexReversed, fetchWithRetry, urlResolve, segToM3u8 } = require("./utils.js");
 
 const timer = (ms) => new Promise((res) => setTimeout(res, ms));
+const findBottomSegItem = (arr) => {
+  for (let i = arr.length - 1; i >= 0; i--) {
+    if (arr[i].hasOwnProperty('duration')) {
+      return arr[i];
+    }
+  }
+  return null;
+}
 
 class HLSVod {
   /**
@@ -836,6 +844,13 @@ class HLSVod {
           console.error(`Failed to get segment from lastMediaSequence[${idx}]`);
           console.error(lastMediaSequence);
         }
+        if (q.vodtransition) {
+          // Remove any vod disc boarders from prev vod
+          q = {
+            discontinuity: q.discontinuity,
+            daterange: q.daterange,
+          }
+        }
         this.segments[destBw].push(q);
       }
     }
@@ -846,6 +861,7 @@ class HLSVod {
     this.segments[destBw].push({
       discontinuity: true,
       daterange: this.rangeMetadata ? this.rangeMetadata : null,
+      vodtransition: true,
     });
   }
 
@@ -888,12 +904,20 @@ class HLSVod {
             }
             for (let idx = start; idx < lastMediaAudioSequence.length; idx++) {
               let q = lastMediaAudioSequence[idx];
+              if (q.vodtransition) {
+                // Remove any vod disc boarders from prev vod
+                q = {
+                  discontinuity: q.discontinuity,
+                  daterange: q.daterange,
+                }
+              }
               this.audioSegments[audioGroupId][audioLang].push(q);
             }
           }
           this.audioSegments[audioGroupId][audioLang].push({
             discontinuity: true,
             daterange: this.rangeMetadata ? this.rangeMetadata : null,
+            vodtransition: true
           });
         }
       }
@@ -1149,7 +1173,7 @@ class HLSVod {
                   if (seg && seg.duration && _bw === bw) {
                     seqDur += seg.duration;
                   }
-                  if (Object.keys(seg).join("-") == "discontinuity-daterange") {
+                  if (seg.vodtransition) {
                     loop = false;
                   } else {
                     if (seqDur < this.SEQUENCE_DURATION) {
@@ -1301,7 +1325,7 @@ class HLSVod {
                         first = false;
                         seqDur += seq_seg.duration;
                       }
-                      if (Object.keys(seq_seg).join("-") == "discontinuity-daterange") {
+                      if (seq_seg.vodtransition) {
                         loop = false;
                       } else {
                         if (seqDur < this.SEQUENCE_DURATION) {
@@ -1477,7 +1501,8 @@ class HLSVod {
           }
 
           const bwIdx = Object.keys(mseq.segments)[0];
-          if (mseq.segments[bwIdx] && mseq.segments[bwIdx][0] && mseq.segments[bwIdx][0].discontinuity) {
+          const videoSegments = mseq.segments[bwIdx];
+          if (videoSegments && videoSegments[0] && videoSegments[0].discontinuity) {
             debug(`Discontinuity in first segment of media seq ${seqNo}`);
             discSeqNo++;
             debug(`Increasing discont sequence ${discSeqNo}`);
@@ -1490,6 +1515,8 @@ class HLSVod {
           }
           if (this.sequenceAlwaysContainNewSegments) {
             if (seqNo > 0) {
+              const prev_mseq = this.mediaSequences[seqNo - 1].segments[bwIdx];
+              prevLastSegment = findBottomSegItem(prev_mseq);
               let tpi = 0; // Total Position Increment (total newly added content in seconds)
               const prevLastSegIdx = findIndexReversed(mseq.segments[bwIdx], (seg) => {
                 if (seg.byteRange) {
@@ -1527,39 +1554,12 @@ class HLSVod {
                 prevLastSegment = lastSegment;
               }
             } else {
-              if (mseq.segments[bwIdx]) {
-                let lastSegment = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1];
-                if (lastSegment && lastSegment.discontinuity) {
-                  lastSegment = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2];
-                }
+              if (videoSegments) {
+                let lastSegment = findBottomSegItem(videoSegments);
                 if (lastSegment && lastSegment.uri) {
                   prevLastSegment = lastSegment;
                 }
                 lastPositionIncrement = lastSegment.duration;
-                const size = mseq.segments[bwIdx].length;
-                let bottomDiscIdx = null;
-                for (let i = size - 1; i > 0; i--) {
-                  let seg = mseq.segments[bwIdx][i];
-                  if (seg.discontinuity) {
-                    bottomDiscIdx = i;
-                    break;
-                  }
-                }
-                if (bottomDiscIdx !== null) {
-                  for (let i = bottomDiscIdx; i < size; i++) {
-                    let seg = mseq.segments[bwIdx][i];
-                    if (Object.keys(seg).join("-") == "discontinuity-daterange") {
-                      firstSeqTotalDurNewSegsVideo += seg.duration;
-                    }
-                  }
-                }
-                if (firstSeqTotalDurNewSegsVideo > 0) {
-                  this.deltaTimes[0] = {
-                    interval: 0,
-                    position: firstSeqTotalDurNewSegsVideo,
-                  };
-                  lastPosition = firstSeqTotalDurNewSegsVideo;
-                }
               }
             }
           } else {
@@ -1659,38 +1659,11 @@ class HLSVod {
                 }
               } else {
                 if (audioSegment) {
-                  let lastSegment = audioSegment[audioSegment.length - 1];
-                  if (lastSegment && lastSegment.discontinuity) {
-                    lastSegment = audioSegment[audioSegment.length - 2];
-                  }
+                  let lastSegment = findBottomSegItem(audioSegment);
                   if (lastSegment && lastSegment.uri) {
                     prevLastSegment = lastSegment;
                   }
                   lastPositionIncrement = lastSegment.duration;
-                }
-                const size = audioSegment.length;
-                let bottomDiscIdx = null;
-                for (let i = size - 1; i > 0; i--) {
-                  let seg = audioSegment[i];
-                  if (Object.keys(seg).join("-") == "discontinuity-daterange") {
-                    bottomDiscIdx = i;
-                    break;
-                  }
-                }
-                if (bottomDiscIdx !== null) {
-                  for (let i = bottomDiscIdx; i < size; i++) {
-                    let seg = audioSegment[i];
-                    if (seg.duration) {
-                      firstSeqTotalDurNewSegsAudio += seg.duration;
-                    }
-                  }
-                }
-                if (firstSeqTotalDurNewSegsAudio > 0) {
-                  this.deltaTimesAudio[0] = {
-                    interval: 0,
-                    position: firstSeqTotalDurNewSegsAudio,
-                  };
-                  lastPosition = firstSeqTotalDurNewSegsAudio;
                 }
               }
             } else {
