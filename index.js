@@ -725,55 +725,6 @@ class HLSVod {
   }
 
   /**
-   * Gets a hls/makes m3u8-file with all of the correct audio segments
-   * belonging to a given groupID & language for a particular sequence.
-   */
-  getLiveMediaAudioSequences(offset, audioGroupId, audioLanguage, seqIdx, discOffset, padding, forceTargetDuration) {
-    debug(`Get live audio media sequence [${seqIdx}] for audioGroupId=${audioGroupId}`);
-    const mediaSeqAudioSegments = this.getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx);
-
-    // # If failed to find segments for given language,
-    // # return null rather than an error.
-    if (!mediaSeqAudioSegments) {
-      return null;
-    }
-
-    let targetDuration = this._determineTargetDuration(mediaSeqAudioSegments);
-    if (padding) {
-      targetDuration += padding;
-    }
-    if (forceTargetDuration) {
-      targetDuration = forceTargetDuration;
-    }
-
-    let m3u8 = "#EXTM3U\n";
-    m3u8 += "#EXT-X-VERSION:6\n";
-    if (this.header) {
-      m3u8 += this.header;
-    }
-    const seqStep = this.mediaSequenceValuesAudio[seqIdx];
-    m3u8 += "#EXT-X-INDEPENDENT-SEGMENTS\n";
-    m3u8 += "#EXT-X-TARGETDURATION:" + targetDuration + "\n";
-    m3u8 += "#EXT-X-MEDIA-SEQUENCE:" + (offset + seqStep) + "\n";
-    let discInOffset = discOffset;
-    if (discInOffset == null) {
-      discInOffset = 0;
-    }
-    m3u8 += "#EXT-X-DISCONTINUITY-SEQUENCE:" + (discInOffset + this.discontinuitiesAudio[seqIdx]) + "\n";
-
-    let previousSegment = null;
-    for (let i = 0; i < mediaSeqAudioSegments.length; i++) {
-      const v = mediaSeqAudioSegments[i];
-      if (v) {
-        m3u8 += segToM3u8(v, i, mediaSeqAudioSegments.length, mediaSeqAudioSegments[i + 1], previousSegment);
-        previousSegment = v;
-      }
-    }
-
-    return m3u8;
-  }
-
-  /**
    * Get the usage profile for this VOD
    */
   getUsageProfiles() {
@@ -866,6 +817,7 @@ class HLSVod {
       sourceBw = destBw;
     }
     const lastMediaSequence = this.previousVod.getLiveMediaSequenceSegments(previousVodSeqCount - 1)[sourceBw];
+
     if (!lastMediaSequence || lastMediaSequence === undefined) {
       // should not happen, debug
       console.error(`Failed to get lastMediaSequence: previousVodSeqCount=${previousVodSeqCount}, bw=${sourceBw}`);
@@ -886,7 +838,7 @@ class HLSVod {
           console.error(`Failed to get segment from lastMediaSequence[${idx}]`);
           console.error(lastMediaSequence);
         }
-        if (q.vodtransition) {
+        if (q.vodTransition) {
           // Remove any vod disc boarders from prev vod
           q = {
             discontinuity: q.discontinuity,
@@ -903,7 +855,7 @@ class HLSVod {
     this.segments[destBw].push({
       discontinuity: true,
       daterange: this.rangeMetadata ? this.rangeMetadata : null,
-      vodtransition: true,
+      vodTransition: true,
     });
   }
 
@@ -946,7 +898,7 @@ class HLSVod {
             }
             for (let idx = start; idx < lastMediaAudioSequence.length; idx++) {
               let q = lastMediaAudioSequence[idx];
-              if (q.vodtransition) {
+              if (q.vodTransition) {
                 // Remove any vod disc boarders from prev vod
                 q = {
                   discontinuity: q.discontinuity,
@@ -959,7 +911,7 @@ class HLSVod {
           this.audioSegments[audioGroupId][audioLang].push({
             discontinuity: true,
             daterange: this.rangeMetadata ? this.rangeMetadata : null,
-            vodtransition: true
+            vodTransition: true
           });
         }
       }
@@ -1226,11 +1178,8 @@ class HLSVod {
                     }
                   }
                 });
-                if (seqDur < this.SEQUENCE_DURATION) {
+                if (loop && seqDur < this.SEQUENCE_DURATION) {
                   segIdxVideo++;
-                }
-                if (!loop) {
-                  segIdxVideo--;
                 }
               }
             } else {
@@ -1379,11 +1328,8 @@ class HLSVod {
                       }
                     });
                   });
-                  if (seqDur < this.SEQUENCE_DURATION) {
+                  if (loop && seqDur < this.SEQUENCE_DURATION) {
                     segIdxAudio++;
-                  }
-                  if (!loop) {
-                    segIdxAudio--;
                   }
                 }
               } else {
@@ -1536,7 +1482,6 @@ class HLSVod {
         let lastPosition = 0;
         let lastPositionIncrement = 0;
         for (let seqNo = 0; seqNo < this.videoSequencesCount; seqNo++) {
-          let firstSeqTotalDurNewSegsVideo = 0;
           const mseq = this.mediaSequences[seqNo];
           if (!Object.keys(mseq.segments).length) {
             continue;
@@ -1557,8 +1502,6 @@ class HLSVod {
           }
           if (this.sequenceAlwaysContainNewSegments) {
             if (seqNo > 0) {
-              const prev_mseq = this.mediaSequences[seqNo - 1].segments[bwIdx];
-              prevLastSegment = findBottomSegItem(prev_mseq);
               let tpi = 0; // Total Position Increment (total newly added content in seconds)
               const prevLastSegIdx = findIndexReversed(mseq.segments[bwIdx], (seg) => {
                 if (seg.byteRange) {
@@ -1637,7 +1580,6 @@ class HLSVod {
           });
           let lastPosition = 0;
           let lastPositionIncrement = 0;
-          let firstSeqTotalDurNewSegsAudio = 0;
           for (let seqNo = 0; seqNo < this.audioSequencesCount; seqNo++) {
             const mseq = this.mediaSequences[seqNo];
             const agid = Object.keys(mseq.audioSegments)[0];
@@ -1863,7 +1805,7 @@ class HLSVod {
               }
               this.mediaStartExecessTime = Math.abs(remain);
             }
-
+            
             for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
               if (this.splices[spliceIdx]) {
                 nextSplicePosition = this.splices[spliceIdx].position;
