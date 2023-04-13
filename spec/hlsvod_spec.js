@@ -59,6 +59,46 @@ describe("HLSVod standalone", () => {
     });
   });
 
+  it("mesures serialized data size (with targetProfiles)", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod2 = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { targetProfiles: [354000, 819000] })
+    mockVod.load(mockMasterManifestNoUri, mockMediaManifest3, mockAudioManifest).then(() => {
+      mockVod2.load(mockMasterManifestNoUri, mockMediaManifest3, mockAudioManifest).then(() => {
+        const serialized = mockVod.toJSON()
+        const size = Buffer.byteLength(JSON.stringify(serialized))
+        expect(size).toBe(134844);
+        const serialized2 = mockVod2.toJSON()
+        const size2 = Buffer.byteLength(JSON.stringify(serialized2))
+        expect(size2).toBe(68258);
+        expect(size).not.toBe(size2)
+        done();
+      });
+    });
+  });
+
+  it("mesures serialized data size (store previous)", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod2 = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { storePreviousVod: false })
+    mockVod3 = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { storePreviousVod: true })
+    mockVod.load(mockMasterManifestNoUri, mockMediaManifest3, mockAudioManifest).then(() => {
+      mockVod2.loadAfter(mockVod, mockMasterManifestNoUri, mockMediaManifest3, mockAudioManifest).then(() => {
+        mockVod3.loadAfter(mockVod, mockMasterManifestNoUri, mockMediaManifest3, mockAudioManifest).then(() => {
+          const serialized = mockVod.toJSON()
+          const size = Buffer.byteLength(JSON.stringify(serialized))
+          expect(size).toBe(134844);
+          const serialized2 = mockVod2.toJSON()
+          const size2 = Buffer.byteLength(JSON.stringify(serialized2))
+          expect(size2).toBe(477520);
+          const serialized3 = mockVod3.toJSON()
+          const size3 = Buffer.byteLength(JSON.stringify(serialized3))
+          expect(size3).toBe(633554);
+          expect(size2).not.toBe(size3)
+          done();
+        });
+      });
+    });
+  });
+
   it("return the correct loaded segments", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8");
     mockVod.load(mockMasterManifest, mockMediaManifest).then(() => {
