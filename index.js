@@ -1811,6 +1811,8 @@ class HLSVod {
               }
               this.mediaStartExecessTime = Math.abs(remain);
             }
+
+            let byteRangeOffset = 0;
             
             for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
               if (this.splices[spliceIdx]) {
@@ -1856,7 +1858,12 @@ class HLSVod {
                 });
               }
               if (playlistItem.get("byteRange")) {
-                byteRange = playlistItem.get("byteRange");
+                let [_, r, o] = playlistItem.get("byteRange").match(/^(\d+)@*(\d*)$/);
+                if (!o) {
+                  o = byteRangeOffset;
+                }
+                byteRangeOffset = parseInt(r) + parseInt(o);
+                byteRange = `${r}@${o}`;
               }
               if (playlistItem.get("keys")) {
                 keys = playlistItem.get("keys");
@@ -2077,6 +2084,8 @@ class HLSVod {
             baseUrl = m[1] + "/";
           }
 
+          let byteRangeOffset = 0;
+          
           if (this.audioSegments[groupId][language]) {
             for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
               const playlistItem = m3u.items.PlaylistItem[i];
@@ -2105,7 +2114,12 @@ class HLSVod {
                 });
               }
               if (playlistItem.get("byteRange")) {
-                byteRange = playlistItem.get("byteRange");
+                let [_, r, o] = playlistItem.get("byteRange").match(/^(\d+)@*(\d*)$/);
+                if (!o) {
+                  o = byteRangeOffset;
+                }
+                byteRangeOffset = parseInt(r) + parseInt(o);
+                byteRange = `${r}@${o}`;
               }
               if (playlistItem.get("keys")) {
                 keys = playlistItem.get("keys");
