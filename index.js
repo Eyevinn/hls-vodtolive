@@ -930,6 +930,12 @@ class HLSVod {
       toRemove.map((bw) => {
         delete this.segments[bw];
       });
+      // Compare Video Variant Lengths; If different, abort the vod load
+      const segListSizes = Object.values(this.segments).map(arr => arr.length);
+      const uniqueSizes = new Set(segListSizes); 
+      if (uniqueSizes.size !== 1) {
+        throw new Error("The VOD loading was rejected because it contains video variants with different segment counts");
+      }
       resolve();
     });
   }
