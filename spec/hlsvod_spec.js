@@ -15,6 +15,8 @@ describe("HLSVod standalone", () => {
   let mockMasterManifestNoUri;
   let mockAudioManifest;
   let mockMediaManifest3;
+  let mockMasterManifest4;
+  let mockMediaManifest4;
   beforeEach(() => {
     mockMasterManifest = function () {
       return fs.createReadStream("testvectors/hls1/master.m3u8");
@@ -49,8 +51,15 @@ describe("HLSVod standalone", () => {
     mockMediaManifest3 = function (bandwidth) {
       return fs.createReadStream("testvectors/hls7/video-241929.m3u8");
     };
-  });
 
+    mockMasterManifest4 = function () {
+      return fs.createReadStream("testvectors/hls17/master.m3u8");
+    };
+    mockMediaManifest4 = function (bandwidth) {
+      return fs.createReadStream("testvectors/hls17/" + bandwidth + ".m3u8");
+    };
+  });
+  
   it("return the correct vod URI", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8");
     mockVod.load(mockMasterManifest, mockMediaManifest).then(() => {
@@ -231,6 +240,19 @@ describe("HLSVod standalone", () => {
         );
         done();
       });
+  });
+
+  it("should fail loading a VOD with different lengths of video segments", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod.load(mockMasterManifest4, mockMediaManifest4)
+    .then(() => {
+      expect(mockVod.getVodUri()).toBe("http://mock.com/mock.m3u8");
+      done();
+    })
+    .catch((err) => {
+      expect(err.toString()).toBe("Error: The VOD loading was rejected because it contains video variants with different segment counts");
+      done();
+    })
   });
 });
 
