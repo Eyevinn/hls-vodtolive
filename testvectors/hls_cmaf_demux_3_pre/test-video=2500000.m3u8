@@ -1,0 +1,130 @@
+#EXTM3U
+#EXT-X-VERSION:6
+## Created with Unified Streaming Platform (version=1.11.23-28141)
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXT-X-MEDIA-SEQUENCE:1
+#EXT-X-INDEPENDENT-SEGMENTS
+#EXT-X-TARGETDURATION:4
+#USP-X-TIMESTAMP-MAP:MPEGTS=900000,LOCAL=1970-01-01T00:00:00Z
+#EXT-X-MAP:URI="https://mock.mock.com/trailers/bumpers/tv4_spring/video=4000000.m4s"
+#EXT-X-DISCONTINUITY
+#EXT-X-CUE-OUT:DURATION=136
+#EXTINF:3.0000, no desc
+https://mock.mock.com/trailers/bumpers/tv4_spring/video=4000000-1.m4s
+#EXT-X-MAP:URI="https://mock.mock.com/63f747ddff1f927121efd807/video=4000000.m4s"
+#EXT-X-DISCONTINUITY
+#EXTINF:3.8400, no desc
+https://mock.mock.com/63f747ddff1f927121efd807/video=4000000-1.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/63f747ddff1f927121efd807/video=4000000-2.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/63f747ddff1f927121efd807/video=4000000-3.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/63f747ddff1f927121efd807/video=4000000-4.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/63f747ddff1f927121efd807/video=4000000-5.m4s
+#EXTINF:0.8000, no desc
+https://mock.mock.com/63f747ddff1f927121efd807/video=4000000-6.m4s
+#EXT-X-MAP:URI="https://mock.mock.com/64356f8a79fa8c002b463840/video=4000000.m4s"
+#EXT-X-DISCONTINUITY
+#EXTINF:3.8400, no desc
+https://mock.mock.com/64356f8a79fa8c002b463840/video=4000000-1.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/64356f8a79fa8c002b463840/video=4000000-2.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/64356f8a79fa8c002b463840/video=4000000-3.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/64356f8a79fa8c002b463840/video=4000000-4.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/64356f8a79fa8c002b463840/video=4000000-5.m4s
+#EXTINF:0.8000, no desc
+https://mock.mock.com/64356f8a79fa8c002b463840/video=4000000-6.m4s
+#EXT-X-MAP:URI="https://mock.mock.com/6422eda179fa8c002b46383e/video=4000000.m4s"
+#EXT-X-DISCONTINUITY
+#EXTINF:3.8400, no desc
+https://mock.mock.com/6422eda179fa8c002b46383e/video=4000000-1.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/6422eda179fa8c002b46383e/video=4000000-2.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/6422eda179fa8c002b46383e/video=4000000-3.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/6422eda179fa8c002b46383e/video=4000000-4.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/6422eda179fa8c002b46383e/video=4000000-5.m4s
+#EXTINF:0.8000, no desc
+https://mock.mock.com/6422eda179fa8c002b46383e/video=4000000-6.m4s
+#EXT-X-MAP:URI="https://mock.mock.com/643816c955ae5c257ae8a7e5/video=4000000.m4s"
+#EXT-X-DISCONTINUITY
+#EXTINF:3.8400, no desc
+https://mock.mock.com/643816c955ae5c257ae8a7e5/video=4000000-1.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/643816c955ae5c257ae8a7e5/video=4000000-2.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/643816c955ae5c257ae8a7e5/video=4000000-3.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/643816c955ae5c257ae8a7e5/video=4000000-4.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/643816c955ae5c257ae8a7e5/video=4000000-5.m4s
+#EXTINF:0.8000, no desc
+https://mock.mock.com/643816c955ae5c257ae8a7e5/video=4000000-6.m4s
+#EXT-X-MAP:URI="https://mock.mock.com/642c198206898a2579f8ff98/video=4000000.m4s"
+#EXT-X-DISCONTINUITY
+#EXTINF:3.8400, no desc
+https://mock.mock.com/642c198206898a2579f8ff98/video=4000000-1.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/642c198206898a2579f8ff98/video=4000000-2.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/642c198206898a2579f8ff98/video=4000000-3.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/642c198206898a2579f8ff98/video=4000000-4.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/642c198206898a2579f8ff98/video=4000000-5.m4s
+#EXTINF:0.8000, no desc
+https://mock.mock.com/642c198206898a2579f8ff98/video=4000000-6.m4s
+#EXT-X-MAP:URI="https://mock.mock.com/6425819c553151002a68c335/video=4000000.m4s"
+#EXT-X-DISCONTINUITY
+#EXTINF:3.8400, no desc
+https://mock.mock.com/6425819c553151002a68c335/video=4000000-1.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/6425819c553151002a68c335/video=4000000-2.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/6425819c553151002a68c335/video=4000000-3.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/6425819c553151002a68c335/video=4000000-4.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/6425819c553151002a68c335/video=4000000-5.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/6425819c553151002a68c335/video=4000000-6.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/6425819c553151002a68c335/video=4000000-7.m4s
+#EXTINF:3.1200, no desc
+https://mock.mock.com/6425819c553151002a68c335/video=4000000-8.m4s
+#EXT-X-MAP:URI="https://mock.mock.com/trailers/bumpers/tv4_spring/video=4000000.m4s"
+#EXT-X-DISCONTINUITY
+#EXTINF:3.0000, no desc
+https://mock.mock.com/trailers/bumpers/tv4_spring/video=4000000-1.m4s
+#EXT-X-MAP:URI="https://mock.mock.com/hls/20345550-video=6500000.m4s"
+#EXT-X-DISCONTINUITY
+#EXT-X-CUE-IN
+#EXT-X-PROGRAM-DATE-TIME:1970-01-01T00:00:00Z
+#EXTINF:3.8400, no desc
+https://mock.mock.com/hls/20345550-video=6500000-1.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/hls/20345550-video=6500000-2.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/hls/20345550-video=6500000-3.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/hls/20345550-video=6500000-4.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/hls/20345550-video=6500000-5.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/hls/20345550-video=6500000-6.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/hls/20345550-video=6500000-7.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/hls/20345550-video=6500000-8.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/hls/20345550-video=6500000-9.m4s
+#EXTINF:3.8400, no desc
+https://mock.mock.com/hls/20345550-video=6500000-10.m4s
+#EXT-X-ENDLIST

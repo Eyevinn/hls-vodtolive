@@ -2050,16 +2050,17 @@ class HLSVod {
           let keys = undefined;
           // Remove segments in the beginning if we have a start time offset
           if (this.startTimeOffset != null) {
-            let remain = this._similarSegItemDuration(m3u.items.PlaylistItem)
+            const sameLength = this._similarSegItemDuration(m3u.items.PlaylistItem);
+            let remain = sameLength
               ? this.startTimeOffset
               : this.startTimeOffset + this.mediaStartExecessTime;
 
-            let count = 0;
             while (remain > 0) {
               let removed;
-              if (m3u.items.PlaylistItem[0].get("duration") * 1000 < remain) {
+              if (sameLength) {
                 removed = m3u.items.PlaylistItem.shift();
-                count++;
+              } else if (m3u.items.PlaylistItem[0] && m3u.items.PlaylistItem[0].get("duration") * 1000 < remain) {
+                removed = m3u.items.PlaylistItem.shift();
               }
               if (!removed) {
                 remain = 0;
