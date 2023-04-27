@@ -181,6 +181,9 @@ describe("HLSVod CMAF after another CMAF VOD, for demuxed tracks with unmatching
   let mockMasterManifest2;
   let mockMediaManifest2;
   let mockAudioManifest2;
+  let mockMasterManifest3;
+  let mockMediaManifest3;
+  let mockAudioManifest3;
   beforeEach(() => {
     mockMasterManifest = function () {
       return fs.createReadStream("testvectors/hls_cmaf_demux_1/master.m3u8");
@@ -204,6 +207,32 @@ describe("HLSVod CMAF after another CMAF VOD, for demuxed tracks with unmatching
     mockAudioManifest2 = function () {
       return fs.createReadStream("testvectors/hls_cmaf_demux_2_pre/test-audio=256000.m3u8");
     };
+    // Mock 3
+    mockMasterManifest3 = function () {
+      return fs.createReadStream("testvectors/hls_cmaf_demux_3_pre/master.m3u8");
+    };
+    mockMediaManifest3 = function () {
+      return fs.createReadStream("testvectors/hls_cmaf_demux_3_pre/test-video=2500000.m3u8");
+    };
+    mockAudioManifest3 = function () {
+      return fs.createReadStream("testvectors/hls_cmaf_demux_3_pre/test-audio=256000.m3u8");
+    };
+  });
+
+  it("handles start time offset correctly when 47 seconds", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 47, null, { sequenceAlwaysContainNewSegments: 1, forcedDemuxMode: 1 });
+    mockVod.load(mockMasterManifest3, mockMediaManifest3, mockAudioManifest3).then(() => {
+      let m1 = mockVod.getLiveMediaSequences(0, "1120000", 0);
+      let m2 = mockVod.getLiveMediaAudioSequences(0, "aac", "en", 0);
+      const linesVideo = m1.split("\n");
+      const linesAudio = m2.split("\n");
+      expect(linesVideo[6]).toBe(`#EXT-X-MAP:URI="https://mock.mock.com/63f747ddff1f927121efd807/video=4000000.m4s"`);
+      expect(linesVideo[8]).toBe(`https://mock.mock.com/63f747ddff1f927121efd807/video=4000000-1.m4s`);
+      expect(linesAudio[6]).not.toBe(`#EXT-X-MAP:URI="https://mock.mock.com/trailers/bumpers/tv4_spring/audio=128000.m4s"`);
+      expect(linesAudio[6]).toBe(`#EXT-X-MAP:URI="https://mock.mock.com/63f747ddff1f927121efd807/audio=128000.m4s"`);
+      expect(linesAudio[8]).toBe(`https://mock.mock.com/63f747ddff1f927121efd807/audio=128000-1.m4s`);
+      done();
+    });
   });
 
   it("and with 'sequenceAlwaysContainNewSegments=true' will have correct positions", (done) => {
