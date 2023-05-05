@@ -192,11 +192,21 @@ function findIndexReversed(arr, fn) {
 };
 
 
+const findBottomSegItem = (arr) => {
+  for (let i = arr.length - 1; i >= 0; i--) {
+    if (arr[i].hasOwnProperty('duration')) {
+      return arr[i];
+    }
+  }
+  return null;
+}
+
 module.exports = {
   daterangeAttribute,
   keysToM3u8,
   segToM3u8,
   urlResolve,
   fetchWithRetry,
-  findIndexReversed
+  findIndexReversed,
+  findBottomSegItem
 }

@@ -2803,6 +2803,9 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
   let mock2_MasterManifest;
   let mock2_MediaManifest;
   let mock2_AudioManifest;
+  let mock3_MasterManifest;
+  let mock3_MediaManifest;
+  let mock3_AudioManifest;
 
   beforeEach(() => {
     mock1_MasterManifest = function () {
@@ -2832,6 +2835,47 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
         return fs.createReadStream(`testvectors/hls_always_1_demux/${groupId}.m3u8`);
       }
     };
+
+    mock3_MasterManifest = function () {
+      return fs.createReadStream("testvectors/hls_multiaudiotracks4/master.m3u8");
+    };
+    mock3_MediaManifest = function (bandwidth) {
+      return fs.createReadStream("testvectors/hls_multiaudiotracks4/video-" + bandwidth + ".m3u8");
+    };
+    mock3_AudioManifest = function (groupId, lang) {
+      if (groupId && lang) {
+        return fs.createReadStream(`testvectors/hls_multiaudiotracks4/audio_${groupId}-${lang}.m3u8`);
+      } else {
+        return fs.createReadStream(`testvectors/hls_multiaudiotracks4/${groupId}.m3u8`);
+      }
+    };
+
+  });
+
+  xit("should fail loading a VOD with different lengths of audio segments", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: 1 });
+    mockVod
+      .load(mock4_MasterManifest, mock4_MediaManifest, mock4_AudioManifest)
+      .then(() => {
+        expect(mockVod.getVodUri()).toBe("http://mock.com/mock.m3u8");
+        done();
+      })
+      .catch((err) => {
+        expect(err.toString()).toBe("Error: The VOD loading was rejected because it contains audio variants with different segment counts");
+        done();
+      });
+  });
+
+  it("set to true, will create 60s Audio Media Sequences when multiple groupIds", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: 1 });
+    mockVod.load(mock3_MasterManifest, mock3_MediaManifest, mock3_AudioManifest).then(() => {
+      let audioSeqSegs1 = mockVod.getLiveMediaSequenceAudioSegments("stereo", "en", 0);
+      let videoSeqSegs1 = mockVod.getLiveMediaSequenceSegments(0)["244000"];
+      expect(videoSeqSegs1).not.toBeNull();
+      expect(audioSeqSegs1).not.toBeNull();
+      expect(videoSeqSegs1.length).toBe(audioSeqSegs1.length);
+      done();
+    });
   });
 
   it("set to true, will never create media sequences that have the same last segment", (done) => {
