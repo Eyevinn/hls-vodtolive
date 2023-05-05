@@ -2,18 +2,7 @@ const m3u8 = require("@eyevinn/m3u8");
 const { deserialize } = require("v8");
 const debug = require("debug")("hls-vodtolive");
 const verbose = require("debug")("hls-vodtolive-verbose");
-
-const { findIndexReversed, fetchWithRetry, urlResolve, segToM3u8 } = require("./utils.js");
-
-const timer = (ms) => new Promise((res) => setTimeout(res, ms));
-const findBottomSegItem = (arr) => {
-  for (let i = arr.length - 1; i >= 0; i--) {
-    if (arr[i].hasOwnProperty('duration')) {
-      return arr[i];
-    }
-  }
-  return null;
-}
+const { findIndexReversed, fetchWithRetry, urlResolve, segToM3u8, findBottomSegItem } = require("./utils.js");
 
 class HLSVod {
   /**
@@ -315,7 +304,7 @@ class HLSVod {
           debug("Codec to Audio Group Id mapping");
           debug(this.audioCodecsMap);
 
-          return Promise.all(audioManifestPromises)
+          return Promise.all(audioManifestPromises);
         }).then(this._cleanupUnused.bind(this))
           .then(this._createMediaSequences.bind(this))
           .then(resolve)
@@ -931,8 +920,8 @@ class HLSVod {
         delete this.segments[bw];
       });
       // Compare Video Variant Lengths; If different, abort the vod load
-      const segListSizes = Object.values(this.segments).map(arr => arr.length);
-      const uniqueSizes = new Set(segListSizes); 
+      const segListSizes = Object.values(this.segments).map((arr) => arr.length);
+      const uniqueSizes = new Set(segListSizes);
       if (uniqueSizes.size !== 1) {
         throw new Error("The VOD loading was rejected because it contains video variants with different segment counts");
       }
@@ -1306,13 +1295,13 @@ class HLSVod {
                 let seqDur = 0;
                 let loop = true;
                 while (loop && seqDur < this.SEQUENCE_DURATION && segIdxAudio < SIZEAUDIO) {
+                  let first = true;
                   const audioGroupIds = Object.keys(this.audioSegments);
                   audioGroupIds.forEach((groupId) => {
                     if (!_audioSequence[groupId]) {
                       _audioSequence[groupId] = {};
                     }
                     const audioLangs = Object.keys(this.audioSegments[groupId]);
-                    let first = true;
                     audioLangs.forEach((lang) => {
                       if (!_audioSequence[groupId][lang]) {
                         _audioSequence[groupId][lang] = [];
