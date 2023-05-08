@@ -8,6 +8,7 @@
     "doc": "jsdoc2md index.js > API.md",
     "prebuild": "npm test",
     "build": "npm run doc",
+    "version:rc": "npm version premajor --preid=rc",
     "version": "npm run build && git add API.md",
     "postversion": "git push && git push --tags",
     "coverage": "nyc npm test && nyc report",
