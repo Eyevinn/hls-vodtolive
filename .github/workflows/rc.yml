@@ -1,8 +1,8 @@
-name: Publish
+name: Publish release candidate
   
 on:
   release:
-    types: [published]
+    types: [prereleased]
 
 jobs:
   build:
@@ -15,6 +15,6 @@ jobs:
           node-version: 16
           registry-url: https://registry.npmjs.org/
       - run: npm install
-      - run: npm publish --access public
+      - run: npm publish --access public --tag rc
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
