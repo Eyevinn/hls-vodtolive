@@ -372,7 +372,9 @@ class HLSVod {
                 }
               }
               if (streamItem.get("subtitles")) {
-                subtitleGroups[this.DEFAULT_SUBTITLE_GROUP_ID] = {};
+                if (!subtitleGroups[this.DEFAULT_SUBTITLE_GROUP_ID]) {
+                  subtitleGroups[this.DEFAULT_SUBTITLE_GROUP_ID] = {};
+                }
 
                 let subtitleGroupId = streamItem.get("subtitles");
                 let subtitleGroupItems = m3u.items.MediaItem.filter((item) => {
