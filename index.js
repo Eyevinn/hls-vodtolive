@@ -106,6 +106,7 @@ class HLSVod {
       lastUsedDiscSeq: this.lastUsedDiscSeq,
       mediaSequenceValues: this.mediaSequenceValues,
       mediaSequenceValuesAudio: this.mediaSequenceValuesAudio,
+      mediaSequenceValuesSubtitle: this.mediaSequenceValuesSubtitle,
       sequenceAlwaysContainNewSegments: this.sequenceAlwaysContainNewSegments,
       forcedDemuxMode: this.forcedDemuxMode,
       dummySubtitleEndpoint: this.dummySubtitleEndpoint,
