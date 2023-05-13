@@ -70,7 +70,7 @@ class HLSVod {
     this.videoSequencesCount = 0;
     this.audioSequencesCount = 0;
     this.defaultAudioGroupAndLang = null;
-    this.SubtitleSequencesCount = 0;
+    this.subtitleSequencesCount = 0;
     this.mediaStartExcessTime = 0;
     this.audioCodecsMap = {};
   }
@@ -113,7 +113,7 @@ class HLSVod {
       subtitleSliceEndpoint: this.subtitleSliceEndpoint,
       videoSequencesCount: this.videoSequencesCount,
       audioSequencesCount: this.audioSequencesCount,
-      subtitleSequencesCount: this.subtitleSegments,
+      subtitleSequencesCount: this.subtitleSequencesCount,
       mediaStartExcessTime: this.mediaStartExcessTime,
       audioCodecsMap: this.audioCodecsMap,
     };
