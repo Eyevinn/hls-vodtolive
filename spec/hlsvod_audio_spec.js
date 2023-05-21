@@ -1,4 +1,4 @@
-const HLSVod = require("../index.js");
+const HLSVod = require("../dist/index.js");
 
 describe("HLSVod with demuxed audio", () => {
   describe("utility functions for audio", () => {

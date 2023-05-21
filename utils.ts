@@ -2,7 +2,7 @@ const fetch = require("node-fetch");
 const { AbortController } = require("abort-controller");
 const debug = require("debug")("hls-vodtolive");
 
-function keysToM3u8(keys) {
+export function keysToM3u8(keys) {
   let m3u8 = "";
   for (const keyFormat of Object.keys(keys)) {
     const key = keys[keyFormat];
@@ -17,7 +17,7 @@ function keysToM3u8(keys) {
   return m3u8;
 }
 
-function daterangeAttribute (key, attr) {
+export function daterangeAttribute (key, attr) {
   if (key === "planned-duration" || key === "duration") {
     return key.toUpperCase() + "=" + `${attr.toFixed(3)}`;
   } else {
@@ -25,7 +25,7 @@ function daterangeAttribute (key, attr) {
   }
 }
 
-function urlResolve(from, to) {
+export function urlResolve(from, to) {
   const resolvedUrl = new URL(to, new URL(from, 'resolve://'));
   if (resolvedUrl.protocol === 'resolve:') {
     // `from` is a relative URL.
@@ -35,7 +35,7 @@ function urlResolve(from, to) {
   return resolvedUrl.toString();
 }
 
-function segToM3u8(v, i, len, nextSegment, previousSegment) {
+export function segToM3u8(v, i, len, nextSegment, previousSegment) {
   let m3u8 = "";
 
   if (previousSegment != null) {
@@ -131,7 +131,7 @@ function segToM3u8(v, i, len, nextSegment, previousSegment) {
   return m3u8;
 }
 
-async function fetchWithRetry(uri, opts, maxRetries, retryDelayMs, timeoutMs, debug) {
+export async function fetchWithRetry(uri, opts, maxRetries, retryDelayMs, timeoutMs, debug) {
   if (!debug) {
     var debug = (msg) => {
       if (process.env.ENVIRONMENT === "development") {
@@ -179,7 +179,7 @@ async function fetchWithRetry(uri, opts, maxRetries, retryDelayMs, timeoutMs, de
   }
 }
 
-function findIndexReversed(arr, fn) {
+export function findIndexReversed(arr, fn) {
   const size = arr.length;
   for (let i = size - 1; i >= 0; i--) {
     const item = arr[i];
@@ -191,22 +191,11 @@ function findIndexReversed(arr, fn) {
   return -1;
 };
 
-
-const findBottomSegItem = (arr) => {
+export const findBottomSegItem = (arr) => {
   for (let i = arr.length - 1; i >= 0; i--) {
     if (arr[i].hasOwnProperty('duration')) {
       return arr[i];
     }
   }
   return null;
-}
-
-module.exports = {
-  daterangeAttribute,
-  keysToM3u8,
-  segToM3u8,
-  urlResolve,
-  fetchWithRetry,
-  findIndexReversed,
-  findBottomSegItem
 }
