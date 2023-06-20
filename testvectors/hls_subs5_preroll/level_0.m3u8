@@ -1,0 +1,137 @@
+#EXTM3U
+#EXT-X-VERSION:6
+## Created with Unified Streaming Platform (version=1.11.23-28141)
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXT-X-MEDIA-SEQUENCE:1
+#EXT-X-INDEPENDENT-SEGMENTS
+#EXT-X-TARGETDURATION:4
+#USP-X-TIMESTAMP-MAP:MPEGTS=900000,LOCAL=1970-01-01T00:00:00Z
+#EXT-X-MAP:URI="https://mock.source.vod.com/asset/bumpers/tv4_spring/output.ism/hls/output-video=4000000.m4s"
+#EXT-X-DISCONTINUITY
+#EXT-X-CUE-OUT:DURATION=46
+#EXTINF:3.0000, no desc
+https://mock.source.vod.com/asset/bumpers/tv4_spring/output.ism/hls/output-video=4000000-1.m4s
+#EXT-X-MAP:URI="https://mock.source.vod.com/asset/64871c70280b4a002ac43d6d/output.ism/hls/output-video=4000000.m4s"
+#EXT-X-DISCONTINUITY
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/64871c70280b4a002ac43d6d/output.ism/hls/output-video=4000000-1.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/64871c70280b4a002ac43d6d/output.ism/hls/output-video=4000000-2.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/64871c70280b4a002ac43d6d/output.ism/hls/output-video=4000000-3.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/64871c70280b4a002ac43d6d/output.ism/hls/output-video=4000000-4.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/64871c70280b4a002ac43d6d/output.ism/hls/output-video=4000000-5.m4s
+#EXTINF:0.8000, no desc
+https://mock.source.vod.com/asset/64871c70280b4a002ac43d6d/output.ism/hls/output-video=4000000-6.m4s
+#EXT-X-MAP:URI="https://mock.source.vod.com/asset/64871b61a27628002b0dc6b3/output.ism/hls/output-video=4000000.m4s"
+#EXT-X-DISCONTINUITY
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/64871b61a27628002b0dc6b3/output.ism/hls/output-video=4000000-1.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/64871b61a27628002b0dc6b3/output.ism/hls/output-video=4000000-2.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/64871b61a27628002b0dc6b3/output.ism/hls/output-video=4000000-3.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/64871b61a27628002b0dc6b3/output.ism/hls/output-video=4000000-4.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/64871b61a27628002b0dc6b3/output.ism/hls/output-video=4000000-5.m4s
+#EXTINF:0.8000, no desc
+https://mock.source.vod.com/asset/64871b61a27628002b0dc6b3/output.ism/hls/output-video=4000000-6.m4s
+#EXT-X-MAP:URI="https://mock.source.vod.com/asset/bumpers/tv4_spring/output.ism/hls/output-video=4000000.m4s"
+#EXT-X-DISCONTINUITY
+#EXTINF:3.0000, no desc
+https://mock.source.vod.com/asset/bumpers/tv4_spring/output.ism/hls/output-video=4000000-1.m4s
+#EXT-X-MAP:URI="https://mock.source.vod.com/asset/1/mock-video=3500000.m4s"
+#EXT-X-DISCONTINUITY
+#EXT-X-CUE-IN
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-1.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-2.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-3.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-4.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-5.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-6.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-7.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-8.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-9.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-10.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-11.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-12.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-13.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-14.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-15.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-16.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-17.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-18.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-19.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-20.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-21.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-22.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-23.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-24.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-25.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-26.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-27.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-28.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-29.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-30.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-31.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-32.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-33.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-34.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-35.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-36.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-37.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-38.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-39.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-40.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-41.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-42.m4s
+#EXTINF:3.8400, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-43.m4s
+#EXTINF:1.3200, no desc
+https://mock.source.vod.com/asset/1/mock-video=3500000-44.m4s
+#EXT-X-ENDLIST

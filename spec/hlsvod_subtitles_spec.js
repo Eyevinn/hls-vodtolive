@@ -396,6 +396,8 @@ describe("HLSVod with subtitles", () => {
     let mockSubtitleManifestWithSubs;
     let mockMasterManifestNoSubs;
     let mockMediaManifestNoSubs;
+    let inject1;
+    let inject2;
     beforeEach(() => {
       mockMasterManifestWithSubs = function () {
         return fs.createReadStream("testvectors/hls_subs/master.m3u8");
@@ -429,6 +431,31 @@ describe("HLSVod with subtitles", () => {
       mockAudioManifestWithSubs = function () {
         return fs.createReadStream(`testvectors/hls_subs/b160000-english.m3u8`);
       }
+
+      inject1 = {
+        master: function () {
+          return fs.createReadStream("testvectors/hls_subs5_preroll/master.m3u8");
+        },
+        media: function () {
+          return fs.createReadStream("testvectors/hls_subs5_preroll/level_0.m3u8");
+        },
+        audio: function () {
+          return fs.createReadStream(`testvectors/hls_subs5_preroll/audio.m3u8`);
+        },
+      };
+
+      inject2 = {
+        master: function () {
+          return fs.createReadStream("testvectors/hls_subs6_preroll/master.m3u8");
+        },
+        media: function () {
+          return fs.createReadStream("testvectors/hls_subs6_preroll/level_0.m3u8");
+        },
+        audio: function () {
+          return fs.createReadStream(`testvectors/hls_subs6_preroll/audio.m3u8`);
+        },
+      };
+
     })
     it("no subs after vod with subs with fallback URL", (done) => {
       mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, hlsOptsAlwaysNewSegmentsFalse);
@@ -486,6 +513,27 @@ describe("HLSVod with subtitles", () => {
           done();
         });
     });
+
+    it("no subs after vod without subs, and no fallback URL", (done) => {
+      mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, hlsOptsAlwaysNewSegmentsTrue);
+      mockVod2 = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, hlsOptsAlwaysNewSegmentsTrue);
+      mockVod3 = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, hlsOptsAlwaysNewSegmentsTrue);
+      mockVod.load(inject1.master, inject1.media, inject1.audio, null)
+        .then(() => {
+          return mockVod2.loadAfter(mockVod, inject2.master, inject2.media, inject2.audio, null)
+        })
+        .then(() => {
+          const m3u8_3 = mockVod2.getLiveMediaSubtitleSequences(0, "subs", "fr", 1);
+          const subStrings3 = m3u8_3.split("\n")
+          expect(subStrings3[32]).toEqual("#EXTINF:1.320,");
+          expect(subStrings3[33]).toEqual("/dummysubs.vtt?p=62");
+          expect(subStrings3[34]).toEqual("#EXT-X-DISCONTINUITY");
+          expect(subStrings3[35]).toEqual("#EXTINF:3.840,");
+          expect(subStrings3[36]).toEqual("/dummysubs.vtt?p=16");
+          done();
+        });
+    });
+
     it("no subs after vod with subs without fallback URL", (done) => {
       mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { subtitleSliceEndpoint: "/subtitlevtt.vtt", shouldContainSubtitles: true, expectedSubtitleTracks: subtitleTracks });
       mockVod2 = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { subtitleSliceEndpoint: "/subtitlevtt.vtt", shouldContainSubtitles: true, expectedSubtitleTracks: subtitleTracks });
