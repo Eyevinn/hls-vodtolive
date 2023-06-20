@@ -269,7 +269,7 @@ class HLSVod {
                 }
                 const itemChannels = item.get("channels") ? item.get("channels") : "2";
                 this.audioCodecsMap[audioCodecs][itemChannels] = audioGroupId;
-                return (item = itemLang);
+                return itemLang;
               });
 
               // # Inject "default" language's segments to every new language relative to previous VOD.
@@ -397,7 +397,7 @@ class HLSVod {
                   for (let index = 0; index < this.expectedSubtitleTracks.length; index++) {
                     const element = this.expectedSubtitleTracks[index];
                     if (element.language.toLowerCase() === itemLang.toLowerCase() || element.name.toLowerCase() === itemLang.toLowerCase()) {
-                      return (item = element.language);
+                      return element.language;
                     }
                   }
                   return;
@@ -1033,6 +1033,7 @@ class HLSVod {
     let index = offset;
     let allVideoDurationUsed = false;
     while (index < videoSegments.length && totalSubtitleSegmentDuration > 0) {
+      totalSubtitleSegmentDuration = Math.round(totalSubtitleSegmentDuration * 1000) / 1000; 
       if (videoSegments[index].discontinuity) {
         newSegmentList.push(videoSegments[index])
         index += 1;
