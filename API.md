@@ -12,6 +12,7 @@
     * [.addMetadata(key, value)](#HLSVod+addMetadata)
     * [.getVodUri()](#HLSVod+getVodUri)
     * [.getLiveMediaSequenceSegments(seqIdx)](#HLSVod+getLiveMediaSequenceSegments)
+    * [.getLiveAudioSequenceSegments(seqIdx)](#HLSVod+getLiveAudioSequenceSegments)
     * [.getMediaSegments()](#HLSVod+getMediaSegments)
     * [.getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx)](#HLSVod+getLiveMediaSequenceAudioSegments)
     * [.getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage, seqIdx)](#HLSVod+getLiveMediaSequenceSubtitleSegments)
@@ -121,6 +122,17 @@ Get all segments (duration, uri) for a specific media sequence
 | --- | --- | --- |
 | seqIdx | <code>number</code> | media sequence index (first is 0) |
 
+<a name="HLSVod+getLiveAudioSequenceSegments"></a>
+
+### hlsVod.getLiveAudioSequenceSegments(seqIdx)
+Get all audio segments (duration, uri) for a specific media sequence
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| seqIdx | <code>number</code> | media sequence index (first is 0) |
+
 <a name="HLSVod+getMediaSegments"></a>
 
 ### hlsVod.getMediaSegments()
@@ -130,7 +142,7 @@ Get all segments (duration, uri)
 <a name="HLSVod+getLiveMediaSequenceAudioSegments"></a>
 
 ### hlsVod.getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx)
-Get all audio segments (duration, uri) for a specific media sequence
+Get all audio segments (duration, uri) for a specific media sequence based on audio group and lang
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 
