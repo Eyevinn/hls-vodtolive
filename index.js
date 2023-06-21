@@ -638,6 +638,15 @@ class HLSVod {
   }
 
   /**
+   * Get all audio segments (duration, uri) for a specific media sequence
+   *
+   * @param {number} seqIdx - media sequence index (first is 0)
+   */
+  getLiveAudioSequenceSegments(seqIdx) {
+    return this.mediaSequences[seqIdx].audioSegments;
+  }
+
+  /**
    * Get all segments (duration, uri)
    *
    */
@@ -646,7 +655,7 @@ class HLSVod {
   }
 
   /**
-   * Get all audio segments (duration, uri) for a specific media sequence
+   * Get all audio segments (duration, uri) for a specific media sequence based on audio group and lang
    *
    * @param {string} audioGroupId - audio group Id
    * @param {string} audioLanguage - audio language
@@ -1033,7 +1042,7 @@ class HLSVod {
     let index = offset;
     let allVideoDurationUsed = false;
     while (index < videoSegments.length && totalSubtitleSegmentDuration > 0) {
-      totalSubtitleSegmentDuration = Math.round(totalSubtitleSegmentDuration * 1000) / 1000; 
+      totalSubtitleSegmentDuration = Math.round(totalSubtitleSegmentDuration * 1000) / 1000;
       if (videoSegments[index].discontinuity) {
         newSegmentList.push(videoSegments[index])
         index += 1;
