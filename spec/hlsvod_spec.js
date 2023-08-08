@@ -889,6 +889,9 @@ describe("HLSVod with not equal usage profiles", () => {
     mockMasterManifest.push(function () {
       return fs.createReadStream("testvectors/hls_abr4/master.m3u8");
     });
+    mockMasterManifest.push(function () {
+      return fs.createReadStream("testvectors/hls_abr6/master.m3u8");
+    })
     mockMediaManifest.push(function (bandwidth) {
       return fs.createReadStream("testvectors/hls1/" + bandwidth + ".m3u8");
     });
@@ -909,6 +912,9 @@ describe("HLSVod with not equal usage profiles", () => {
     });
     mockMediaManifest.push(function (bandwidth) {
       return fs.createReadStream("testvectors/hls_abr4/" + bandwidth + ".m3u8");
+    });
+    mockMediaManifest.push(function (bandwidth) {
+      return fs.createReadStream("testvectors/hls_abr6/" + bandwidth + ".m3u8");
     });
   });
 
@@ -1197,6 +1203,26 @@ describe("HLSVod with not equal usage profiles", () => {
       .then(() => {
         const bandwidths = Object.keys(mockVod2.getLiveMediaSequenceSegments(0));
         expect(bandwidths.length).toEqual(3);
+        done();
+      });
+  });
+  
+  it("can match by true nearest when options-> alwaysMapBandwidthByNearest is true", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0,0, null, { alwaysMapBandwidthByNearest: 1 });
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0,0, null, { alwaysMapBandwidthByNearest: 1 });
+    mockVod
+      .load(mockMasterManifest[0], mockMediaManifest[0])
+      .then(() => {
+        return mockVod2.loadAfter(mockVod, mockMasterManifest[7], mockMediaManifest[7]);
+      })
+      .then(() => {
+        const seqSegments = mockVod2.getLiveMediaSequenceSegments(0);
+        const lastIdx = seqSegments["1497000"].length - 1;
+        expect(seqSegments["1497000"][lastIdx].uri).toEqual("https://mock.vod.media/segment1_0_av.ts");   
+        expect(seqSegments["3496000"][lastIdx].uri).toEqual("https://mock.vod.media/segment1_1_av.ts");
+        expect(seqSegments["4497000"][lastIdx].uri).toEqual("https://mock.vod.media/segment1_2_av.ts");
+        expect(seqSegments["5544000"][lastIdx].uri).toEqual("https://mock.vod.media/segment1_3_av.ts");
+        expect(seqSegments["6655000"][lastIdx].uri).toEqual("https://mock.vod.media/segment1_4_av.ts");
         done();
       });
   });
