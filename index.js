@@ -67,6 +67,9 @@ class HLSVod {
     if (opts && opts.expectedSubtitleTracks) {
       this.expectedSubtitleTracks = opts.expectedSubtitleTracks;
     }
+    if (opts && opts.alwaysMapBandwidthByNearest) {
+      this.alwaysMapBandwidthByNearest = opts.alwaysMapBandwidthByNearest;
+    }
     this.videoSequencesCount = 0;
     this.audioSequencesCount = 0;
     this.defaultAudioGroupAndLang = null;
@@ -116,6 +119,7 @@ class HLSVod {
       subtitleSequencesCount: this.subtitleSequencesCount,
       mediaStartExcessTime: this.mediaStartExcessTime,
       audioCodecsMap: this.audioCodecsMap,
+      alwaysMapBandwidthByNearest: this.alwaysMapBandwidthByNearest
     };
     return JSON.stringify(serialized);
   }
@@ -167,6 +171,7 @@ class HLSVod {
     this.subtitleSequencesCount = de.subtitleSequencesCount
     this.mediaStartExcessTime = de.mediaStartExcessTime;
     this.audioCodecsMap = de.audioCodecsMap;
+    this.alwaysMapBandwidthByNearest = de.alwaysMapBandwidthByNearest;
   }
 
   /**
@@ -186,7 +191,7 @@ class HLSVod {
           baseUrl = m[1] + "/";
         }
         const HAS_AUDIO_DEFAULTS = this.defaultAudioGroupAndLang === null ? false : true;
-        if (this.previousVod && this.previousVod.getBandwidths().length === m3u.items.StreamItem.length) {
+        if (!this.alwaysMapBandwidthByNearest && this.previousVod && this.previousVod.getBandwidths().length === m3u.items.StreamItem.length) {
           debug(`Previous VOD bandwidths matches amount of current. A mapping is possible`);
           const previousBandwidths = this.previousVod.getBandwidths().sort((a, b) => a - b);
           this.usageProfileMapping = {};
