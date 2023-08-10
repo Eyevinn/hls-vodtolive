@@ -70,6 +70,9 @@ class HLSVod {
     if (opts && opts.alwaysMapBandwidthByNearest) {
       this.alwaysMapBandwidthByNearest = opts.alwaysMapBandwidthByNearest;
     }
+    if (opts && opts.skipSerializeMediaSequences) {
+      this.skipSerializeMediaSequences = opts.skipSerializeMediaSequences;
+    }
     this.videoSequencesCount = 0;
     this.audioSequencesCount = 0;
     this.defaultAudioGroupAndLang = null;
@@ -86,7 +89,7 @@ class HLSVod {
       subtitleSegments: this.subtitleSegments,
       shouldContainSubtitles: this.shouldContainSubtitles,
       expectedSubtitleTracks: this.expectedSubtitleTracks,
-      mediaSequences: this.mediaSequences,
+      mediaSequences: this.skipSerializeMediaSequences ? null : this.mediaSequences,
       SEQUENCE_DURATION: this.SEQUENCE_DURATION,
       targetDuration: this.targetDuration,
       targetAudioDuration: this.targetAudioDuration,
@@ -119,7 +122,8 @@ class HLSVod {
       subtitleSequencesCount: this.subtitleSequencesCount,
       mediaStartExcessTime: this.mediaStartExcessTime,
       audioCodecsMap: this.audioCodecsMap,
-      alwaysMapBandwidthByNearest: this.alwaysMapBandwidthByNearest
+      alwaysMapBandwidthByNearest: this.alwaysMapBandwidthByNearest,
+      skipSerializeMediaSequences: this.skipSerializeMediaSequences
     };
     return JSON.stringify(serialized);
   }
@@ -172,6 +176,7 @@ class HLSVod {
     this.mediaStartExcessTime = de.mediaStartExcessTime;
     this.audioCodecsMap = de.audioCodecsMap;
     this.alwaysMapBandwidthByNearest = de.alwaysMapBandwidthByNearest;
+    this.skipSerializeMediaSequences = de.skipSerializeMediaSequences;
   }
 
   /**
@@ -1617,6 +1622,12 @@ class HLSVod {
     return sequences;
   }
 
+  generateMediaSequences() {
+    return new Promise((resolve, reject) => {
+      this._createMediaSequences().then(resolve).catch(reject);
+    });
+  }
+
   calculateDeltaAndPositionExtraMedia(type) {
     let prevLastSegment = null;
     let discSeqNo = 0;
@@ -2133,7 +2144,10 @@ class HLSVod {
 
       if (!this.mediaSequences) {
         reject("Failed to init media sequences");
+      } else if (this.mediaSequences && this.skipSerializeMediaSequences && this.deltaTimes.length > 0) {
+        resolve();
       } else {
+        // Calculate Delta Times and Position for Video
         let prevLastSegment = null;
         let discSeqNo = 0;
         this.deltaTimes.push({
