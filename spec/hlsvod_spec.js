@@ -2099,6 +2099,7 @@ describe("HLSVod with mixed target durations", () => {
 describe("HLSVod serializing", () => {
   let mockMasterManifest;
   let mockMediaManifest;
+  let mockM3u8Item1;
 
   beforeEach(() => {
     mockMasterManifest = function () {
@@ -2107,6 +2108,21 @@ describe("HLSVod serializing", () => {
 
     mockMediaManifest = function (bandwidth) {
       return fs.createReadStream("testvectors/hls1/" + bandwidth + ".m3u8");
+    };
+
+    mockM3u8Item1 = {
+      master: () => {
+        return fs.createReadStream("testvectors/hls_abr7/master.m3u8");
+      },
+      media: (bw) => {
+        return fs.createReadStream(`testvectors/hls_abr7/master${bw}.m3u8`);
+      },
+      audio: (g, l) => {
+        return fs.createReadStream(`testvectors/hls_abr7/master-${g}_${l}.m3u8`);
+      },
+      subtitle: (g, l) => {
+        return fs.createReadStream(`testvectors/hls_abr7/master-${g}_${l}.m3u8`);
+      },
     };
   });
 
@@ -2159,6 +2175,174 @@ describe("HLSVod serializing", () => {
         );
 
         done();
+      });
+  });
+
+  it("can handle a sequence of VODs, with skipSerializeMediaSequences set -> true (TYPE-A)", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, {
+      sequenceAlwaysContainNewSegments: 0,
+      forcedDemuxMode: 1,
+      shouldContainSubtitles: 1,
+      subtitleSliceEndpoint: "https://test.test.com",
+      expectedSubtitleTracks: [
+        { language: "sv", name: "sv" },
+        { language: "en", name: "en" },
+        { language: "no", name: "no" },
+      ],
+      dummySubtitleEndpoint: "fake/subs/here",
+      alwaysMapBandwidthByNearest: 1,
+      skipSerializeMediaSequences: false,
+    });
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, {
+      sequenceAlwaysContainNewSegments: 0,
+      forcedDemuxMode: 1,
+      shouldContainSubtitles: 1,
+      subtitleSliceEndpoint: "https://test.test.com",
+      expectedSubtitleTracks: [
+        { language: "sv", name: "sv" },
+        { language: "en", name: "en" },
+        { language: "no", name: "no" },
+      ],
+      dummySubtitleEndpoint: "fake/subs/here",
+      alwaysMapBandwidthByNearest: 1,
+      skipSerializeMediaSequences: false,
+    });
+    mockVod
+      .load(mockM3u8Item1.master, mockM3u8Item1.media, mockM3u8Item1.audio, mockM3u8Item1.subtitle)
+      .then(() => {
+        return mockVod2.loadAfter(mockVod, mockM3u8Item1.master, mockM3u8Item1.media, mockM3u8Item1.audio, mockM3u8Item1.subtitle);
+      })
+      .then(() => {
+        const bytesToMB = (bytes) => {
+          const megabytes = bytes / (1024 * 1024);
+          return megabytes.toFixed(2);
+        }
+        const expectedJSONSizeInMBFull = "5.26";
+        const expectedJSONSizeInMBPartial = "0.38";
+        const expectedJSONSizeInMBFullAgain = expectedJSONSizeInMBFull;
+        const expectedMseqCountFull = 145;
+        const expectedMseqCountPartial = 0;
+        const expectedMseqCountFullAgain = expectedMseqCountFull;
+
+        const mseqCountFull = mockVod2.getLiveMediaSequencesCount();
+        const fullySerialized = mockVod2.toJSON();
+        const sizeFull = Buffer.byteLength(JSON.stringify(fullySerialized));
+        const sizeInMBFull = bytesToMB(sizeFull);
+        const fullyDeserializedVod = new HLSVod();
+        fullyDeserializedVod.fromJSON(fullySerialized);
+
+        fullyDeserializedVod.skipSerializeMediaSequences = true;
+        const partiallySerialized = fullyDeserializedVod.toJSON();
+        const partiallyDeserializedVod = new HLSVod();
+        partiallyDeserializedVod.fromJSON(partiallySerialized);
+
+        const mseqCountPart = partiallyDeserializedVod.getLiveMediaSequencesCount();
+        const sizePart = Buffer.byteLength(JSON.stringify(partiallySerialized));
+        const sizeInMBPart = bytesToMB(sizePart);
+
+        partiallyDeserializedVod.generateMediaSequences().then(() => {
+          const mseqCountFullAgain = partiallyDeserializedVod.getLiveMediaSequencesCount();
+          partiallyDeserializedVod.skipSerializeMediaSequences = false;
+          const fullySerializedAgain = partiallyDeserializedVod.toJSON();
+          const sizeFullAgain = Buffer.byteLength(JSON.stringify(fullySerializedAgain));
+          const sizeInMBFullAgain = bytesToMB(sizeFullAgain);
+
+          expect(sizeInMBFull).toBe(expectedJSONSizeInMBFull);
+          expect(sizeInMBPart).toBe(expectedJSONSizeInMBPartial);
+          expect(sizeInMBFullAgain).toBe(expectedJSONSizeInMBFullAgain);
+          expect(mseqCountFull).toBe(expectedMseqCountFull);
+          expect(mseqCountPart).toBe(expectedMseqCountPartial);
+          expect(mseqCountFullAgain).toBe(expectedMseqCountFullAgain);
+
+          expect(sizeInMBFull).toEqual(sizeInMBFullAgain);
+          expect(fullySerialized).toEqual(fullySerializedAgain);
+
+          done();
+        });
+      });
+  });
+
+  it("can handle a sequence of VODs, with skipSerializeMediaSequences set -> true (TYPE-B)", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, {
+      sequenceAlwaysContainNewSegments: 1,
+      forcedDemuxMode: 1,
+      shouldContainSubtitles: 1,
+      subtitleSliceEndpoint: "https://test.test.com",
+      expectedSubtitleTracks: [
+        { language: "sv", name: "sv" },
+        { language: "en", name: "en" },
+        { language: "no", name: "no" },
+      ],
+      dummySubtitleEndpoint: "fake/subs/here",
+      alwaysMapBandwidthByNearest: 1,
+      skipSerializeMediaSequences: false,
+    });
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, {
+      sequenceAlwaysContainNewSegments: 1,
+      forcedDemuxMode: 1,
+      shouldContainSubtitles: 1,
+      subtitleSliceEndpoint: "https://test.test.com",
+      expectedSubtitleTracks: [
+        { language: "sv", name: "sv" },
+        { language: "en", name: "en" },
+        { language: "no", name: "no" },
+      ],
+      dummySubtitleEndpoint: "fake/subs/here",
+      alwaysMapBandwidthByNearest: 1,
+      skipSerializeMediaSequences: false,
+    });
+    mockVod
+      .load(mockM3u8Item1.master, mockM3u8Item1.media, mockM3u8Item1.audio, mockM3u8Item1.subtitle)
+      .then(() => {
+        return mockVod2.loadAfter(mockVod, mockM3u8Item1.master, mockM3u8Item1.media, mockM3u8Item1.audio, mockM3u8Item1.subtitle);
+      })
+      .then(() => {
+        const bytesToMB = (bytes) => {
+          const megabytes = bytes / (1024 * 1024);
+          return megabytes.toFixed(2);
+        }
+        const expectedJSONSizeInMBFull = "5.29";
+        const expectedJSONSizeInMBPartial = "0.39";
+        const expectedJSONSizeInMBFullAgain = expectedJSONSizeInMBFull;
+        const expectedMseqCountFull = 146;
+        const expectedMseqCountPartial = 0;
+        const expectedMseqCountFullAgain = expectedMseqCountFull;
+
+        const mseqCountFull = mockVod2.getLiveMediaSequencesCount();
+        const fullySerialized = mockVod2.toJSON();
+        const sizeFull = Buffer.byteLength(JSON.stringify(fullySerialized));
+        const sizeInMBFull = bytesToMB(sizeFull);
+        const fullyDeserializedVod = new HLSVod();
+        fullyDeserializedVod.fromJSON(fullySerialized);
+
+        fullyDeserializedVod.skipSerializeMediaSequences = true;
+        const partiallySerialized = fullyDeserializedVod.toJSON();
+        const partiallyDeserializedVod = new HLSVod();
+        partiallyDeserializedVod.fromJSON(partiallySerialized);
+
+        const mseqCountPart = partiallyDeserializedVod.getLiveMediaSequencesCount();
+        const sizePart = Buffer.byteLength(JSON.stringify(partiallySerialized));
+        const sizeInMBPart = bytesToMB(sizePart);
+
+        partiallyDeserializedVod.generateMediaSequences().then(() => {
+          const mseqCountFullAgain = partiallyDeserializedVod.getLiveMediaSequencesCount();
+          partiallyDeserializedVod.skipSerializeMediaSequences = false;
+          const fullySerializedAgain = partiallyDeserializedVod.toJSON();
+          const sizeFullAgain = Buffer.byteLength(JSON.stringify(fullySerializedAgain));
+          const sizeInMBFullAgain = bytesToMB(sizeFullAgain);
+
+          expect(sizeInMBFull).toBe(expectedJSONSizeInMBFull);
+          expect(sizeInMBPart).toBe(expectedJSONSizeInMBPartial);
+          expect(sizeInMBFullAgain).toBe(expectedJSONSizeInMBFullAgain);
+          expect(mseqCountFull).toBe(expectedMseqCountFull);
+          expect(mseqCountPart).toBe(expectedMseqCountPartial);
+          expect(mseqCountFullAgain).toBe(expectedMseqCountFullAgain);
+
+          expect(sizeInMBFull).toEqual(sizeInMBFullAgain);
+          expect(fullySerialized).toEqual(fullySerializedAgain);
+
+          done();
+        });
       });
   });
 });
