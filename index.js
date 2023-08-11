@@ -1,5 +1,4 @@
 const m3u8 = require("@eyevinn/m3u8");
-const { deserialize } = require("v8");
 const debug = require("debug")("hls-vodtolive");
 const verbose = require("debug")("hls-vodtolive-verbose");
 const { findIndexReversed, fetchWithRetry, urlResolve, segToM3u8, findBottomSegItem } = require("./utils.js");
@@ -49,6 +48,7 @@ class HLSVod {
     this.header = header;
     this.lastUsedDiscSeq = null;
     this.sequenceAlwaysContainNewSegments = false;
+    this.skipSerializeMediaSequences = false;
     if (opts && opts.sequenceAlwaysContainNewSegments) {
       this.sequenceAlwaysContainNewSegments = opts.sequenceAlwaysContainNewSegments;
     }
@@ -117,9 +117,9 @@ class HLSVod {
       forcedDemuxMode: this.forcedDemuxMode,
       dummySubtitleEndpoint: this.dummySubtitleEndpoint,
       subtitleSliceEndpoint: this.subtitleSliceEndpoint,
-      videoSequencesCount: this.videoSequencesCount,
-      audioSequencesCount: this.audioSequencesCount,
-      subtitleSequencesCount: this.subtitleSequencesCount,
+      videoSequencesCount: this.skipSerializeMediaSequences ? 0 : this.videoSequencesCount,
+      audioSequencesCount: this.skipSerializeMediaSequences ? 0 : this.audioSequencesCount,
+      subtitleSequencesCount: this.skipSerializeMediaSequences ? 0 : this.subtitleSequencesCount,
       mediaStartExcessTime: this.mediaStartExcessTime,
       audioCodecsMap: this.audioCodecsMap,
       alwaysMapBandwidthByNearest: this.alwaysMapBandwidthByNearest,
@@ -505,12 +505,12 @@ class HLSVod {
       try {
         this._loadPrevious();
         this.load(_injectMasterManifest, _injectMediaManifest, _injectAudioManifest, _injectSubtitleManifest)
-          .then(() => {// WARNING we can never remove this.previousVod because it is used later in the code
-            previousVod.releasePreviousVod();
+          .then(() => {
+            this.releasePreviousVod();
             resolve();
           })
           .catch((err) => {
-            previousVod.releasePreviousVod();
+            this.releasePreviousVod();
             reject(err);
           });
       } catch (exc) {
@@ -1403,8 +1403,12 @@ class HLSVod {
         }
 
         videoSequences.push(_sequence);
-        this.mediaSequenceValues[seqIndex] = totalRemovedSegments;
-        this.discontinuities[seqIndex] = totalRemovedDiscTags;
+        if (!this.mediaSequenceValues[seqIndex]) {
+          this.mediaSequenceValues[seqIndex] = totalRemovedSegments;
+        }
+        if (!this.discontinuities[seqIndex]) {
+          this.discontinuities[seqIndex] = totalRemovedDiscTags;
+        }
         sequence = _sequence;
         seqIndex++;
       } catch (err) {
@@ -1534,7 +1538,7 @@ class HLSVod {
           let shiftOnce = true;
           let shiftedSegmentsCount = 0;
           // 2 - Shift excess segments and keep count of what has been removed (per variant)
-          while (totalSeqDur >= this.SEQUENCE_DURATION || (shiftOnce && segIdx !== 0)) {  // TODO continue here
+          while (totalSeqDur >= this.SEQUENCE_DURATION || (shiftOnce && segIdx !== 0)) { 
             shiftOnce = false;
             let timeToRemove = 0;
             let incrementDiscSeqCount = false;
@@ -1607,11 +1611,19 @@ class HLSVod {
         sequences.push(_sequence);
 
         if (type === "audio") {
-          this.discontinuitiesAudio[seqIndex] = totalRemovedDiscTags;
-          this.mediaSequenceValuesAudio[seqIndex] = totalRemovedSegments;
+          if (!this.discontinuitiesAudio[seqIndex]) {
+            this.discontinuitiesAudio[seqIndex] = totalRemovedDiscTags;
+          }
+          if (!this.mediaSequenceValuesAudio[seqIndex]) {
+            this.mediaSequenceValuesAudio[seqIndex] = totalRemovedSegments;
+          }
         } else if (type === "subtitle") {
-          this.discontinuitiesSubtitle[seqIndex] = totalRemovedDiscTags;
-          this.mediaSequenceValuesSubtitle[seqIndex] = totalRemovedSegments;
+          if (!this.discontinuitiesSubtitle[seqIndex]) {
+            this.discontinuitiesSubtitle[seqIndex] = totalRemovedDiscTags;
+          }
+          if (!this.mediaSequenceValuesSubtitle[seqIndex]) {
+            this.mediaSequenceValuesSubtitle[seqIndex] = totalRemovedSegments;
+          }
         }
         sequence = _sequence;
         seqIndex++;
@@ -1623,8 +1635,9 @@ class HLSVod {
   }
 
   generateMediaSequences() {
+    this.mediaSequences = [];
     return new Promise((resolve, reject) => {
-      this._createMediaSequences().then(resolve).catch(reject);
+      this._createMediaSequences(1).then(resolve).catch(reject);
     });
   }
 
@@ -1970,7 +1983,7 @@ class HLSVod {
     }
   }
 
-  _createMediaSequences() {
+  _createMediaSequences(mode = false) {
     return new Promise((resolve, reject) => {
       const bw = this._getFirstBwWithSegments();
       const audioGroupId = this._getFirstAudioGroupWithSegments();
@@ -2004,7 +2017,7 @@ class HLSVod {
       if (subtitleGroupId) {
         this._removeDoubleDiscontinuitiesFromExtraMedia(this.subtitleSegments)
       }
-      if (this.shouldContainSubtitles) {
+      if (this.shouldContainSubtitles && !mode) {
         // we are doing all this to figure out the entire duration of the new vod so we can create a long subtitle segment that we can later chunk to smaller segments
         let duration = this.getDuration();
         let offset = 0;
@@ -2103,9 +2116,7 @@ class HLSVod {
         let subtitleSequences = [];
         if (this.shouldContainSubtitles) {
           subtitleSequences = this.generateSequencesTypeBExtraMedia(this.subtitleSegments, subtitleGroupId, firstSubtitleLanguage, "subtitle");
-
         }
-
         // Append newly generated video/audio/subtitle sequences
         videoSequences.map((_, index) => {
           this.mediaSequences.push({
@@ -2136,7 +2147,6 @@ class HLSVod {
             });
           }
         }
-
         this.videoSequencesCount = videoSequences.length;
         this.audioSequencesCount = audioSequences.length;
         this.subtitleSequencesCount = subtitleSequences.length
@@ -2144,8 +2154,9 @@ class HLSVod {
 
       if (!this.mediaSequences) {
         reject("Failed to init media sequences");
-      } else if (this.mediaSequences && this.skipSerializeMediaSequences && this.deltaTimes.length > 0) {
-        resolve();
+      } else if (this.mediaSequences.length > 0 && this.skipSerializeMediaSequences && this.deltaTimes.length > 0 && this.mediaSequences.length === this.deltaTimes.length) {
+        debug(`Discontinuities, MediaSequencesValues, Delta times & positions have already been calculated. Skipping this step!`);
+        resolve()
       } else {
         // Calculate Delta Times and Position for Video
         let prevLastSegment = null;
@@ -2252,7 +2263,6 @@ class HLSVod {
         if (this.mediaSequences[0].subtitleSegments) {
           this.calculateDeltaAndPositionExtraMedia("subtitle")
         }
-
         resolve();
       }
     });
