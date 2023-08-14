@@ -555,8 +555,36 @@ class HLSVod {
           allBandwidths.forEach((bw) => (this.segments[bw] = this.segments[bw].slice(targetPos)));
         }
 
-        if (!this._isEmpty(this.audioSegments)) {
-          // TODO: slice all audio tracks, in all audio groups
+        if (!this._isEmpty(this.audioSegments) && additionalAudioSegments) {
+          const groupIds = this.getAudioGroups();
+          const lang = this.getAudioLangsForAudioGroup(groupIds[0])[0];
+
+          if (mediaSeqNo > 0) {
+            let targetUri = "";
+            let size = this.mediaSequences[mediaSeqNo].audioSegments[groupIds[0]][lang].length;
+            for (let idx = size - 1; idx >= 0; idx--) {
+              const segItem = this.mediaSequences[mediaSeqNo].audioSegments[groupIds[0]][lang][idx];
+              if (segItem.uri) {
+                targetUri = segItem.uri;
+                break;
+              }
+            }
+            let targetPos = 0;
+            for (let i = mediaSeqNo; i < this.audioSegments[groupIds[0]][lang].length; i++) {
+              if (this.audioSegments[groupIds[0]][lang][i].uri === targetUri) {
+                targetPos = i;
+                break;
+              }
+            }
+            for (let i = 0; i < groupIds.length; i++) {
+              const groupId = groupIds[i];
+              const langs = this.getAudioLangsForAudioGroup(groupId);
+              for (let j = 0; j < langs.length; j++) {
+                const lang = langs[j];
+                this.audioSegments[groupId][lang] = this.audioSegments[groupId][lang].slice(targetPos);
+              }
+            }
+          }
         }
 
         // Find nearest BW in SFL and prepend them to the corresponding segments bandwidth
@@ -565,8 +593,34 @@ class HLSVod {
           this.segments[bw] = additionalSegments[nearestBw].concat(this.segments[bw]);
         });
 
-        if (!this._isEmpty(this.audioSegments)) {
-          // TODO: Prepend segments to all audio tracks, in all audio groups
+        if (!this._isEmpty(this.audioSegments) && additionalAudioSegments) {
+          const groupIdsInVod = this.getAudioGroups();
+          const groupIdsInSegments = Object.keys(additionalAudioSegments)
+
+          for (let i = 0; i < groupIdsInSegments.length; i++) {
+            let groupIdForVod = groupIdsInSegments[i];
+            let indexOfGroupId = groupIdsInVod.indexOf(groupIdsInSegments[i]);
+            if (indexOfGroupId < 0) {
+              groupIdForVod = groupIdsInVod[0]
+            } else {
+              groupIdForVod = groupIdsInVod[indexOfGroupId]
+            }
+
+            const langsInVod = this.getAudioLangsForAudioGroup(groupIdForVod);
+            const langsInSegment = Object.keys(additionalAudioSegments[groupIdsInSegments[i]]);
+
+            for (let j = 0; j < langsInSegment.length; j++) {
+              let langForVod = langsInSegment[j];
+              let indexOfLang = langsInVod.indexOf(langsInSegment[j]);
+              if (indexOfLang < 0) {
+                langForVod = langsInVod[0]
+              } else {
+                langForVod = langsInVod[indexOfLang]
+              }
+              this.audioSegments[groupIdForVod][langForVod] = additionalAudioSegments[groupIdsInSegments[i]][langsInSegment[j]].concat(this.audioSegments[groupIdForVod][langForVod]);
+
+            }
+          }
         }
       } else {
         if (mediaSeqNo >= 0) {
@@ -582,8 +636,28 @@ class HLSVod {
           allBandwidths.forEach((bw) => (this.segments[bw] = this.segments[bw].slice(targetPos, targetPos + size)));
         }
 
-        if (!this._isEmpty(this.audioSegments)) {
-          // TODO: slice all audio tracks, in all audio groups
+        if (!this._isEmpty(this.audioSegments) && additionalAudioSegments) {
+          const groupIds = this.getAudioGroups();
+          const lang = this.getAudioLangsForAudioGroup(groupIds[0])[0];
+          if (mediaSeqNo >= 0) {
+            let size = this.mediaSequences[mediaSeqNo].audioSegments[groupIds[0]][lang].length;
+            let targetUri = this.mediaSequences[mediaSeqNo].audioSegments[groupIds[0]][lang][0].uri;
+            let targetPos = 0;
+            for (let i = mediaSeqNo; i < this.audioSegments[groupIds[0]][lang].length; i++) {
+              if (this.audioSegments[groupIds[0]][lang][i].uri === targetUri) {
+                targetPos = i;
+                break;
+              }
+            }
+            for (let i = 0; i < groupIds.length; i++) {
+              const groupId = groupIds[i];
+              const langs = this.getAudioLangsForAudioGroup(groupId);
+              for (let j = 0; j < langs.length; j++) {
+                const lang = langs[j];
+                this.audioSegments[groupId][lang] = this.audioSegments[groupId][lang].slice(targetPos, targetPos + size);
+              }
+            }
+          }
         }
 
         allBandwidths.forEach((bw) => {
@@ -591,16 +665,44 @@ class HLSVod {
           this.segments[bw] = this.segments[bw].concat(additionalSegments[nearestBw]);
         });
 
-        if (!this._isEmpty(this.audioSegments)) {
-          // TODO: Prepend segments to all audio tracks, in all audio groups
+        if (!this._isEmpty(this.audioSegments) && additionalAudioSegments) {
+          const groupIdsInVod = this.getAudioGroups();
+          const groupIdsInSegments = Object.keys(additionalAudioSegments)
+
+          for (let i = 0; i < groupIdsInSegments.length; i++) {
+            let groupIdForVod = groupIdsInSegments[i];
+            let indexOfGroupId = groupIdsInVod.indexOf(groupIdsInSegments[i]);
+            if (indexOfGroupId < 0) {
+              groupIdForVod = groupIdsInVod[0]
+            } else {
+              groupIdForVod = groupIdsInVod[indexOfGroupId]
+            }
+
+            const langsInVod = this.getAudioLangsForAudioGroup(groupIdForVod);
+            const langsInSegment = Object.keys(additionalAudioSegments[groupIdsInSegments[i]]);
+
+            for (let j = 0; j < langsInSegment.length; j++) {
+              let langForVod = langsInSegment[j];
+              let indexOfLang = langsInVod.indexOf(langsInSegment[j]);
+              if (indexOfLang < 0) {
+                langForVod = langsInVod[0]
+              } else {
+                langForVod = langsInVod[indexOfLang]
+              }
+              this.audioSegments[groupIdForVod][langForVod] = this.audioSegments[groupIdForVod][langForVod].concat(additionalAudioSegments[groupIdsInSegments[i]][langsInSegment[j]]);
+
+            }
+          }
         }
       }
 
       // Clean up/Reset HLSVod data since we are going to create new data
       this.mediaSequences = [];
+      this.audioSequences = [];
       this.mediaSequenceValues = {};
       this.mediaSequenceValuesAudio = {};
       this.discontinuities = {};
+      this.discontinuitiesAudio = {};
       this.deltaTimes = [];
       this.deltaTimesAudio = [];
 
@@ -662,6 +764,10 @@ class HLSVod {
    */
   getMediaSegments() {
     return this.segments;
+  }
+
+  getAudioSegments() {
+    return this.audioSegments;
   }
 
   /**
