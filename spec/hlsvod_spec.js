@@ -688,7 +688,7 @@ describe("HLSVod with timeline", () => {
   it("can handle vod after another vod", (done) => {
     const now = Date.now();
     mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
-    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", []);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", [], now + 1);
     mockVod
       .load(mockMasterManifest, mockMediaManifest)
       .then(() => {
@@ -698,6 +698,25 @@ describe("HLSVod with timeline", () => {
         const seqSegments = mockVod2.getLiveMediaSequenceSegments(0);
         expect(seqSegments["2497000"][4].timelinePosition).toEqual(now + 2646 * 1000);
         expect(seqSegments["2497000"][6].timelinePosition).toEqual(now + 2646 * 1000 + 6266);
+        done();
+      });
+  });
+
+  it("can handle vod after another vod, with later vod disabling timeOffset", (done) => {
+    const now = 1692110553608;
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", [], timeOffet=null);
+    mockVod
+      .load(mockMasterManifest, mockMediaManifest)
+      .then(() => {
+        return mockVod2.loadAfter(mockVod, mockMasterManifest, mockMediaManifest);
+      })
+      .then(() => {
+        const seqSegments = mockVod2.getLiveMediaSequenceSegments(0);
+        const size = seqSegments["2497000"].length;
+        expect(seqSegments["2497000"][size - 3].timelinePosition).toEqual(now + 2646 * 1000);
+        expect(seqSegments["2497000"][size - 2].discontinuity).toEqual(true);
+        expect(seqSegments["2497000"][size - 1].timelinePosition).toEqual(null);
         done();
       });
   });
@@ -737,7 +756,7 @@ describe("HLSVod with timeline", () => {
     ];
     const now = Date.now();
     mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
-    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", splices);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", splices, now + 1);
     mockVod
       .load(mockMasterManifest, mockMediaManifest)
       .then(() => {
@@ -754,7 +773,7 @@ describe("HLSVod with timeline", () => {
   it("outputs EXT-X-PROGRAM-DATE-TIME after discontinuity", (done) => {
     const now = Date.now();
     mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
-    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", []);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", [], now + 1);
     mockVod
       .load(mockMasterManifest, mockMediaManifest)
       .then(() => {
@@ -1362,7 +1381,7 @@ describe("HLSVod with separate audio variants", () => {
     const now = Date.now();
     // # Two demuxed vods with some different languages.
     mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
-    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", []);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", [], now + 1);
     mockVod
       .load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
       .then(() => {
@@ -1385,11 +1404,40 @@ describe("HLSVod with separate audio variants", () => {
       });
   });
 
+    it("can handle vod after another vod, loading same groupId & languages, but with later vod disabling timeOffset", (done) => {
+    const now = Date.now();
+    // # Two demuxed vods with some different languages.
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", [], timeOffest=null);
+    mockVod
+      .load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
+      .then(() => {
+        return mockVod2.loadAfter(mockVod, mockMasterManifest2, mockMediaManifest2, mockAudioManifest2);
+      })
+      .then(() => {
+        const seqSegments1 = mockVod.getLiveMediaSequenceSegments(0);
+        const seqSegments2 = mockVod2.getLiveMediaSequenceSegments(0);
+        expect(seqSegments1["354000"][0].uri).toEqual("http://mock.com/1woxvooiidb(11186147_ISMUSP)-video=241929-1.ts");
+        expect(seqSegments2["354000"][seqSegments2["354000"].length - 1 - 1].discontinuity).toBe(true);
+        expect(seqSegments2["354000"][seqSegments2["354000"].length - 1].uri).toEqual(
+          "http://mock.com/1woxvooiidb(11186147_ISMUSP)-video=241929-1.ts"
+        );
+        const seqAudioSegments1 = mockVod.getLiveMediaSequenceAudioSegments("audio-aacl-96", "de", 0);
+        const seqAudioSegments2 = mockVod2.getLiveMediaSequenceAudioSegments("audio-aacl-96", "de", 0);
+        expect(seqAudioSegments1[0].uri).toEqual("http://mock.com/1woxvooiidb(11186147_ISMUSP)-audio=96000_de-1.aac");
+        expect(seqAudioSegments2[seqAudioSegments2.length - 3].timelinePosition).toEqual(now + 75030.19995117188);
+        expect(seqAudioSegments2[[seqAudioSegments2.length - 2]].discontinuity).toBe(true);
+        expect(seqAudioSegments2[seqAudioSegments2.length - 1].uri).toEqual("http://mock.com/media_mock/audioplaylist/i-audio_de-1.aac");
+        expect(seqAudioSegments2[seqAudioSegments2.length - 1].timelinePosition).toEqual(null);
+        done();
+      });
+  });
+
   it("can handle vod after another vod, loading same groupId but missing a language, type 1", (done) => {
     const now = Date.now();
     // # Two demuxed vods with some different languages.
     mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
-    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", []);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", [], now + 1);
     mockVod
       .load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
       .then(() => {
@@ -1421,7 +1469,7 @@ describe("HLSVod with separate audio variants", () => {
     const now = Date.now();
     // # Two demuxed vods with some different languages.
     mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
-    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", []);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", [], now + 1);
     mockVod
       .load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
       .then(() => {
@@ -1454,7 +1502,7 @@ describe("HLSVod with separate audio variants", () => {
     const now = Date.now();
     // # Two demuxed vods with different languages.
     mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
-    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", []);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", [], now + 1);
     mockVod
       .load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
       .then(() => {
@@ -1483,7 +1531,7 @@ describe("HLSVod with separate audio variants", () => {
     const now = Date.now();
     // # Two demuxed vods with different languages.
     mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
-    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", []);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", [], now + 1);
     mockVod
       .load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
       .then(() => {
@@ -1511,7 +1559,7 @@ describe("HLSVod with separate audio variants", () => {
   it("can return an audio variant manifest", (done) => {
     const now = Date.now();
     mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
-    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", []);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", [], now + 1);
     mockVod
       .load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
       .then(() => {
