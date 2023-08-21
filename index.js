@@ -55,6 +55,9 @@ class HLSVod {
     if (opts && opts.forcedDemuxMode) {
       this.forcedDemuxMode = opts.forcedDemuxMode;
     }
+    if (opts && opts.allowedAudioLanguages) {
+      this.allowedAudioLanguages = opts.allowedAudioLanguages;
+    }
     if (opts && opts.dummySubtitleEndpoint) {
       this.dummySubtitleEndpoint = opts.dummySubtitleEndpoint;
     }
@@ -115,6 +118,7 @@ class HLSVod {
       mediaSequenceValuesSubtitle: this.mediaSequenceValuesSubtitle,
       sequenceAlwaysContainNewSegments: this.sequenceAlwaysContainNewSegments,
       forcedDemuxMode: this.forcedDemuxMode,
+      allowedAudioLanguages: this.allowedAudioLanguages,
       dummySubtitleEndpoint: this.dummySubtitleEndpoint,
       subtitleSliceEndpoint: this.subtitleSliceEndpoint,
       videoSequencesCount: this.skipSerializeMediaSequences ? 0 : this.videoSequencesCount,
@@ -168,6 +172,7 @@ class HLSVod {
     this.mediaSequenceValuesSubtitle = de.mediaSequenceValuesSubtitle;
     this.sequenceAlwaysContainNewSegments = de.sequenceAlwaysContainNewSegments;
     this.forcedDemuxMode = de.forcedDemuxMode;
+    this.allowedAudioLanguages = de.allowedAudioLanguages;
     this.dummySubtitleEndpoint = de.dummySubtitleEndpoint;
     this.subtitleSliceEndpoint = de.subtitleSliceEndpoint;
     this.videoSequencesCount = de.videoSequencesCount;
@@ -279,8 +284,37 @@ class HLSVod {
                 }
                 const itemChannels = item.get("channels") ? item.get("channels") : "2";
                 this.audioCodecsMap[audioCodecs][itemChannels] = audioGroupId;
-                return itemLang;
+
+                if (this.allowedAudioLanguages) {
+                  for (let index = 0; index < this.allowedAudioLanguages.length; index++) {
+                    const element = this.allowedAudioLanguages[index];
+                    if (element.language.toLowerCase() === itemLang.toLowerCase() || element.name.toLowerCase() === itemLang.toLowerCase()) {
+                      return itemLang;
+                    }
+                  }
+                } else {
+                  return itemLang;
+                }
+                return;
               });
+
+              if (this.allowedAudioLanguages) {
+                for (let allowedAudioLanguagesIndex = audioLanguages.length - 1; allowedAudioLanguagesIndex >= 0; allowedAudioLanguagesIndex--) {
+                  if (!audioLanguages[allowedAudioLanguagesIndex]) {
+                    audioLanguages.splice(allowedAudioLanguagesIndex, 1)
+                  }
+                }
+                if (audioLanguages.length < 1) {
+                  const item = audioGroupItems[0];
+                  let itemLang;
+                  if (!item.get("language")) {
+                    itemLang = item.get("name");
+                  } else {
+                    itemLang = item.get("language");
+                  }
+                  audioLanguages.push(itemLang)
+                }
+              }
 
               // # Inject "default" language's segments to every new language relative to previous VOD.
               // # For the case when this is a VOD following another, every language new or old should
@@ -288,6 +322,7 @@ class HLSVod {
               const newLanguages = audioLanguages.filter((lang) => {
                 return !previousVODLanguages.includes(lang);
               });
+
               // # Only inject if there were prior tracks.
               if (previousVODLanguages.length > 0 && !HAS_AUDIO_DEFAULTS) {
                 for (let i = 0; i < newLanguages.length; i++) {
@@ -1644,7 +1679,7 @@ class HLSVod {
           let shiftOnce = true;
           let shiftedSegmentsCount = 0;
           // 2 - Shift excess segments and keep count of what has been removed (per variant)
-          while (totalSeqDur >= this.SEQUENCE_DURATION || (shiftOnce && segIdx !== 0)) { 
+          while (totalSeqDur >= this.SEQUENCE_DURATION || (shiftOnce && segIdx !== 0)) {
             shiftOnce = false;
             let timeToRemove = 0;
             let incrementDiscSeqCount = false;
