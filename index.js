@@ -244,23 +244,37 @@ class HLSVod {
         Promise.all(mediaManifestPromises).then(() => {
           let audioGroups = {};
           let subtitleGroups = {};
+
+          const numberOfCodecs = Object.keys(this.audioCodecsMap)
+          let codecsMatchingInVod = 0;
+          const firstVod = Object.keys(this.audioSegments).length === 0;
+
+          if (Object.keys(this.audioSegments).length === 0) {
+            for (let i = 0; i < m3u.items.StreamItem.length; i++) {
+              let audioGroupId = streamItem.get("audio");
+              if (!this.audioSegments[audioGroupId]) {
+                this.audioSegments[audioGroupId] = {};
+              }
+            }
+          }
+
           for (let i = 0; i < m3u.items.StreamItem.length; i++) {
             const streamItem = m3u.items.StreamItem[i];
             if (streamItem.get("audio")) {
               let audioGroupId = streamItem.get("audio");
-              if (!HAS_AUDIO_DEFAULTS && !this.audioSegments[audioGroupId]) {
-                this.audioSegments[audioGroupId] = {};
-              }
               const audioCodecs = streamItem.get("codecs").split(",").find(c => {
                 return c.match(/^mp4a/) || c.match(/^ac-3/) || c.match(/^ec-3/);
               });
 
-              debug(`Lookup media item for '${audioGroupId}'`);
+              if (Object.keys(this.audioCodecsMap).length !== 0) {
+                if (!this.audioCodecsMap[audioCodecs] && !firstVod) {
+                  continue;
+                } else if (!firstVod && this.audioCodecsMap[audioCodecs]) {
+                  codecsMatchingInVod++;
+                }
+              }
 
-              // # Needed for the case when loading after another VOD.
-              const previousVODLanguages = HAS_AUDIO_DEFAULTS
-                ? Object.keys(this.audioSegments[this.defaultAudioGroupAndLang.audioGroupId])
-                : Object.keys(this.audioSegments[audioGroupId]);
+              debug(`Lookup media item for '${audioGroupId}'`);
 
               let audioGroupItems = m3u.items.MediaItem.filter((item) => {
                 return item.get("type") === "AUDIO" && item.get("group-id") === audioGroupId;
@@ -276,7 +290,7 @@ class HLSVod {
                   itemLang = item.get("language");
                 }
                 // Initialize lang. in new group.
-                if (!HAS_AUDIO_DEFAULTS && !this.audioSegments[audioGroupId][itemLang]) {
+                if (!this.audioSegments[audioGroupId][itemLang]) {
                   this.audioSegments[audioGroupId][itemLang] = [];
                 }
                 if (!this.audioCodecsMap[audioCodecs]) {
@@ -296,14 +310,9 @@ class HLSVod {
                   return itemLang;
                 }
                 return;
-              });
+              }).filter((item) => item !== undefined);
 
               if (this.allowedAudioLanguages) {
-                for (let allowedAudioLanguagesIndex = audioLanguages.length - 1; allowedAudioLanguagesIndex >= 0; allowedAudioLanguagesIndex--) {
-                  if (!audioLanguages[allowedAudioLanguagesIndex]) {
-                    audioLanguages.splice(allowedAudioLanguagesIndex, 1)
-                  }
-                }
                 if (audioLanguages.length < 1) {
                   const item = audioGroupItems[0];
                   let itemLang;
@@ -314,38 +323,6 @@ class HLSVod {
                   }
                   audioLanguages.push(itemLang)
                 }
-              }
-
-              // # Inject "default" language's segments to every new language relative to previous VOD.
-              // # For the case when this is a VOD following another, every language new or old should
-              // # start with some segments from the previous VOD's last sequence.
-              const newLanguages = audioLanguages.filter((lang) => {
-                return !previousVODLanguages.includes(lang);
-              });
-
-              // # Only inject if there were prior tracks.
-              if (previousVODLanguages.length > 0 && !HAS_AUDIO_DEFAULTS) {
-                for (let i = 0; i < newLanguages.length; i++) {
-                  const newLanguage = newLanguages[i];
-                  const defaultLanguage = this._getFirstAudioLanguageWithSegments(audioGroupId);
-                  this.audioSegments[audioGroupId][newLanguage] = [...this.audioSegments[audioGroupId][defaultLanguage]];
-                }
-              }
-
-              // # Need to clean up langs. loaded from prev. VOD that current VOD doesn't have.
-              // # Necessary, for the case when getLiveMediaSequenceAudioSegments() tries to
-              // # access an audioGroup's language that the current VOD never had. A False-Positive.
-              if (!HAS_AUDIO_DEFAULTS) {
-                let allLangs = Object.keys(this.audioSegments[audioGroupId]);
-                let toRemove = [];
-                allLangs.map((junkLang) => {
-                  if (!audioLanguages.includes(junkLang)) {
-                    toRemove.push(junkLang);
-                  }
-                });
-                toRemove.map((junkLang) => {
-                  delete this.audioSegments[audioGroupId][junkLang];
-                });
               }
 
               // # For each lang, find the lang playlist uri and do _loadAudioManifest() on it.
@@ -490,6 +467,9 @@ class HLSVod {
                 }
               }
             }
+          }
+          if (numberOfCodecs > 0 && numberOfCodecs != codecsMatchingInVod) {
+            reject(new Error("Loaded VOD is missing audio codec(s)"));
           }
           debug("Codec to Audio Group Id mapping");
           debug(this.audioCodecsMap);
