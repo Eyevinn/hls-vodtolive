@@ -282,6 +282,7 @@ class HLSVod {
               // # Find all langs amongst the mediaItems that have this group id.
               // # It extracts each mediaItems language attribute value.
               // # ALSO initialize in this.audioSegments a lang. property who's value is an array [{seg1}, {seg2}, ...].
+              let skipGroupId = false;
               let audioLanguages = audioGroupItems.map((item) => {
                 let itemLang;
                 if (!item.get("language")) {
@@ -290,11 +291,21 @@ class HLSVod {
                   itemLang = item.get("language");
                 }
                 // Initialize lang. in new group.
-                if (!this.audioSegments[audioGroupId][itemLang]) {
-                  this.audioSegments[audioGroupId][itemLang] = [];
-                }
-                if (!this.audioCodecsMap[audioCodecs]) {
-                  this.audioCodecsMap[audioCodecs] = {};
+                if (firstVod) {
+                  if (!this.audioSegments[audioGroupId][itemLang]) {
+                    this.audioSegments[audioGroupId][itemLang] = [];
+                  }
+                  if (!this.audioCodecsMap[audioCodecs]) {
+                    this.audioCodecsMap[audioCodecs] = {};
+                  }
+                } else {
+                  if (!this.audioSegments[audioGroupId][itemLang]) {
+                    return;
+                  }
+                  if (!this.audioCodecsMap[audioCodecs]) {
+                    skipGroupId = true;
+                    return;
+                  }
                 }
                 const itemChannels = item.get("channels") ? item.get("channels") : "2";
                 this.audioCodecsMap[audioCodecs][itemChannels] = audioGroupId;
@@ -311,6 +322,10 @@ class HLSVod {
                 }
                 return;
               }).filter((item) => item !== undefined);
+
+              if (skipGroupId) {
+                continue;
+              }
 
               if (this.allowedAudioLanguages) {
                 if (audioLanguages.length < 1) {
@@ -1963,22 +1978,11 @@ class HLSVod {
   _copyAudioGroupsFromPrevious() {
     const previousVodSeqCount = this.previousVod.getLiveMediaSequencesCount("audio");
     const audioGroups = this.previousVod.getAudioGroups();
+    this.audioCodecsMap = this.previousVod.audioCodecsMap;
     if (audioGroups.length > 0) {
       for (let i = 0; i < audioGroups.length; i++) {
         const audioGroupId = audioGroups[i];
         const audioLangs = this.previousVod.getAudioLangsForAudioGroup(audioGroupId);
-        if (audioGroups.length === 1 && audioLangs.length === 1) {
-          /**
-           * TODO: Handle case where prevVod and nextVod have many groups and languages, but none of them match.
-           * Currently, it only sets a default if there is only one possible group and lang to match with on
-           * the prevVod.
-           */
-          this.defaultAudioGroupAndLang = {
-            audioGroupId: audioGroups[0],
-            audioLanguage: audioLangs[0],
-          };
-          debug(`Loading from previous - Default GroupID and lang selected=${JSON.stringify(this.defaultAudioGroupAndLang)}`);
-        }
         for (let k = 0; k < audioLangs.length; k++) {
           const audioLang = audioLangs[k];
           const lastMediaAudioSequence = this.previousVod.getLiveMediaSequenceAudioSegments(audioGroupId, audioLang, previousVodSeqCount - 1);
