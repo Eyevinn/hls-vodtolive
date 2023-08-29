@@ -273,6 +273,10 @@ class HLSVod {
                   codecsMatchingInVod++;
                 }
               }
+              let audioGroupIdToUse = audioGroupId;
+              if (!this.audioSegments[audioGroupId]) {
+                audioGroupIdToUse = this.audioSegments[Object.keys(this.audioSegments)[0]];
+              }
 
               debug(`Lookup media item for '${audioGroupId}'`);
 
@@ -302,6 +306,7 @@ class HLSVod {
                   if (!this.audioSegments[audioGroupId][itemLang]) {
                     return;
                   }
+                  
                   if (!this.audioCodecsMap[audioCodecs]) {
                     skipGroupId = true;
                     return;
@@ -309,6 +314,17 @@ class HLSVod {
                 }
                 const itemChannels = item.get("channels") ? item.get("channels") : "2";
                 this.audioCodecsMap[audioCodecs][itemChannels] = audioGroupId;
+
+                if (Object.keys(this.audioSegments).length > 1) {
+                  const groupIds = Object.keys(this.audioSegments)
+                  for (let index = 0; index < groupIds.length; index++) {
+                    const groupId = groupIds[index];
+                    if(this.audioSegments[groupId][itemLang]) {
+                      audioGroupIdToUse = groupId;
+                      return itemLang;
+                    }
+                  }
+                }
 
                 if (this.allowedAudioLanguages) {
                   for (let index = 0; index < this.allowedAudioLanguages.length; index++) {
