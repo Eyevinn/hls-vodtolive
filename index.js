@@ -371,23 +371,16 @@ class HLSVod {
                 }
                 if (audioUri) {
                   let audioManifestUrl = urlResolve(baseUrl, audioUri);
-                  if (!audioGroups[audioGroupId]) {
-                    audioGroups[audioGroupId] = {};
+                  if (!audioGroups[audioGroupIdToUse]) {
+                    audioGroups[audioGroupIdToUse] = {};
                   }
                   // # Prevents 'loading' an audio track with same GroupID and LANG.
                   // # otherwise it just would've loaded OVER the latest occurrent of the LANG in GroupID.
-                  if (!audioGroups[audioGroupId][audioLang]) {
-                    let targetGroup = audioGroupId;
-                    let targetLang = audioLang;
-                    audioGroups[audioGroupId][audioLang] = true;
-                    if (HAS_AUDIO_DEFAULTS) {
-                      targetGroup = this.defaultAudioGroupAndLang.audioGroupId;
-                      targetLang = this.defaultAudioGroupAndLang.audioLanguage;
-                      debug(`Loading Audio manifest onto Default GroupID=${targetGroup} and Language=${targetLang}`);
-                    }
-                    audioManifestPromises.push(this._loadAudioManifest(audioManifestUrl, targetGroup, targetLang, _injectAudioManifest));
+                  if (!audioGroups[audioGroupIdToUse][audioLang]) {
+                    audioGroups[audioGroupIdToUse][audioLang] = true;
+                    audioManifestPromises.push(this._loadAudioManifest(audioManifestUrl, audioGroupIdToUse, audioLang, _injectAudioManifest));
                   } else {
-                    debug(`Audio manifest for language "${audioLang}" from '${audioGroupId}' in already loaded, skipping`);
+                    debug(`Audio manifest for language "${audioLang}" from '${audioGroupIdToUse}' in already loaded, skipping`);
                   }
                 } else {
                   debug(`No media item for '${audioGroupId}' in "${audioLang}" was found, skipping`);
