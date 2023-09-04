@@ -244,6 +244,7 @@ class HLSVod {
         Promise.all(mediaManifestPromises).then(() => {
           let audioGroups = {};
           let subtitleGroups = {};
+          let addedAudioLanguage = {};
 
           const numberOfCodecs = Object.keys(this.audioCodecsMap)
           let codecsMatchingInVod = 0;
@@ -251,7 +252,7 @@ class HLSVod {
 
           if (Object.keys(this.audioSegments).length === 0) {
             for (let i = 0; i < m3u.items.StreamItem.length; i++) {
-              let audioGroupId = streamItem.get("audio");
+              let audioGroupId = m3u.items.StreamItem[i].get("audio");
               if (!this.audioSegments[audioGroupId]) {
                 this.audioSegments[audioGroupId] = {};
               }
@@ -305,8 +306,10 @@ class HLSVod {
                 } else {
                   if (!this.audioSegments[audioGroupId][itemLang]) {
                     return;
+                  } else {
+                    addedAudioLanguage[itemLang] = true;
                   }
-                  
+
                   if (!this.audioCodecsMap[audioCodecs]) {
                     skipGroupId = true;
                     return;
@@ -319,7 +322,7 @@ class HLSVod {
                   const groupIds = Object.keys(this.audioSegments)
                   for (let index = 0; index < groupIds.length; index++) {
                     const groupId = groupIds[index];
-                    if(this.audioSegments[groupId][itemLang]) {
+                    if (this.audioSegments[groupId][itemLang]) {
                       audioGroupIdToUse = groupId;
                       return itemLang;
                     }
@@ -343,17 +346,15 @@ class HLSVod {
                 continue;
               }
 
-              if (this.allowedAudioLanguages) {
-                if (audioLanguages.length < 1) {
-                  const item = audioGroupItems[0];
-                  let itemLang;
-                  if (!item.get("language")) {
-                    itemLang = item.get("name");
-                  } else {
-                    itemLang = item.get("language");
-                  }
-                  audioLanguages.push(itemLang)
+              if (audioLanguages.length < 1) {
+                const item = audioGroupItems[0];
+                let itemLang;
+                if (!item.get("language")) {
+                  itemLang = item.get("name");
+                } else {
+                  itemLang = item.get("language");
                 }
+                audioLanguages.push(itemLang)
               }
 
               // # For each lang, find the lang playlist uri and do _loadAudioManifest() on it.
@@ -378,6 +379,7 @@ class HLSVod {
                   // # otherwise it just would've loaded OVER the latest occurrent of the LANG in GroupID.
                   if (!audioGroups[audioGroupIdToUse][audioLang]) {
                     audioGroups[audioGroupIdToUse][audioLang] = true;
+                    console.log(audioGroupIdToUse, audioLang, 10)
                     audioManifestPromises.push(this._loadAudioManifest(audioManifestUrl, audioGroupIdToUse, audioLang, _injectAudioManifest));
                   } else {
                     debug(`Audio manifest for language "${audioLang}" from '${audioGroupIdToUse}' in already loaded, skipping`);
@@ -494,6 +496,40 @@ class HLSVod {
           }
           if (numberOfCodecs > 0 && numberOfCodecs != codecsMatchingInVod) {
             reject(new Error("Loaded VOD is missing audio codec(s)"));
+          }
+          let allAudioLanguagesCount = 0;
+          const groupIds = Object.keys(this.audioSegments)
+          for(let i = 0; i < groupIds.length;i++) {
+            allAudioLanguagesCount += Object.keys(this.audioSegments[groupIds[i]]).length
+          }
+          
+
+          if (addedAudioLanguage.length < allAudioLanguagesCount) {
+            let isAdded = [];
+            for(let i = 0; i < groupIds.length;i++) {
+              const langs = Object.keys(this.audioSegments[groupIds[i]])
+              for (let j = 0; j < langs.length; j++) {
+                const lang = langs[j];
+                if (isAdded.length > 0) {
+                  continue;
+                }
+                if(addedAudioLanguage[lang] && isAdded.length === 0) {
+                  isAdded.push(groupIds[i]);
+                  isAdded.push(lang);
+                  continue;
+                }
+              }
+            }
+            for(let i = 0; i < groupIds.length;i++) {
+              const langs = Object.keys(this.audioSegments[groupIds[i]])
+              for (let j = 0; j < langs.length; j++) {
+                const lang = langs[j];
+                if (!addedAudioLanguage[lang]) {
+                  this.audioSegments[groupIds][lang] = this.audioSegments[isAdded[0]][isAdded[1]]
+                }
+              }
+            }
+
           }
           debug("Codec to Audio Group Id mapping");
           debug(this.audioCodecsMap);
@@ -825,6 +861,8 @@ class HLSVod {
           return [];
         }
       }
+      /*console.log(audioGroupId, audioLanguage, this.mediaSequences[seqIdx].audioSegments)
+      console.log(this.audioSegments)*/
       if (!this.mediaSequences[seqIdx].audioSegments[audioGroupId][audioLanguage]) {
         const fallbackLang = this._getFirstAudioLanguageWithSegments(audioGroupId);
         return this.mediaSequences[seqIdx].audioSegments[audioGroupId][fallbackLang];
