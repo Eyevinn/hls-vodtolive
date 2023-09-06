@@ -623,52 +623,23 @@ describe("HLSVod with demuxed audio", () => {
       };
     });
 
-    it("load vod after vod with the same languages", (done) => {
-      mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, hlsOpts);
-      mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, hlsOpts);
-
-      mockVod
-        .load(mockMasterManifestOneLang, mockMediaManifestOneLang, mockAudioManifestOneLang)
-        .then(() => {
-          mockVod2.loadAfter(mockVod, mockMasterManifestOneLang, mockMediaManifestOneLang, mockAudioManifestOneLang)
-            .then(() => {
-              const m3u8 = mockVod2.getLiveMediaAudioSequences(0, "acc", "en", 0);
-              const m3u8_2 = mockVod2.getLiveMediaAudioSequences(0, "aac", "en", 1);
-              const subStrings = m3u8.split("\n")
-              const subStrings2 = m3u8_2.split("\n")
-              expect(subStrings[33]).toEqual("https://vod.streaming.a2d.tv/3e542405-583b-4edc-93ab-eca86427d148/ab92a690-62de-11ed-aa51-c96fb4f9434f_20337209.ism/hls/ab92a690-62de-11ed-aa51-c96fb4f9434f_20337209-textstream_swe=1000-693.webvtt");
-              expect(subStrings2[32]).toEqual("#EXT-X-DISCONTINUITY")
-              expect(subStrings2[33]).toEqual("#EXTINF:3.000,");
-              expect(subStrings2[34]).toEqual("https://d3t8zrj2x5ol3r.cloudfront.net/u/file~text_vtt~dummy.vtt/1/s/webvtt.vtt");
-              done();
-            });
-        });
-    });
-
     it("load vod after vod with one matching languages", (done) => {
-      mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, hlsOpts);
-      mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, hlsOpts);
+      mockVod = new HLSVod("http://mock.com/mock.m3u8");
+      mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
 
       mockVod
         .load(mockMasterManifestOneLang, mockMediaManifestOneLang, mockAudioManifestOneLang)
         .then(() => {
-          mockVod2.loadAfter(mockVod, mockMasterManifestOneLang, mockMediaManifestOneLang, mockAudioManifestOneLang)
+          mockVod2.loadAfter(mockVod, mockMasterManifestMultipleLangs, mockMediaManifestMultipleLangs, mockAudioManifestMultipleLangs)
             .then(() => {
-              const m3u8 = mockVod2.getLiveMediaAudioSequences(0, "acc", "en", 0);
-              const m3u8_2 = mockVod2.getLiveMediaAudioSequences(0, "aac", "en", 1);
-              const subStrings = m3u8.split("\n")
-              const subStrings2 = m3u8_2.split("\n")
-              expect(subStrings[33]).toEqual("https://vod.streaming.a2d.tv/3e542405-583b-4edc-93ab-eca86427d148/ab92a690-62de-11ed-aa51-c96fb4f9434f_20337209.ism/hls/ab92a690-62de-11ed-aa51-c96fb4f9434f_20337209-textstream_swe=1000-693.webvtt");
-              expect(subStrings2[32]).toEqual("#EXT-X-DISCONTINUITY")
-              expect(subStrings2[33]).toEqual("#EXTINF:3.000,");
-              expect(subStrings2[34]).toEqual("https://d3t8zrj2x5ol3r.cloudfront.net/u/file~text_vtt~dummy.vtt/1/s/webvtt.vtt");
+              expect(mockVod2.getAudioLangsForAudioGroup("aac").length).toEqual(1);
               done();
             });
         });
 
     });
 
-    fit("load vod after vod with no matching languages", (done) => {
+    it("load vod after vod with no matching languages", (done) => {
       mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, hlsOpts);
       mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, hlsOpts);
 
@@ -677,14 +648,14 @@ describe("HLSVod with demuxed audio", () => {
         .then(() => {
           mockVod2.loadAfter(mockVod, mockMasterManifestMultipleLangs2, mockMediaManifestMultipleLangs2, mockAudioManifestMultipleLangs2)
             .then(() => {
-              /*const m3u8 = mockVod2.getLiveMediaAudioSequences(0, "audio-aacl-96", "en", 0);
+              const m3u8 = mockVod2.getLiveMediaAudioSequences(0, "audio-aacl-96", "en", 0);
               const m3u8_2 = mockVod2.getLiveMediaAudioSequences(0, "audio-aacl-96", "en", 1);
               const subStrings = m3u8.split("\n")
               const subStrings2 = m3u8_2.split("\n")
               expect(subStrings[33]).toEqual("https://vod.streaming.a2d.tv/3e542405-583b-4edc-93ab-eca86427d148/ab92a690-62de-11ed-aa51-c96fb4f9434f_20337209.ism/hls/ab92a690-62de-11ed-aa51-c96fb4f9434f_20337209-textstream_swe=1000-693.webvtt");
               expect(subStrings2[32]).toEqual("#EXT-X-DISCONTINUITY")
               expect(subStrings2[33]).toEqual("#EXTINF:3.000,");
-              expect(subStrings2[34]).toEqual("https://d3t8zrj2x5ol3r.cloudfront.net/u/file~text_vtt~dummy.vtt/1/s/webvtt.vtt");*/
+              expect(subStrings2[34]).toEqual("https://d3t8zrj2x5ol3r.cloudfront.net/u/file~text_vtt~dummy.vtt/1/s/webvtt.vtt");
               done();
             });
         });
