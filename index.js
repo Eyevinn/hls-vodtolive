@@ -1932,7 +1932,7 @@ class HLSVod {
     }
     const lastSeg = this.segments[sourceBw][this.segments[sourceBw].length - 1];
     if (this.timeOffset !== null && lastSeg && lastSeg.timelinePosition) {
-      this.timeOffset = lastSeg.timelinePosition + lastSeg.duration * 1000;
+      this.timeOffset += lastSeg.duration * 1000;
     }
     this.segments[destBw].push({
       discontinuity: true,
