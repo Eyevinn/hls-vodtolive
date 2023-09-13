@@ -1930,10 +1930,7 @@ class HLSVod {
         this.segments[destBw].push(q);
       }
     }
-    const lastSeg = this.segments[sourceBw][this.segments[sourceBw].length - 1];
-    if (this.timeOffset !== null && lastSeg && lastSeg.timelinePosition) {
-      this.timeOffset += lastSeg.duration * 1000;
-    }
+
     this.segments[destBw].push({
       discontinuity: true,
       daterange: this.rangeMetadata ? this.rangeMetadata : null,

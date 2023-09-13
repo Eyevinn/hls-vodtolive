@@ -686,9 +686,10 @@ describe("HLSVod with timeline", () => {
 
 
   it("can handle vod after another vod", (done) => {
+    const VOD_LENGTH_MS = 2646000 + 6266;
     const now = Date.now();
     mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
-    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", [], now + 1);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", [], now + VOD_LENGTH_MS);
     mockVod
       .load(mockMasterManifest, mockMediaManifest)
       .then(() => {
@@ -696,8 +697,8 @@ describe("HLSVod with timeline", () => {
       })
       .then(() => {
         const seqSegments = mockVod2.getLiveMediaSequenceSegments(0);
-        expect(seqSegments["2497000"][4].timelinePosition).toEqual(now + 2646 * 1000);
-        expect(seqSegments["2497000"][6].timelinePosition).toEqual(now + 2646 * 1000 + 6266);
+        expect(seqSegments["2497000"][4].timelinePosition).toEqual(now + VOD_LENGTH_MS - 6266);
+        expect(seqSegments["2497000"][6].timelinePosition).toEqual(now + VOD_LENGTH_MS);
         done();
       });
   });
@@ -755,8 +756,9 @@ describe("HLSVod with timeline", () => {
       },
     ];
     const now = Date.now();
+    const VOD_LENGTH_MS = 2646000 + 6266;
     mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
-    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", splices, now + 1);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", splices, now + VOD_LENGTH_MS);
     mockVod
       .load(mockMasterManifest, mockMediaManifest)
       .then(() => {
@@ -764,8 +766,8 @@ describe("HLSVod with timeline", () => {
       })
       .then(() => {
         const seqSegments = mockVod2.getLiveMediaSequenceSegments(0);
-        expect(seqSegments["2497000"][4].timelinePosition).toEqual(now + 2646 * 1000);
-        expect(seqSegments["2497000"][6].timelinePosition).toEqual(now + 2646 * 1000 + 6266);
+        expect(seqSegments["2497000"][4].timelinePosition).toEqual(now + VOD_LENGTH_MS - 6266);
+        expect(seqSegments["2497000"][6].timelinePosition).toEqual(now + VOD_LENGTH_MS);
         done();
       });
   });
