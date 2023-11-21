@@ -1,0 +1,309 @@
+#EXTM3U
+#EXT-X-VERSION:6
+## Created with Unified Streaming Platform (version=1.11.20-26889)
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXT-X-MEDIA-SEQUENCE:1
+#EXT-X-INDEPENDENT-SEGMENTS
+#EXT-X-TARGETDURATION:4
+#USP-X-TIMESTAMP-MAP:MPEGTS=900000,LOCAL=1970-01-01T00:00:00Z
+## splice_insert(auto_return)
+#EXT-X-PROGRAM-DATE-TIME:1970-01-01T00:34:38.960000Z
+#EXTINF:2.3200, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-544.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-545.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-546.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-547.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-548.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-549.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-550.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-551.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-552.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-553.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-554.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-555.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-556.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-557.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-558.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-559.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-560.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-561.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-562.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-563.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-564.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-565.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-566.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-567.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-568.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-569.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-570.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-571.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-572.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-573.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-574.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-575.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-576.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-577.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-578.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-579.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-580.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-581.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-582.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-583.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-584.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-585.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-586.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-587.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-588.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-589.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-590.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-591.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-592.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-593.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-594.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-595.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-596.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-597.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-598.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-599.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-600.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-601.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-602.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-603.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-604.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-605.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-606.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-607.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-608.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-609.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-610.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-611.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-612.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-613.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-614.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-615.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-616.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-617.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-618.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-619.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-620.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-621.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-622.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-623.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-624.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-625.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-626.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-627.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-628.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-629.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-630.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-631.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-632.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-633.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-634.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-635.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-636.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-637.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-638.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-639.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-640.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-641.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-642.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-643.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-644.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-645.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-646.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-647.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-648.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-649.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-650.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-651.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-652.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-653.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-654.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-655.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-656.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-657.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-658.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-659.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-660.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-661.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-662.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-663.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-664.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-665.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-666.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-667.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-668.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-669.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-670.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-671.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-672.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-673.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-674.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-675.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-676.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-677.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-678.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-679.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-680.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-681.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-682.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-683.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-684.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-685.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-686.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-687.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-688.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-689.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-690.webvtt
+#EXTINF:3.8400, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-691.webvtt
+#EXTINF:3.9600, no desc
+https://vod.streaming.a2d.tv/9e99f851-649f-4785-a49a-3f9f017097a1/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165.ism/hls/9f852b50-8a68-11ed-8256-774935cdeaa1_20341165-textstream_swe=1000-692.webvtt
+#EXT-X-ENDLIST

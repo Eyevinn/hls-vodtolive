@@ -27,7 +27,7 @@ describe("HLSVod with subtitles", () => {
     sequenceAlwaysContainNewSegments: true
   }
 
-  describe("", () => {
+  describe("can handle", () => {
     let mockMasterManifestLongSegments;
     let mockMediaManifestLongSegments;
     let mockAudioManifestLongSegments;
@@ -48,6 +48,8 @@ describe("HLSVod with subtitles", () => {
     let mockMasterPlaylistUnevenSubVideoSegments;
     let mockMediaPlaylistUnevenSubVideoSegments;
     let mockSubtitlePlaylistUnevenSubVideoSegments;
+
+    let mockHlsDemuxWithPreroll;
 
     beforeEach(() => {
       mockMasterManifestLongSegments = function () {
@@ -121,6 +123,21 @@ describe("HLSVod with subtitles", () => {
 
       mockSubtitlePlaylistUnevenSubVideoSegments = function () {
         return fs.createReadStream(`testvectors/hls_subs3/subs/sub.m3u8`);
+      };
+
+      mockHlsDemuxWithPreroll = {
+        master: () => {
+          return fs.createReadStream("testvectors/hls_subs7_demux/master.m3u8");
+        },
+        media: (bw) => {
+          return fs.createReadStream(`testvectors/hls_subs7_demux/media7070700.m3u8`);
+        },
+        audio: (g, l) => {
+          return fs.createReadStream(`testvectors/hls_subs7_demux/audio.m3u8`);
+        },
+        subtitle: (g, l) => {
+          return fs.createReadStream(`testvectors/hls_subs7_demux/subtitle.m3u8`);
+        },
       };
 
     });
@@ -272,10 +289,10 @@ describe("HLSVod with subtitles", () => {
           const m3u8_2 = mockVod2.getLiveMediaSubtitleSequences(0, "textstream", "sv", 1);
           const subStrings = m3u8.split("\n")
           const subStrings2 = m3u8_2.split("\n")
-          expect(subStrings[33]).toEqual("https://vod.streaming.a2d.tv/3e542405-583b-4edc-93ab-eca86427d148/ab92a690-62de-11ed-aa51-c96fb4f9434f_20337209.ism/hls/ab92a690-62de-11ed-aa51-c96fb4f9434f_20337209-textstream_swe=1000-693.webvtt");
-          expect(subStrings2[32]).toEqual("#EXT-X-DISCONTINUITY")
-          expect(subStrings2[33]).toEqual("#EXTINF:3.000,");
-          expect(subStrings2[34]).toEqual("https://d3t8zrj2x5ol3r.cloudfront.net/u/file~text_vtt~dummy.vtt/1/s/webvtt.vtt");
+          expect(subStrings[35]).toEqual("https://vod.streaming.a2d.tv/3e542405-583b-4edc-93ab-eca86427d148/ab92a690-62de-11ed-aa51-c96fb4f9434f_20337209.ism/hls/ab92a690-62de-11ed-aa51-c96fb4f9434f_20337209-textstream_swe=1000-693.webvtt");
+          expect(subStrings2[34]).toEqual("#EXT-X-DISCONTINUITY")
+          expect(subStrings2[35]).toEqual("#EXTINF:3.000,");
+          expect(subStrings2[36]).toEqual("https://d3t8zrj2x5ol3r.cloudfront.net/u/file~text_vtt~dummy.vtt/1/s/webvtt.vtt");
           done();
         });
     });
@@ -355,6 +372,35 @@ describe("HLSVod with subtitles", () => {
           expect(subStrings2[22]).toEqual("#EXT-X-DISCONTINUITY")
           expect(subStrings2[23]).toEqual("#EXTINF:4.000,");
           expect(subStrings2[24]).toEqual("http://mock.com/subs/0.webvtt");
+          done();
+        });
+    });
+    it("deltaTimes and playheadPos, for audio- and subtitletracks with alwaysNewSegments(true)", (done) => {
+      const bool = 1;
+      mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0*1000, null, {
+        dummySubtitleEndpoint: "/dummysubs.vtt",
+        subtitleSliceEndpoint: "/subtitlevtt.vtt",
+        shouldContainSubtitles: true,
+        expectedSubtitleTracks: [   { language: "fr", name: "french" },   { language: "sv", name: "Swedish" }
+        ],//subtitleTracks,
+        sequenceAlwaysContainNewSegments: true,
+        forcedDemuxMode: true
+      });
+      mockVod.load(mockHlsDemuxWithPreroll.master, mockHlsDemuxWithPreroll.media, mockHlsDemuxWithPreroll.audio, mockHlsDemuxWithPreroll.subtitle, )
+        .then(() => {
+          const deltaV = mockVod.getDeltaTimes()
+          const deltaS = mockVod.getDeltaTimes("subtitle")
+          const deltaA = mockVod.getDeltaTimes("audio")
+          const playheadPosV = mockVod.getPlayheadPositions()
+          const playheadPosS = mockVod.getPlayheadPositions("subtitle")
+          const playheadPosA = mockVod.getPlayheadPositions("audio")
+          expect(deltaV).not.toEqual(deltaS);
+          expect(deltaA.length).toBeGreaterThan(deltaS.length);
+          expect(deltaA.slice(0, 132)).toEqual(deltaS.slice(0, 132)); // Last 2 segments are expected to be different
+          expect(deltaA.slice(132)).not.toEqual(deltaS.slice(132));
+          expect(playheadPosV).not.toEqual(playheadPosS);
+          expect(playheadPosA.slice(0, 132)).toEqual(playheadPosS.slice(0, 132));
+          expect(playheadPosA.slice(132)).not.toEqual(playheadPosS.slice(132));
           done();
         });
     });
