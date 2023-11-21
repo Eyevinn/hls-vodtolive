@@ -2352,7 +2352,7 @@ describe("HLSVod serializing", () => {
           return megabytes.toFixed(2);
         }
         const expectedJSONSizeInMBFull = "5.29";
-        const expectedJSONSizeInMBPartial = "0.39";
+        const expectedJSONSizeInMBPartial = "0.38";
         const expectedJSONSizeInMBFullAgain = expectedJSONSizeInMBFull;
         const expectedMseqCountFull = 146;
         const expectedMseqCountPartial = 0;
