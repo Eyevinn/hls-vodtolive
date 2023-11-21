@@ -1,7 +1,7 @@
 const m3u8 = require("@eyevinn/m3u8");
 const debug = require("debug")("hls-vodtolive");
 const verbose = require("debug")("hls-vodtolive-verbose");
-const { findIndexReversed, fetchWithRetry, urlResolve, segToM3u8, findBottomSegItem } = require("./utils.js");
+const { findIndexReversed, fetchWithRetry, urlResolve, segToM3u8, findBottomSegItem, fixedNumber, inspectForVodTransition } = require("./utils.js");
 
 class HLSVod {
   /**
@@ -1152,15 +1152,61 @@ class HLSVod {
       leftover = {};
     }
     const bandwidths = Object.keys(this.segments);
-    let videoSegments = this.segments[bandwidths[0]]
+    let segmentList = this.segments[bandwidths[0]];
+    const subsGroupIdCount = Object.keys(this.subtitleSegments).length;
+
+    if (useDummyUrl && subsGroupIdCount > 1) {
+      let subTrax = [];
+      for (let group of Object.keys(this.subtitleSegments)) {
+        for (let lang of Object.keys(this.subtitleSegments[group])) {
+          subTrax.push({ trackId: `${group}:::${lang}`, seglist: this.subtitleSegments[group][lang] });
+        }
+      }
+      subTrax = subTrax.reverse();
+      const findItemWithLargestSize = (list) => {
+        return list.reduce((largestItem, currentItem) => {
+          return currentItem.seglist.length > largestItem.seglist.length ? currentItem : largestItem;
+        }).trackId;
+      };
+      const track = findItemWithLargestSize(subTrax);
+      const [g , l] = track.split(":::");
+      const subsegs =  this.subtitleSegments[g][l];
+      const trackHasDummySpliceSegments = (arr) => {
+        for (let i = arr.length - 1; i >= 0; i--) {
+          const seg = arr[i];
+          if (seg.uri) {
+            const p = /starttime=.*endtime=.*elapsedtime=/;
+            return p.test(seg.uri);
+          };
+        }
+      }
+      // Only generate smaller subtitle segments based on loaded subtitle segments, rather than video segments,
+      // if loaded subtitle segments exist (and are not 'splice' segments)   
+      if (subsegs.length > 0 && !trackHasDummySpliceSegments(subsegs)) {
+        const [numSegsAfterVT, hasVT] = inspectForVodTransition(subsegs);
+        if (numSegsAfterVT > 0 || !hasVT) {
+          segmentList = this.subtitleSegments[g][l];
+          let dur = 0;
+          segmentList.map(s => {
+            if (s.duration) {
+              dur += s.duration;
+            }
+          });
+         segment.duration = dur;
+        }
+      }
+
+    }
     let newSegmentList = [];
     let totalSubtitleSegmentDuration = segment.duration;
     let index = offset;
     let allVideoDurationUsed = false;
-    while (index < videoSegments.length && totalSubtitleSegmentDuration > 0) {
+    while (index < segmentList.length && totalSubtitleSegmentDuration > 0) {
       totalSubtitleSegmentDuration = Math.round(totalSubtitleSegmentDuration * 1000) / 1000;
-      if (videoSegments[index].discontinuity) {
-        newSegmentList.push(videoSegments[index])
+      if (segmentList[index].discontinuity) {
+        if (!segmentList[index].vodTransition) {
+          newSegmentList.push(segmentList[index])
+        }
         index += 1;
         continue;
       }
@@ -1171,7 +1217,7 @@ class HLSVod {
       const params = new URLSearchParams();
       const startTime = segment.duration - totalSubtitleSegmentDuration;
       const consumedVideoDuration = leftover.consumedVideoDuration ? leftover.consumedVideoDuration : 0
-      const endTime = startTime + Math.min(videoSegments[index].duration, totalSubtitleSegmentDuration) - consumedVideoDuration;
+      const endTime = startTime + Math.min(segmentList[index].duration, totalSubtitleSegmentDuration) - consumedVideoDuration;
 
       if (!useDummyUrl) {
         params.append("vtturi", segment.uri)
@@ -1193,22 +1239,22 @@ class HLSVod {
       if (leftover.duration) {
         newSegment.duration = leftover.duration + leftover.consumedVideoDuration;
         totalSubtitleSegmentDuration -= leftover.duration;
-        if (leftover.duration + leftover.consumedVideoDuration === videoSegments[index].duration) {
+        if (leftover.duration + leftover.consumedVideoDuration === segmentList[index].duration) {
           allVideoDurationUsed = true;
         }
         leftover = {};
       }
-      else if (videoSegments[index].duration < totalSubtitleSegmentDuration) {
-        newSegment.duration = videoSegments[index].duration;
-        totalSubtitleSegmentDuration -= videoSegments[index].duration;
+      else if (segmentList[index].duration < totalSubtitleSegmentDuration) {
+        newSegment.duration = segmentList[index].duration;
+        totalSubtitleSegmentDuration -= segmentList[index].duration;
         allVideoDurationUsed = true;
-      } else if (videoSegments[index].duration === totalSubtitleSegmentDuration) {
+      } else if (segmentList[index].duration === totalSubtitleSegmentDuration) {
         newSegment.duration = totalSubtitleSegmentDuration;
         totalSubtitleSegmentDuration = 0;
         allVideoDurationUsed = true;
       } else {
         leftover = {
-          duration: videoSegments[index].duration - totalSubtitleSegmentDuration,
+          duration: segmentList[index].duration - totalSubtitleSegmentDuration,
           previousSegmentUri: params,
           consumedVideoDuration: totalSubtitleSegmentDuration
         }
@@ -1677,6 +1723,7 @@ class HLSVod {
             });
             if (timeToRemove) {
               totalSeqDur -= timeToRemove;
+              totalSeqDur = fixedNumber(totalSeqDur);
               totalRemovedSegments++;
               shiftedSegmentsCount++;
             }
@@ -1701,7 +1748,7 @@ class HLSVod {
                   const langs = Object.keys(segments[groupId]);
                   langs.forEach((lang) => {
                     let seg = _sequence[groupId][lang].pop();
-                    if (groupId === groupId && lang === firstLanguage) {
+                    if (groupId === firstGroupId && lang === firstLanguage) {
                       timeToRemove = seg.duration;
                     }
                   });
@@ -1817,12 +1864,12 @@ class HLSVod {
           if (type === "audio") {
             this.deltaTimesAudio.push({
               interval: interval,
-              position: positionIncrement ? lastPosition + tpi : lastPosition,
+              position: positionIncrement ? fixedNumber(lastPosition + tpi) : (lastPosition),
             });
           } else if (type === "subtitle") {
             this.deltaTimesSubtitle.push({
               interval: interval,
-              position: positionIncrement ? lastPosition + tpi : lastPosition,
+              position: positionIncrement ?  fixedNumber(lastPosition + tpi) : (lastPosition),
             });
           }
           if (positionIncrement) {
@@ -2146,7 +2193,23 @@ class HLSVod {
 
 
         const result = this.generateSmallerSubtitleSegments(fakeSubtileSegment, offset, 0, true, false, 0)
-        this.subtitleSegments[this.DUMMY_DEFAULT_SUBTITLE_GROUP_ID][this.DUMMY_DEFAULT_SUBTITLE_LANGUAGE] = this.subtitleSegments[this.DUMMY_DEFAULT_SUBTITLE_GROUP_ID][this.DUMMY_DEFAULT_SUBTITLE_LANGUAGE].concat(result.newSegments)
+        this.subtitleSegments[this.DUMMY_DEFAULT_SUBTITLE_GROUP_ID][this.DUMMY_DEFAULT_SUBTITLE_LANGUAGE] = this.subtitleSegments[this.DUMMY_DEFAULT_SUBTITLE_GROUP_ID][this.DUMMY_DEFAULT_SUBTITLE_LANGUAGE].concat(result.newSegments);
+        // If the expected tracks are set and are not filled with new source segments, then let them have dummy segments
+        if (this.expectedSubtitleTracks.length && this.expectedSubtitleTracks.length > 0) {
+          for (let i = 0; i < this.expectedSubtitleTracks.length; i++) {
+            const track = this.expectedSubtitleTracks[i];
+            const [numSegsAfterVT, hasVT] = inspectForVodTransition(this.subtitleSegments[this.DEFAULT_SUBTITLE_GROUP_ID][track.language]);
+            // Case: Loading vod after 
+            if (numSegsAfterVT === 0 && hasVT) {
+              this.subtitleSegments[this.DEFAULT_SUBTITLE_GROUP_ID][track.language] = this.subtitleSegments[this.DEFAULT_SUBTITLE_GROUP_ID][track.language].concat(result.newSegments);
+            }
+            // Case: Loading vod first time
+            if (this.subtitleSegments[this.DEFAULT_SUBTITLE_GROUP_ID][track.language].length === 0) {
+              const emptySubtitleSegList = this.subtitleSegments[this.DUMMY_DEFAULT_SUBTITLE_GROUP_ID][this.DUMMY_DEFAULT_SUBTITLE_LANGUAGE];
+              this.subtitleSegments[this.DEFAULT_SUBTITLE_GROUP_ID][track.language] = emptySubtitleSegList;
+            }
+          }
+        }
       }
 
       if (!this.sequenceAlwaysContainNewSegments) {

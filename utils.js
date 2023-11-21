@@ -201,6 +201,26 @@ const findBottomSegItem = (arr) => {
   return null;
 }
 
+const fixedNumber = (n) => {
+  // Avoid JS floating point error
+  let o = Math.round(n*100) / 100;
+  return o;
+}
+
+const inspectForVodTransition = (list) => {
+  let count = 0;
+  let foundVodTransition = false;
+  for (let i = 0; i < list.length; i++) {
+    if (foundVodTransition) {
+      count++;
+    }
+    if (list[i].vodTransition) {
+      foundVodTransition = true;
+    }
+  }
+  return [count, foundVodTransition];
+};
+
 module.exports = {
   daterangeAttribute,
   keysToM3u8,
@@ -208,5 +228,7 @@ module.exports = {
   urlResolve,
   fetchWithRetry,
   findIndexReversed,
-  findBottomSegItem
+  findBottomSegItem,
+  fixedNumber,
+  inspectForVodTransition
 }
