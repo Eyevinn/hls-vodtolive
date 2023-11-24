@@ -2,6 +2,7 @@ const HLSVod = require("../index.js");
 const fs = require("fs");
 
 describe("HLSVod with demuxed audio", () => {
+
   describe("utility functions for audio", () => {
     it("generate audio sequences type A", (done) => {
       mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { subtitleSpliceEndpoint: "/subtitlevtt.vtt" });
@@ -67,7 +68,7 @@ describe("HLSVod with demuxed audio", () => {
     });
   });
 
-  describe("HLSVod reload media sequences", () => {
+  describe("can reload media sequences", () => {
     let mockMasterManifest1;
     let mockMediaManifest1;
     let mockAudioManifest1;
@@ -325,5 +326,402 @@ describe("HLSVod with demuxed audio", () => {
           });
         });
     });
+  });
+
+
+  describe("correct language functionality", () => {
+
+    const hlsOpts = {
+      forcedDemuxMode: true,
+    }
+
+
+    let mockMasterManifestOneLang;
+    let mockMediaManifestOneLang;
+    let mockAudioManifestOneLang;
+    let mockMasterManifestMultipleLangs;
+    let mockMediaManifestMultipleLangs;
+    let mockAudioManifestMultipleLangs;
+
+    beforeEach(() => {
+      mockMasterManifestOneLang = function () {
+        return fs.createReadStream("testvectors/hls_reload1_audio/master.m3u8");
+      };
+
+      mockMediaManifestOneLang = function () {
+        return fs.createReadStream("testvectors/hls_reload1_audio/1.m3u8");
+      };
+
+      mockAudioManifestOneLang = function () {
+        return fs.createReadStream("testvectors/hls_reload1_audio/aac-en.m3u8");
+      };
+
+      mockMasterManifestMultipleLangs = function () {
+        return fs.createReadStream("testvectors/hls_always_0_demux/master.m3u8");
+      };
+
+      mockMediaManifestMultipleLangs = function (bw) {
+        return fs.createReadStream(`testvectors/hls_always_0_demux/${bw}.m3u8`);
+      };
+
+      mockAudioManifestMultipleLangs = function (_, lang) {
+        if (lang) {
+          return fs.createReadStream(`testvectors/hls_always_0_demux/aac-${lang}.m3u8`);
+        } else {
+          return fs.createReadStream(`testvectors/hls_always_0_demux/aac-en.m3u8`);
+        }
+      };
+    });
+
+    it("load with the language specified", (done) => {
+      const audioTracks = [
+        { language: "en", name: "English" },
+      ];
+      hlsOpts.allowedAudioLanguages = audioTracks;
+      mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, hlsOpts);
+      mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, hlsOpts);
+
+      mockVod
+        .load(mockMasterManifestOneLang, mockMediaManifestOneLang, mockAudioManifestOneLang)
+        .then(() => {
+          const audioLanguages = mockVod.getAudioLangsForAudioGroup("aac");
+          expect(audioLanguages).toEqual(["en"]);
+          done();
+        });
+    });
+
+    it("load with all the language specified", (done) => {
+      const audioTracks = [
+        { language: "en", name: "English" },
+        { language: "sv", name: "Svenska" },
+      ]
+      hlsOpts.allowedAudioLanguages = audioTracks;
+      mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, hlsOpts);
+      mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, hlsOpts);
+
+      mockVod
+        .load(mockMasterManifestMultipleLangs, mockMediaManifestMultipleLangs, mockAudioManifestMultipleLangs)
+        .then(() => {
+          const audioLanguages = mockVod.getAudioLangsForAudioGroup("aac");
+          expect(audioLanguages).toEqual(["en", "sv"]);
+          done();
+        });
+    });
+
+    it("load with all the language specified but vod only has one", (done) => {
+      const audioTracks = [
+        { language: "en", name: "English" },
+        { language: "sv", name: "Svenska" },
+      ]
+      hlsOpts.allowedAudioLanguages = audioTracks;
+      mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, hlsOpts);
+      mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, hlsOpts);
+
+      mockVod
+        .load(mockMasterManifestOneLang, mockMediaManifestOneLang, mockAudioManifestOneLang)
+        .then(() => {
+          const audioLanguages = mockVod.getAudioLangsForAudioGroup("aac");
+          expect(audioLanguages).toEqual(["en", "sv"]);
+          const m3u8 = mockVod.getLiveMediaAudioSequences(0, "acc", "sv", 0);
+          const m3u82 = mockVod.getLiveMediaAudioSequences(0, "acc", "en", 0);
+          const subStrings = m3u8.split("\n");
+          const subStrings2 = m3u82.split("\n");
+          expect(subStrings[7]).toEqual("http://ys-intermediate.tv4play.se/prod/6/4/6/5/30751/u-6400-b-640x360-704-1-1.ts");
+          expect(subStrings2[7]).toEqual("http://ys-intermediate.tv4play.se/prod/6/4/6/5/30751/u-6400-b-640x360-704-1-1.ts");
+          done();
+        });
+    });
+
+    it("load with only the language specified", (done) => {
+      const audioTracks = [
+        { language: "en", name: "English" },
+      ];
+      hlsOpts.allowedAudioLanguages = audioTracks;
+      mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, hlsOpts);
+      mockVod
+        .load(mockMasterManifestMultipleLangs, mockMediaManifestMultipleLangs, mockAudioManifestMultipleLangs)
+        .then(() => {
+          const m3u8 = mockVod.getLiveMediaAudioSequences(0, "acc", "en", 0);
+          const subStrings = m3u8.split("\n");
+          expect(subStrings[8]).toEqual("https://maitv-vod.lab.eyevinn.technology/ads/apotea-15s.mp4/audio/en-00000.ts");
+          const audioLanguages = mockVod.getAudioLangsForAudioGroup("aac");
+          expect(audioLanguages).toEqual(["en"]);
+          done();
+        });
+    });
+
+    it("load without the language specified", (done) => {
+      const audioTracks = [
+        { language: "es", name: "Espanol" },
+      ]
+      hlsOpts.allowedAudioLanguages = audioTracks;
+      mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, hlsOpts);
+      mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, hlsOpts);
+
+      mockVod
+        .load(mockMasterManifestOneLang, mockMediaManifestOneLang, mockAudioManifestOneLang)
+        .then(() => {
+          const audioLanguages = mockVod.getAudioLangsForAudioGroup("aac");
+          const m3u8 = mockVod.getLiveMediaAudioSequences(0, "acc", "es", 0);
+          const subStrings = m3u8.split("\n")
+          expect(subStrings[7]).toEqual("http://ys-intermediate.tv4play.se/prod/6/4/6/5/30751/u-6400-b-640x360-704-1-1.ts");
+          expect(audioLanguages).toEqual(["es"]);
+          done();
+        });
+    });
+
+    it("load vod after a vod with specified langs", (done) => {
+      const audioTracks = [
+        { language: "en", name: "English" },
+        { language: "sv", name: "Svenska" },
+      ]
+      hlsOpts.allowedAudioLanguages = audioTracks;
+      mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, hlsOpts);
+      mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, hlsOpts);
+
+      mockVod
+        .load(mockMasterManifestOneLang, mockMediaManifestOneLang, mockAudioManifestOneLang)
+        .then(() => {
+          mockVod2.loadAfter(mockVod, mockMasterManifestOneLang, mockMediaManifestOneLang, mockAudioManifestOneLang)
+            .then(() => {
+              const m3u8 = mockVod2.getLiveMediaAudioSequences(0, "acc", "sv", 1);
+              const m3u82 = mockVod2.getLiveMediaAudioSequences(0, "acc", "en", 1);
+              const subStrings = m3u8.split("\n");
+              const subStrings2 = m3u82.split("\n");
+              expect(subStrings[19]).toEqual("http://ys-intermediate.tv4play.se/prod/6/4/6/5/30751/u-6400-b-640x360-704-1-19.ts");
+              expect(subStrings[20]).toEqual("#EXT-X-DISCONTINUITY");
+              expect(subStrings[21]).toEqual("#EXTINF:6.000,");
+              expect(subStrings[22]).toEqual("http://ys-intermediate.tv4play.se/prod/6/4/6/5/30751/u-6400-b-640x360-704-1-1.ts");
+
+              expect(subStrings2[19]).toEqual("http://ys-intermediate.tv4play.se/prod/6/4/6/5/30751/u-6400-b-640x360-704-1-19.ts");
+              expect(subStrings2[20]).toEqual("#EXT-X-DISCONTINUITY");
+              expect(subStrings2[21]).toEqual("#EXTINF:6.000,");
+              expect(subStrings2[22]).toEqual("http://ys-intermediate.tv4play.se/prod/6/4/6/5/30751/u-6400-b-640x360-704-1-1.ts");
+              done();
+            });
+        });
+    });
+  });
+
+  describe("correct language functionality without allowedAudioLanguages list", () => {
+    let mockMasterManifestOneLang;
+    let mockMediaManifestOneLang;
+    let mockAudioManifestOneLang;
+    let mockMasterManifestMultipleLangs;
+    let mockMediaManifestMultipleLangs;
+    let mockAudioManifestMultipleLangs;
+    let mockMasterManifestMultipleLangs2;
+    let mockMediaManifestMultipleLangs2;
+    let mockAudioManifestMultipleLangs2;
+
+    beforeEach(() => {
+      mockMasterManifestOneLang = function () {
+        return fs.createReadStream("testvectors/hls_reload1_audio/master.m3u8");
+      };
+
+      mockMediaManifestOneLang = function () {
+        return fs.createReadStream("testvectors/hls_reload1_audio/1.m3u8");
+      };
+
+      mockAudioManifestOneLang = function () {
+        return fs.createReadStream("testvectors/hls_reload1_audio/aac-en.m3u8");
+      };
+
+      mockMasterManifestMultipleLangs = function () {
+        return fs.createReadStream("testvectors/hls_multiaudiotracks/master.m3u8");
+      };
+
+      mockMediaManifestMultipleLangs = function (bw) {
+        const fname = {
+          354000: "video-241929.m3u8",
+          819000: "video-680761.m3u8",
+          1538000: "video-1358751.m3u8",
+          2485000: "video-2252188.m3u8",
+          3396000: "video-3112126.m3u8",
+        };
+        return fs.createReadStream(`testvectors/hls_multiaudiotracks/${fname[bw]}`);
+      };
+
+      mockAudioManifestMultipleLangs = function (_, lang) {
+        if (lang) {
+          return fs.createReadStream(`testvectors/hls_multiaudiotracks/audio-96000-${lang}.m3u8`);
+        } else {
+          return fs.createReadStream(`testvectors/hls_multiaudiotracks/audio-96000-en.m3u8`);
+        }
+      };
+
+      mockMasterManifestMultipleLangs2 = function () {
+        return fs.createReadStream("testvectors/hls_multiaudiotracks6/master.m3u8");
+      };
+
+      mockMediaManifestMultipleLangs2 = function (bw) {
+        const fname = {
+          354000: "video-241929.m3u8",
+          819000: "video-680761.m3u8",
+          1538000: "video-1358751.m3u8",
+          2485000: "video-2252188.m3u8",
+          3396000: "video-3112126.m3u8",
+        };
+        return fs.createReadStream(`testvectors/hls_multiaudiotracks6/${fname[bw]}`);
+      };
+
+      mockAudioManifestMultipleLangs2 = function (_, lang) {
+        if (lang) {
+          return fs.createReadStream(`testvectors/hls_multiaudiotracks6/audio-96000-${lang}.m3u8`);
+        } else {
+          return fs.createReadStream(`testvectors/hls_multiaudiotracks6/aac-en.m3u8`);
+        }
+      };
+    });
+
+    fit("load vod with multiple languages after vod with one matching languages", (done) => {
+      mockVod = new HLSVod("http://mock.com/mock.m3u8");
+      mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
+
+      mockVod
+        .load(mockMasterManifestOneLang, mockMediaManifestOneLang, mockAudioManifestOneLang)
+        .then(() => {
+          mockVod2.loadAfter(mockVod, mockMasterManifestMultipleLangs, mockMediaManifestMultipleLangs, mockAudioManifestMultipleLangs)
+            .then(() => {
+              expect(mockVod2.getAudioLangsForAudioGroup("aac").length).toEqual(1);
+              done();
+            });
+        });
+    });
+
+    it("loading vod with one matching languages after vod with multiple languages", (done) => {
+      mockVod = new HLSVod("http://mock.com/mock.m3u8");
+      mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
+
+      mockVod
+        .load(mockMasterManifestMultipleLangs, mockMediaManifestMultipleLangs, mockAudioManifestMultipleLangs)
+        .then(() => {
+          mockVod2.loadAfter(mockVod, mockMasterManifestOneLang, mockMediaManifestOneLang, mockAudioManifestOneLang)
+            .then(() => {
+              const m3u8_2 = mockVod2.getLiveMediaAudioSequences(0, "audio-aacl-96", "pl", 1);
+              const subStrings2 = m3u8_2.split("\n");
+              expect(subStrings2[41]).toEqual("http://mock.com/1woxvooiidb(11186147_ISMUSP)-audio=96000_pl-26.aac");
+              expect(subStrings2[42]).toEqual("#EXT-X-DISCONTINUITY")
+              expect(subStrings2[43]).toEqual("#EXTINF:6.000,");
+              expect(subStrings2[44]).toEqual("http://ys-intermediate.tv4play.se/prod/6/4/6/5/30751/u-6400-b-640x360-704-1-1.ts");
+              done();
+            });
+        });
+    });
+
+    it("load vod after vod with no matching languages", (done) => {
+      mockVod = new HLSVod("http://mock.com/mock.m3u8");
+      mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
+
+      mockVod
+        .load(mockMasterManifestMultipleLangs, mockMediaManifestMultipleLangs, mockAudioManifestMultipleLangs)
+        .then(() => {
+          mockVod2.loadAfter(mockVod, mockMasterManifestMultipleLangs2, mockMediaManifestMultipleLangs2, mockAudioManifestMultipleLangs2)
+            .then(() => {
+              const m3u8_2 = mockVod2.getLiveMediaAudioSequences(0, "audio-aacl-96", "en", 1);
+              const subStrings2 = m3u8_2.split("\n");
+              expect(subStrings2[41]).toEqual("http://mock.com/1woxvooiidb(11186147_ISMUSP)-audio=96000_en-26.aac");
+              expect(subStrings2[42]).toEqual("#EXT-X-DISCONTINUITY")
+              expect(subStrings2[43]).toEqual("#EXTINF:3.000,");
+              expect(subStrings2[44]).toEqual("http://mock.com/1woxvooiidb(11186147_ISMUSP)-audio=96000_sv-1.aac");
+              done();
+            });
+        });
+
+    });
+
+  });
+  describe("correct language functionality without allowedAudioLanguages list", () => {
+    let mockMasterManifestOneCodec;
+    let mockMediaManifestOneCodec;
+    let mockAudioManifestOneCodec;
+    let mockMasterManifestMultipleCodec;
+    let mockMediaManifestMultipleCodec;
+    let mockAudioManifestMultipleCodec;
+
+    beforeEach(() => {
+      mockMasterManifestOneCodec = function () {
+        return fs.createReadStream("testvectors/hls_reload1_audio/master.m3u8");
+      };
+
+      mockMediaManifestOneCodec = function () {
+        return fs.createReadStream("testvectors/hls_reload1_audio/1.m3u8");
+      };
+
+      mockAudioManifestOneCodec = function () {
+        return fs.createReadStream("testvectors/hls_reload1_audio/aac-en.m3u8");
+      };
+
+      mockMasterManifestMultipleCodec = function () {
+        return fs.createReadStream("testvectors/hls_multicodec/master.m3u8");
+      };
+
+      mockMediaManifestMultipleCodec = function () {
+        return fs.createReadStream(`testvectors/hls_multicodec/video.m3u8`);
+      };
+
+      mockAudioManifestMultipleCodec = function (groupId) {
+        if (groupId === "audio6_t0") {
+          return fs.createReadStream(`testvectors/hls_multicodec/audio_hd.m3u8`);
+        } else {
+          return fs.createReadStream(`testvectors/hls_multicodec/audio_stereo.m3u8`);
+        }
+      };
+    });
+
+
+    it("load vod after vod with the same codecs", (done) => {
+      mockVod = new HLSVod("http://mock.com/mock.m3u8");
+      mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
+
+      mockVod
+        .load(mockMasterManifestOneCodec, mockMediaManifestOneCodec, mockAudioManifestOneCodec)
+        .then(() => {
+          mockVod2.loadAfter(mockVod, mockMasterManifestOneCodec, mockMediaManifestOneCodec, mockAudioManifestOneCodec)
+            .then(() => {
+              const audioGroupIds = mockVod.getAudioGroups();
+              const audioGroupIds2 = mockVod2.getAudioGroups();
+              const codecs = mockVod.getAudioCodecsAndChannelsForGroupId(audioGroupIds[0]);
+              const codecs2 = mockVod2.getAudioCodecsAndChannelsForGroupId(audioGroupIds2[0]);
+              expect(codecs).toEqual(codecs2);
+              done();
+            });
+        });
+
+    });
+
+    it("load vod after vod with the different codecs", (done) => {
+      mockVod = new HLSVod("http://mock.com/mock.m3u8");
+      mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
+
+      mockVod
+        .load(mockMasterManifestMultipleCodec, mockMediaManifestMultipleCodec, mockAudioManifestMultipleCodec)
+        .then(() => {
+          const codecs2 = mockVod.getAudioCodecs();
+          mockVod2.loadAfter(mockVod, mockMasterManifestOneCodec, mockMediaManifestOneCodec, mockAudioManifestOneCodec)
+            .catch((e) => {
+              expect(e.message).toEqual("Loaded VOD is missing audio codec(s)");
+              done();
+            });
+        });
+    });
+
+    it("load vod after vod where the second one has more codecs", (done) => {
+      mockVod = new HLSVod("http://mock.com/mock.m3u8");
+      mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
+
+      mockVod
+        .load(mockMasterManifestOneCodec, mockMediaManifestOneCodec, mockAudioManifestOneCodec)
+        .then(() => {
+          mockVod2.loadAfter(mockVod, mockMasterManifestMultipleCodec, mockMediaManifestMultipleCodec, mockAudioManifestMultipleCodec)
+            .then(() => {
+              const codecs = mockVod.getAudioCodecs();
+              const codecs2 = mockVod2.getAudioCodecs();
+              expect(codecs.length).toEqual(codecs2.length)
+              done();
+            });
+        });
+    });
+
   });
 });
