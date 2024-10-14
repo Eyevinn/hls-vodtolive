@@ -532,8 +532,13 @@ class HLSVod {
    */
   reload(mediaSeqNo, additionalSegments, additionalAudioSegments, insertAfter) {
     return new Promise((resolve, reject) => {
+
       const allBandwidths = this.getBandwidths();
+
       if (!insertAfter) {
+        // First handle case where we reload segments with Program Date time positions.
+        let newTimeOffset = this._getLastTimelinePositionVideo(additionalSegments);
+        let newTimeOffsetAudio = this._getLastTimelinePositionAudio(additionalAudioSegments);
         // If there is anything to slice
         if (mediaSeqNo > 0) {
           let targetUri = "";
@@ -589,21 +594,31 @@ class HLSVod {
 
         // Find nearest BW in SFL and prepend them to the corresponding segments bandwidth
         allBandwidths.forEach((bw) => {
+          if (newTimeOffset > 0) {
+            let totalTimelinePos = 0;
+            for (let i = 0; i < this.segments[bw].length; i++) {
+              const segment = this.segments[bw][i];
+              if (segment.duration) {
+                totalTimelinePos += segment.duration * 1000;
+                this.segments[bw][i].timelinePosition = newTimeOffset + totalTimelinePos;
+              }
+            }
+          }
           let nearestBw = this._getNearestBandwidthInList(bw, Object.keys(additionalSegments));
           this.segments[bw] = additionalSegments[nearestBw].concat(this.segments[bw]);
         });
 
         if (!this._isEmpty(this.audioSegments) && additionalAudioSegments) {
           const groupIdsInVod = this.getAudioGroups();
-          const groupIdsInSegments = Object.keys(additionalAudioSegments)
+          const groupIdsInSegments = Object.keys(additionalAudioSegments);
 
           for (let i = 0; i < groupIdsInSegments.length; i++) {
             let groupIdForVod = groupIdsInSegments[i];
             let indexOfGroupId = groupIdsInVod.indexOf(groupIdsInSegments[i]);
             if (indexOfGroupId < 0) {
-              groupIdForVod = groupIdsInVod[0]
+              groupIdForVod = groupIdsInVod[0];
             } else {
-              groupIdForVod = groupIdsInVod[indexOfGroupId]
+              groupIdForVod = groupIdsInVod[indexOfGroupId];
             }
 
             const langsInVod = this.getAudioLangsForAudioGroup(groupIdForVod);
@@ -613,16 +628,31 @@ class HLSVod {
               let langForVod = langsInSegment[j];
               let indexOfLang = langsInVod.indexOf(langsInSegment[j]);
               if (indexOfLang < 0) {
-                langForVod = langsInVod[0]
+                langForVod = langsInVod[0];
               } else {
-                langForVod = langsInVod[indexOfLang]
+                langForVod = langsInVod[indexOfLang];
               }
-              this.audioSegments[groupIdForVod][langForVod] = additionalAudioSegments[groupIdsInSegments[i]][langsInSegment[j]].concat(this.audioSegments[groupIdForVod][langForVod]);
-
+              if (newTimeOffsetAudio > 0) {
+                let totalTimelinePos = 0;
+                for (let i = 0; i < this.audioSegments[groupIdForVod][langForVod].length; i++) {
+                  const segment = this.audioSegments[groupIdForVod][langForVod][i];
+                  if (segment.duration) {
+                    totalTimelinePos += segment.duration * 1000;
+                    this.audioSegments[groupIdForVod][langForVod][i].timelinePosition = newTimeOffsetAudio + totalTimelinePos;
+                  }
+                }
+              }
+              this.audioSegments[groupIdForVod][langForVod] = additionalAudioSegments[groupIdsInSegments[i]][langsInSegment[j]].concat(
+                this.audioSegments[groupIdForVod][langForVod]
+              );
             }
           }
         }
       } else {
+        // First handle case where we reload segments with Program Date time positions.
+        let newTimeOffset = this._getLastTimelinePositionVideo(this.segments);
+        let newTimeOffsetAudio = this._getLastTimelinePositionAudio(this.audioSegments);
+        // Slice Video segments
         if (mediaSeqNo >= 0) {
           let size = this.mediaSequences[mediaSeqNo].segments[allBandwidths[0]].length;
           let targetUri = this.mediaSequences[mediaSeqNo].segments[allBandwidths[0]][0].uri;
@@ -635,7 +665,7 @@ class HLSVod {
           }
           allBandwidths.forEach((bw) => (this.segments[bw] = this.segments[bw].slice(targetPos, targetPos + size)));
         }
-
+        // Slice Audio segments
         if (!this._isEmpty(this.audioSegments) && additionalAudioSegments) {
           const groupIds = this.getAudioGroups();
           const lang = this.getAudioLangsForAudioGroup(groupIds[0])[0];
@@ -659,6 +689,20 @@ class HLSVod {
             }
           }
         }
+        // Update Program Date Time positions in the additional segments video
+        if (newTimeOffset > 0) {
+          const allAdditionalSegmentsBandwidths = Object.keys(additionalSegments);
+          allAdditionalSegmentsBandwidths.forEach((bw) => {
+            let totalTimelinePos = 0;
+            for (let i = 0; i < additionalSegments[bw].length; i++) {
+              const segment = additionalSegments[bw][i];
+              if (segment.duration) {
+                totalTimelinePos += segment.duration * 1000;
+                additionalSegments[bw][i].timelinePosition = newTimeOffset + totalTimelinePos;
+              }
+            }
+          });          
+        }
 
         allBandwidths.forEach((bw) => {
           let nearestBw = this._getNearestBandwidthInList(bw, Object.keys(additionalSegments));
@@ -667,15 +711,15 @@ class HLSVod {
 
         if (!this._isEmpty(this.audioSegments) && additionalAudioSegments) {
           const groupIdsInVod = this.getAudioGroups();
-          const groupIdsInSegments = Object.keys(additionalAudioSegments)
+          const groupIdsInSegments = Object.keys(additionalAudioSegments);
 
           for (let i = 0; i < groupIdsInSegments.length; i++) {
             let groupIdForVod = groupIdsInSegments[i];
             let indexOfGroupId = groupIdsInVod.indexOf(groupIdsInSegments[i]);
             if (indexOfGroupId < 0) {
-              groupIdForVod = groupIdsInVod[0]
+              groupIdForVod = groupIdsInVod[0];
             } else {
-              groupIdForVod = groupIdsInVod[indexOfGroupId]
+              groupIdForVod = groupIdsInVod[indexOfGroupId];
             }
 
             const langsInVod = this.getAudioLangsForAudioGroup(groupIdForVod);
@@ -685,12 +729,23 @@ class HLSVod {
               let langForVod = langsInSegment[j];
               let indexOfLang = langsInVod.indexOf(langsInSegment[j]);
               if (indexOfLang < 0) {
-                langForVod = langsInVod[0]
+                langForVod = langsInVod[0];
               } else {
-                langForVod = langsInVod[indexOfLang]
+                langForVod = langsInVod[indexOfLang];
               }
-              this.audioSegments[groupIdForVod][langForVod] = this.audioSegments[groupIdForVod][langForVod].concat(additionalAudioSegments[groupIdsInSegments[i]][langsInSegment[j]]);
-
+              if (newTimeOffsetAudio > 0) {
+                let totalTimelinePos = 0;
+                for (let x = 0; x < additionalAudioSegments[groupIdsInSegments[i]][langsInSegment[j]].length; x++) {
+                  const segment =additionalAudioSegments[groupIdsInSegments[i]][langsInSegment[j]][x];
+                  if (segment.duration) {
+                    totalTimelinePos += segment.duration * 1000;
+                    additionalAudioSegments[groupIdsInSegments[i]][langsInSegment[j]][x].timelinePosition = newTimeOffsetAudio + totalTimelinePos;
+                  }
+                }
+              }
+              this.audioSegments[groupIdForVod][langForVod] = this.audioSegments[groupIdForVod][langForVod].concat(
+                additionalAudioSegments[groupIdsInSegments[i]][langsInSegment[j]]
+              );
             }
           }
         }
@@ -1569,6 +1624,7 @@ class HLSVod {
     }
     return videoSequences;
   }
+
   generateSequencesTypeBExtraMedia(segments, firstGroupId, firstLanguage, type) {
     let totalRemovedDiscTags = 0;
     let totalRemovedSegments = 0;
@@ -3337,6 +3393,45 @@ class HLSVod {
     }
   }
 
+  _getLastTimelinePositionVideo(ObjectOfSegments) {
+    let newTimeOffset = 0;
+    if (!this._isEmpty(ObjectOfSegments)) {
+      // For Video
+      if (ObjectOfSegments[Object.keys(ObjectOfSegments)[0]].length > 0) {
+        for (let i = ObjectOfSegments[Object.keys(ObjectOfSegments)[0]].length - 1; i >= 0; i--) {
+          if (ObjectOfSegments[Object.keys(ObjectOfSegments)[0]][i].uri && !ObjectOfSegments[Object.keys(ObjectOfSegments)[0]][i].timelinePosition) {
+            break;
+          }
+          if (ObjectOfSegments[Object.keys(ObjectOfSegments)[0]][i].timelinePosition) {
+            newTimeOffset = ObjectOfSegments[Object.keys(ObjectOfSegments)[0]][i].timelinePosition;
+            break;
+          }
+        }
+      }
+    }
+    return newTimeOffset;
+  }
+
+  _getLastTimelinePositionAudio(ObjectOfSegments) {
+    let newTimeOffsetAudio = 0;
+    if (!this._isEmpty(ObjectOfSegments)) {
+      // For Audio
+      const groupIdsInSegments = Object.keys(ObjectOfSegments);
+      const langsInSegment = Object.keys(ObjectOfSegments[groupIdsInSegments[0]]);
+      if (!this._isEmpty(langsInSegment) && ObjectOfSegments[groupIdsInSegments[0]][langsInSegment[0]].length > 0) {
+        for (let i = ObjectOfSegments[groupIdsInSegments[0]][langsInSegment[0]].length - 1; i >= 0; i--) {
+          if (ObjectOfSegments[groupIdsInSegments[0]][langsInSegment[0]][i].uri && !ObjectOfSegments[groupIdsInSegments[0]][langsInSegment[0]][i].timelinePosition) {
+            break;
+          }
+          if (ObjectOfSegments[groupIdsInSegments[0]][langsInSegment[0]][i].timelinePosition) {
+            newTimeOffsetAudio = ObjectOfSegments[groupIdsInSegments[0]][langsInSegment[0]][i].timelinePosition;
+            break;
+          }
+        }
+      }
+    }
+    return newTimeOffsetAudio;
+  }
 }
 
 module.exports = HLSVod;

@@ -160,7 +160,7 @@ describe("HLSVod with demuxed audio", () => {
     it("can reload at the middle of a HLSVod", (done) => {
       let vod1segments = {};
       let vod1AudioSegments = {};
-      mockVod = new HLSVod("http://mock.com/mock.m3u8");
+      mockVod = new HLSVod("http://mock.com/mock.m3u8", null, Date.now(), 0, null, null);
       mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
 
       mockVod
@@ -199,7 +199,7 @@ describe("HLSVod with demuxed audio", () => {
     it("can reload at the middle of a HLSVod, and insert segments after live point", (done) => {
       let vod1segments = {};
       let vod1AudioSegments = {};
-      mockVod = new HLSVod("http://mock.com/mock.m3u8");
+      mockVod = new HLSVod("http://mock.com/mock.m3u8", null, Date.now(), 0, null, null);
       mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
 
       mockVod
