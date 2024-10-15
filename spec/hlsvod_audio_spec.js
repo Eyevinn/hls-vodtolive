@@ -196,10 +196,59 @@ describe("HLSVod with demuxed audio", () => {
         });
     });
 
+    it("can reload at the middle of a HLSVod, and set PDT Timestamps correctly if reload media has it", (done) => {
+      let vod1segments = {};
+      let vod1AudioSegments = {};
+      mockVod = new HLSVod("http://mock.com/mock.m3u8", null, Date.now(), 0, null, null);
+      mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
+
+      mockVod
+        .load(mockMasterManifest1, mockMediaManifest1, mockAudioManifest1)
+        .then(() => {
+          vod1segments = mockVod.getLiveMediaSequenceSegments(1);
+          vod1AudioSegments = mockVod.getLiveAudioSequenceSegments(1);
+          Object.keys(vod1segments).forEach((bw) => vod1segments[bw].push({ discontinuity: true }));
+          const groupIds = Object.keys(vod1AudioSegments);
+          for (let i = 0; i < groupIds.length; i++) {
+            const groupId = groupIds[i];
+            const langs = Object.keys(vod1AudioSegments[groupId])
+            for (let j = 0; j < langs.length; j++) {
+              const lang = langs[j];
+              vod1AudioSegments[groupId][lang].push({ discontinuity: true });
+            }
+          }
+        })
+        .then(() => {
+          mockVod2.load(mockMasterManifest2, mockMediaManifest2, mockAudioManifest2).then(() => {
+            let bottomSegmentPreReload =
+              mockVod2.getLiveMediaSequenceSegments(6)["401000"][mockVod2.getLiveMediaSequenceSegments(6)["401000"].length - 1];
+            let bottomAudioSegmentPreReload =
+              mockVod2.getLiveAudioSequenceSegments(6)["aac"]["en"][mockVod2.getLiveAudioSequenceSegments(6)["aac"]["en"].length - 1];
+            mockVod2.reload(6, vod1segments, vod1AudioSegments).then(() => {
+              let size = mockVod2.getLiveMediaSequenceSegments(1)["401000"].length;
+              expect(mockVod2.getLiveMediaSequenceSegments(1)["401000"][size - 1]).toEqual(bottomSegmentPreReload);
+              let sizeAudio = mockVod2.getLiveAudioSequenceSegments(1)["aac"]["en"].length;
+              expect(mockVod2.getLiveAudioSequenceSegments(1)["aac"]["en"][sizeAudio - 1]).toEqual(bottomAudioSegmentPreReload);
+              const lastSegmentItem = mockVod2.getLiveMediaSequenceSegments(1)["401000"][mockVod2.getLiveMediaSequenceSegments(1)["401000"].length - 1];
+              const secondLastSegmentItem = mockVod2.getLiveMediaSequenceSegments(1)["401000"][mockVod2.getLiveMediaSequenceSegments(1)["401000"].length - 3];
+              const differenceInPDT = lastSegmentItem.timelinePosition - secondLastSegmentItem.timelinePosition;
+              const lastSegmentItemDurationMs = lastSegmentItem.duration * 1000;
+              expect(differenceInPDT).toEqual(lastSegmentItemDurationMs);
+              const lastSegmentItemAudio = mockVod2.getLiveAudioSequenceSegments(1)["aac"]["en"][mockVod2.getLiveAudioSequenceSegments(1)["aac"]["en"].length - 1];
+              const secondLastSegmentItemAudio = mockVod2.getLiveAudioSequenceSegments(1)["aac"]["en"][mockVod2.getLiveAudioSequenceSegments(1)["aac"]["en"].length - 3];
+              const differenceInPDTAudio = lastSegmentItemAudio.timelinePosition - secondLastSegmentItemAudio.timelinePosition;
+              const lastSegmentItemDurationMsAudio = lastSegmentItemAudio.duration * 1000;
+              expect(differenceInPDTAudio).toEqual(lastSegmentItemDurationMsAudio);
+              done();
+            });
+          });
+        });
+    });
+
     it("can reload at the middle of a HLSVod, and insert segments after live point", (done) => {
       let vod1segments = {};
       let vod1AudioSegments = {};
-      mockVod = new HLSVod("http://mock.com/mock.m3u8");
+      mockVod = new HLSVod("http://mock.com/mock.m3u8", null, Date.now(), 0, null, null);
       mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
 
       mockVod
