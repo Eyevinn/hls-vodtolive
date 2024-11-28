@@ -118,16 +118,17 @@ function segToM3u8(v, i, len, nextSegment, previousSegment) {
         m3u8 += "#EXT-X-CUE-IN" + "\n";
       }
     }
-    if (v.daterange && i != len - 1) {
+    if (v.daterange && i != len - 1 && !(v.daterange["CLASS"] == "com.apple.hls.interstitial" && v.daterange["CUE"])) {
       const dateRangeAttributes = Object.keys(v.daterange)
         .map((key) => daterangeAttribute(key, v.daterange[key]))
         .join(",");
-      if ((nextSegment && !nextSegment.timelinePosition) && v.daterange["start-date"]) {
+      if (nextSegment && !nextSegment.timelinePosition && v.daterange["start-date"]) {
         m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + v.daterange["start-date"] + "\n";
       }
       m3u8 += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
     }
   }
+
   return m3u8;
 }
 
@@ -221,6 +222,25 @@ const inspectForVodTransition = (list) => {
   return [count, foundVodTransition];
 };
 
+const playlistItemWithInterstitialsMetadata = (pli) => {
+  const daterange = pli.attributes.attributes.daterange;
+  if (daterange && daterange["CLASS"] == "com.apple.hls.interstitial") {
+    return true;
+  }
+  return false;
+};
+
+const appendHlsInterstitialLineWithCUE = (m3u8Str, data) => {
+    // FOR LIVE AND CUED HLS-INTERSTITIAL TAGS, Place them at the bottom of each window
+    if (data) {
+      const dateRangeAttributes = Object.keys(data)
+        .map((key) => daterangeAttribute(key, data[key]))
+        .join(",");
+        m3u8Str += "#EXT-X-DATERANGE:" + dateRangeAttributes + "\n";
+    }
+    return m3u8Str;
+}
+
 module.exports = {
   daterangeAttribute,
   keysToM3u8,
@@ -230,5 +250,7 @@ module.exports = {
   findIndexReversed,
   findBottomSegItem,
   fixedNumber,
-  inspectForVodTransition
+  inspectForVodTransition,
+  playlistItemWithInterstitialsMetadata,
+  appendHlsInterstitialLineWithCUE
 }
