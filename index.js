@@ -1,7 +1,17 @@
 const m3u8 = require("@eyevinn/m3u8");
 const debug = require("debug")("hls-vodtolive");
 const verbose = require("debug")("hls-vodtolive-verbose");
-const { findIndexReversed, fetchWithRetry, urlResolve, segToM3u8, findBottomSegItem, fixedNumber, inspectForVodTransition } = require("./utils.js");
+const {
+  findIndexReversed,
+  fetchWithRetry,
+  urlResolve,
+  segToM3u8,
+  findBottomSegItem,
+  fixedNumber,
+  inspectForVodTransition,
+  playlistItemWithInterstitialsMetadata,
+  appendHlsInterstitialLineWithCUE,
+} = require("./utils.js");
 
 class HLSVod {
   /**
@@ -79,6 +89,7 @@ class HLSVod {
     this.subtitleSequencesCount = 0;
     this.mediaStartExcessTime = 0;
     this.audioCodecsMap = {};
+    this.cuedHlsInterstitialTag = null;
   }
 
   toJSON() {
@@ -123,7 +134,8 @@ class HLSVod {
       mediaStartExcessTime: this.mediaStartExcessTime,
       audioCodecsMap: this.audioCodecsMap,
       alwaysMapBandwidthByNearest: this.alwaysMapBandwidthByNearest,
-      skipSerializeMediaSequences: this.skipSerializeMediaSequences
+      skipSerializeMediaSequences: this.skipSerializeMediaSequences,
+      cuedHlsInterstitialTag: this.cuedHlsInterstitialTag,
     };
     return JSON.stringify(serialized);
   }
@@ -172,11 +184,12 @@ class HLSVod {
     this.subtitleSliceEndpoint = de.subtitleSliceEndpoint;
     this.videoSequencesCount = de.videoSequencesCount;
     this.audioSequencesCount = de.audioSequencesCount;
-    this.subtitleSequencesCount = de.subtitleSequencesCount
+    this.subtitleSequencesCount = de.subtitleSequencesCount;
     this.mediaStartExcessTime = de.mediaStartExcessTime;
     this.audioCodecsMap = de.audioCodecsMap;
     this.alwaysMapBandwidthByNearest = de.alwaysMapBandwidthByNearest;
     this.skipSerializeMediaSequences = de.skipSerializeMediaSequences;
+    this.cuedHlsInterstitialTag = de.cuedHlsInterstitialTag;
   }
 
   /**
@@ -736,10 +749,11 @@ class HLSVod {
               if (newTimeOffsetAudio > 0) {
                 let totalTimelinePos = 0;
                 for (let x = 0; x < additionalAudioSegments[groupIdsInSegments[i]][langsInSegment[j]].length; x++) {
-                  const segment =additionalAudioSegments[groupIdsInSegments[i]][langsInSegment[j]][x];
+                  const segment = additionalAudioSegments[groupIdsInSegments[i]][langsInSegment[j]][x];
                   if (segment.duration) {
                     totalTimelinePos += segment.duration * 1000;
-                    additionalAudioSegments[groupIdsInSegments[i]][langsInSegment[j]][x].timelinePosition = newTimeOffsetAudio + totalTimelinePos;
+                    additionalAudioSegments[groupIdsInSegments[i]][langsInSegment[j]][x].timelinePosition =
+                      newTimeOffsetAudio + totalTimelinePos;
                   }
                 }
               }
@@ -903,7 +917,7 @@ class HLSVod {
     if (!this.audioCodecsMap[audioCodecs]) {
       return undefined;
     }
-    Object.keys(this.audioCodecsMap[audioCodecs]).map(channelsKey => {
+    Object.keys(this.audioCodecsMap[audioCodecs]).map((channelsKey) => {
       if (channelsKey === channels) {
         audioGroupId = this.audioCodecsMap[audioCodecs][channelsKey];
       }
@@ -914,8 +928,8 @@ class HLSVod {
   getAudioCodecsAndChannelsForGroupId(groupId) {
     let audioCodecs;
     let channels;
-    Object.keys(this.audioCodecsMap).map(codecKey => {
-      Object.keys(this.audioCodecsMap[codecKey]).map(channelsKey => {
+    Object.keys(this.audioCodecsMap).map((codecKey) => {
+      Object.keys(this.audioCodecsMap[codecKey]).map((channelsKey) => {
         if (this.audioCodecsMap[codecKey][channelsKey] === groupId) {
           audioCodecs = codecKey;
           channels = channelsKey;
@@ -926,7 +940,7 @@ class HLSVod {
   }
 
   getSubtitleGroups(all = false) {
-    return Object.keys(this.subtitleSegments).filter(groupId => groupId !== this.DUMMY_DEFAULT_SUBTITLE_GROUP_ID || all);
+    return Object.keys(this.subtitleSegments).filter((groupId) => groupId !== this.DUMMY_DEFAULT_SUBTITLE_GROUP_ID || all);
   }
 
   getSubtitleLangsForSubtitleGroup(groupId) {
@@ -1021,14 +1035,20 @@ class HLSVod {
     for (let i = 0; i < this.mediaSequences[seqIdx].segments[bw].length; i++) {
       const v = this.mediaSequences[seqIdx].segments[bw][i];
       if (v) {
-        m3u8 += segToM3u8(v, i,
+        m3u8 += segToM3u8(
+          v,
+          i,
           this.mediaSequences[seqIdx].segments[bw].length,
           this.mediaSequences[seqIdx].segments[bw][i + 1],
-          previousSegment);
+          previousSegment
+        );
         previousSegment = v;
       }
     }
-
+    // FOR LIVE AND CUED HLS-INTERSTITIAL TAGS, Place them at the bottom of each window
+    if (this.cuedHlsInterstitialTag) {
+      m3u8 = appendHlsInterstitialLineWithCUE(m3u8, this.cuedHlsInterstitialTag);
+    }
     return m3u8;
   }
 
@@ -1072,12 +1092,14 @@ class HLSVod {
     for (let i = 0; i < mediaSeqAudioSegments.length; i++) {
       const v = mediaSeqAudioSegments[i];
       if (v) {
-        m3u8 += segToM3u8(v, i, mediaSeqAudioSegments.length,
-          mediaSeqAudioSegments[i + 1], previousSegment);
+        m3u8 += segToM3u8(v, i, mediaSeqAudioSegments.length, mediaSeqAudioSegments[i + 1], previousSegment);
         previousSegment = v;
       }
     }
-
+    // FOR LIVE AND CUED HLS-INTERSTITIAL TAGS, Place them at the bottom of each window
+    if (this.cuedHlsInterstitialTag) {
+      m3u8 = appendHlsInterstitialLineWithCUE(m3u8, this.cuedHlsInterstitialTag);
+    }
     return m3u8;
   }
 
@@ -1116,10 +1138,13 @@ class HLSVod {
     for (let i = 0; i < mediaSeqSubtitleSegments.length; i++) {
       const v = mediaSeqSubtitleSegments[i];
       if (v) {
-        m3u8 += segToM3u8(v, i, mediaSeqSubtitleSegments.length,
-          mediaSeqSubtitleSegments[i + 1], previousSegment);
+        m3u8 += segToM3u8(v, i, mediaSeqSubtitleSegments.length, mediaSeqSubtitleSegments[i + 1], previousSegment);
         previousSegment = v;
       }
+    }
+    // FOR LIVE AND CUED HLS-INTERSTITIAL TAGS, Place them at the bottom of each window
+    if (this.cuedHlsInterstitialTag) {
+      m3u8 = appendHlsInterstitialLineWithCUE(m3u8, this.cuedHlsInterstitialTag);
     }
     return m3u8;
   }
@@ -1336,7 +1361,7 @@ class HLSVod {
     let segOffset = 0;
     let segIdx = 0;
     let sequence = {};
-    let video_sequence_list = []
+    let video_sequence_list = [];
     while (this.segments[bw][segIdx] && segIdx != length) {
       if (this.segments[bw][segIdx].uri) {
         video_duration += this.segments[bw][segIdx].duration;
@@ -1477,7 +1502,7 @@ class HLSVod {
       }
       sequence = {};
     }
-    return sequenceList
+    return sequenceList;
   }
   generateSequencesTypeBVideo(bw, bandwidths) {
     let seqIndex = 0;
@@ -1588,12 +1613,7 @@ class HLSVod {
             To avoid creating a sequence where we remove 2 segments to add 2 segments.
             Aim to add and remove as few segments as possible each sequence.
             */
-            if (
-              segIdxVideo < SIZE &&
-              shiftedSegmentsCount === 1 &&
-              newPushedSegmentsCount > 1 &&
-              totalSeqDurVideo >= this.SEQUENCE_DURATION
-            ) {
+            if (segIdxVideo < SIZE && shiftedSegmentsCount === 1 && newPushedSegmentsCount > 1 && totalSeqDurVideo >= this.SEQUENCE_DURATION) {
               // pop video...
               bandwidths.forEach((_bw) => {
                 let seg = _sequence[_bw].pop();
@@ -1643,11 +1663,7 @@ class HLSVod {
       try {
         totalSeqDur = 0;
         const _sequence = JSON.parse(JSON.stringify(sequence));
-        if (
-          _sequence[firstGroupId] &&
-          _sequence[firstGroupId][firstLanguage] &&
-          _sequence[firstGroupId][firstLanguage].length > 0
-        ) {
+        if (_sequence[firstGroupId] && _sequence[firstGroupId][firstLanguage] && _sequence[firstGroupId][firstLanguage].length > 0) {
           let temp = 0;
           _sequence[firstGroupId][firstLanguage].forEach((seg) => {
             if (seg && seg.duration) {
@@ -1791,12 +1807,7 @@ class HLSVod {
             To avoid creating a sequence where we remove 2 segments to add 2 segments.
             Aim to add and remove as few segments as possible each sequence.
             */
-            if (
-              segIdx < SIZE &&
-              shiftedSegmentsCount === 1 &&
-              newPushedSegmentsCount > 1 &&
-              totalSeqDur >= this.SEQUENCE_DURATION
-            ) {
+            if (segIdx < SIZE && shiftedSegmentsCount === 1 && newPushedSegmentsCount > 1 && totalSeqDur >= this.SEQUENCE_DURATION) {
               // pop audio...
               if (firstGroupId) {
                 const groupIds = Object.keys(segments);
@@ -1884,10 +1895,10 @@ class HLSVod {
         debug(`Increasing discont sequence ${discSeqNo}`);
       }
       if (this.sequenceAlwaysContainNewSegments) {
-        type === "audio" ? this.discontinuitiesAudio[seqNo] += discSeqNo : this.discontinuitiesSubtitle[seqNo] += discSeqNo;
+        type === "audio" ? (this.discontinuitiesAudio[seqNo] += discSeqNo) : (this.discontinuitiesSubtitle[seqNo] += discSeqNo);
         discSeqNo = 0;
       } else {
-        type === "audio" ? this.discontinuitiesAudio[seqNo] = discSeqNo : this.discontinuitiesSubtitle[seqNo] = discSeqNo;
+        type === "audio" ? (this.discontinuitiesAudio[seqNo] = discSeqNo) : (this.discontinuitiesSubtitle[seqNo] = discSeqNo);
       }
 
       if (this.sequenceAlwaysContainNewSegments) {
@@ -1920,12 +1931,12 @@ class HLSVod {
           if (type === "audio") {
             this.deltaTimesAudio.push({
               interval: interval,
-              position: positionIncrement ? fixedNumber(lastPosition + tpi) : (lastPosition),
+              position: positionIncrement ? fixedNumber(lastPosition + tpi) : lastPosition,
             });
           } else if (type === "subtitle") {
             this.deltaTimesSubtitle.push({
               interval: interval,
-              position: positionIncrement ?  fixedNumber(lastPosition + tpi) : (lastPosition),
+              position: positionIncrement ? fixedNumber(lastPosition + tpi) : lastPosition,
             });
           }
           if (positionIncrement) {
@@ -2028,7 +2039,7 @@ class HLSVod {
           q = {
             discontinuity: q.discontinuity,
             daterange: q.daterange,
-          }
+          };
         }
         this.segments[destBw].push(q);
       }
@@ -2085,7 +2096,7 @@ class HLSVod {
                 q = {
                   discontinuity: q.discontinuity,
                   daterange: q.daterange,
-                }
+                };
               }
               this.audioSegments[audioGroupId][audioLang].push(q);
             }
@@ -2093,7 +2104,7 @@ class HLSVod {
           this.audioSegments[audioGroupId][audioLang].push({
             discontinuity: true,
             daterange: this.rangeMetadata ? this.rangeMetadata : null,
-            vodTransition: true
+            vodTransition: true,
           });
         }
       }
@@ -2133,7 +2144,7 @@ class HLSVod {
                 q = {
                   discontinuity: q.discontinuity,
                   daterange: q.daterange,
-                }
+                };
               }
               this.subtitleSegments[subtitleGroupId][subtitleLang].push(q);
             }
@@ -2141,7 +2152,7 @@ class HLSVod {
           this.subtitleSegments[subtitleGroupId][subtitleLang].push({
             discontinuity: true,
             daterange: this.rangeMetadata ? this.rangeMetadata : null,
-            vodTransition: true
+            vodTransition: true,
           });
         }
       }
@@ -2217,11 +2228,11 @@ class HLSVod {
       }
       // Remove all double discontinuities (audio)
       if (audioGroupId) {
-        this._removeDoubleDiscontinuitiesFromExtraMedia(this.audioSegments)
+        this._removeDoubleDiscontinuitiesFromExtraMedia(this.audioSegments);
       }
       // Remove all double discontinuities (subtitle)
       if (subtitleGroupId) {
-        this._removeDoubleDiscontinuitiesFromExtraMedia(this.subtitleSegments)
+        this._removeDoubleDiscontinuitiesFromExtraMedia(this.subtitleSegments);
       }
       if (this.shouldContainSubtitles && !mode) {
         // we are doing all this to figure out the entire duration of the new vod so we can create a long subtitle segment that we can later chunk to smaller segments
@@ -2231,7 +2242,7 @@ class HLSVod {
         const bw = this.getBandwidths()[0];
         for (let index = 0; index < this.segments[bw].length; index++) {
           if (this.segments[bw][index].duration) {
-            tempDuration += this.segments[bw][index].duration
+            tempDuration += this.segments[bw][index].duration;
           }
           if (this.segments[bw][index].vodTransition) {
             duration -= tempDuration;
@@ -2246,7 +2257,6 @@ class HLSVod {
           cue: null,
           uri: this.dummySubtitleEndpoint,
         };
-
 
         const result = this.generateSmallerSubtitleSegments(fakeSubtileSegment, offset, 0, true, false, 0)
         this.subtitleSegments[this.DUMMY_DEFAULT_SUBTITLE_GROUP_ID][this.DUMMY_DEFAULT_SUBTITLE_LANGUAGE] = this.subtitleSegments[this.DUMMY_DEFAULT_SUBTITLE_GROUP_ID][this.DUMMY_DEFAULT_SUBTITLE_LANGUAGE].concat(result.newSegments);
@@ -2354,7 +2364,7 @@ class HLSVod {
             this.mediaSequences.push({
               segments: {},
               audioSegments: audioSequences[i] ? audioSequences[i] : {},
-              subtitleSegments: {}
+              subtitleSegments: {},
             });
           }
         }
@@ -2371,7 +2381,7 @@ class HLSVod {
         }
         this.videoSequencesCount = videoSequences.length;
         this.audioSequencesCount = audioSequences.length;
-        this.subtitleSequencesCount = subtitleSequences.length
+        this.subtitleSequencesCount = subtitleSequences.length;
       }
 
       if (!this.mediaSequences) {
@@ -2480,10 +2490,10 @@ class HLSVod {
         }
         // Audio Version
         if (this.mediaSequences[0].audioSegments) {
-          this.calculateDeltaAndPositionExtraMedia("audio")
+          this.calculateDeltaAndPositionExtraMedia("audio");
         }
         if (this.mediaSequences[0].subtitleSegments) {
-          this.calculateDeltaAndPositionExtraMedia("subtitle")
+          this.calculateDeltaAndPositionExtraMedia("subtitle");
         }
         resolve();
       }
@@ -2663,6 +2673,14 @@ class HLSVod {
               }
 
               const playlistItem = m3u.items.PlaylistItem[i];
+
+              if (!this.cuedHlsInterstitialTag && playlistItem.get("daterange")) {
+                let daterange = playlistItem.get("daterange");
+                if (daterange["CUE"]) {
+                  this.cuedHlsInterstitialTag = daterange;
+                }
+              }
+
               let segmentUri;
               let baseUrl;
               let byteRange = undefined;
@@ -2803,6 +2821,16 @@ class HLSVod {
                     q["daterange"] = this.rangeMetadata;
                   }
                 }
+
+                if (playlistItemWithInterstitialsMetadata(playlistItem)) {
+                  const newDateRange = playlistItem.attributes.attributes["daterange"];
+                  const newStartDate = new Date(newDateRange["START-DATE"]);
+                  const tempTimeOffset = new Date(this.timeOffset);
+                  const newStartDateString = new Date(newStartDate.getTime() + tempTimeOffset.getTime()).toISOString();
+                  newDateRange["START-DATE"] = newStartDateString;
+                  q["daterange"] = newDateRange;
+                }
+
                 this.segments[bw].push(q);
                 position += q.duration;
                 timelinePosition += q.duration * 1000;
@@ -2843,12 +2871,12 @@ class HLSVod {
   _similarSegItemDuration(playlistItems, startOffset) {
     let totalSegmentDuration = 0;
     let segmentCount = 0;
-    playlistItems.map(seg => {
+    playlistItems.map((seg) => {
       if (seg.get("duration")) {
         segmentCount++;
         totalSegmentDuration += seg.get("duration");
       }
-    })
+    });
     const avgSegmentDuration = totalSegmentDuration / segmentCount;
 
     const bandwidths = Object.keys(this.segments);
@@ -2895,7 +2923,7 @@ class HLSVod {
           // Remove segments in the beginning if we have a start time offset
           if (this.startTimeOffset != null) {
             let offset = 0;
-            const bw = this.getBandwidths()[0]
+            const bw = this.getBandwidths()[0];
             for (let index = 0; index < this.segments[bw].length; index++) {
               if (this.segments[bw][index].vodTransition) {
                 offset = index;
@@ -2903,9 +2931,7 @@ class HLSVod {
               }
             }
             const sameLength = this._similarSegItemDuration(m3u.items.PlaylistItem, offset);
-            let remain = sameLength
-              ? this.startTimeOffset
-              : this.startTimeOffset + this.mediaStartExcessTime;
+            let remain = sameLength ? this.startTimeOffset : this.startTimeOffset + this.mediaStartExcessTime;
 
             while (remain > 0) {
               let removed;
@@ -3024,6 +3050,16 @@ class HLSVod {
                   q["daterange"] = this.rangeMetadata;
                 }
               }
+
+              if (playlistItemWithInterstitialsMetadata(playlistItem)) {
+                const newDateRange = playlistItem.attributes.attributes["daterange"];
+                const newStartDate = new Date(newDateRange["START-DATE"]);
+                const tempTimeOffset = new Date(this.timeOffset);
+                const newStartDateString = new Date(newStartDate.getTime() + tempTimeOffset.getTime()).toISOString();
+                newDateRange["START-DATE"] = newStartDateString;
+                q["daterange"] = newDateRange;
+              }
+
               this.audioSegments[groupId][language].push(q);
               timelinePosition += q.duration * 1000;
             }
@@ -3070,7 +3106,7 @@ class HLSVod {
 
       parser.on("m3u", (m3u) => {
         let offset = 0;
-        const bw = this.getBandwidths()[0]
+        const bw = this.getBandwidths()[0];
         for (let index = 0; index < this.segments[bw].length; index++) {
           if (this.segments[bw][index].vodTransition) {
             offset = index;
@@ -3199,6 +3235,15 @@ class HLSVod {
                 if (this.rangeMetadata) {
                   q["daterange"] = this.rangeMetadata;
                 }
+              }
+
+              if (playlistItemWithInterstitialsMetadata(playlistItem)) {
+                const newDateRange = playlistItem.attributes.attributes["daterange"];
+                const newStartDate = new Date(newDateRange["START-DATE"]);
+                const tempTimeOffset = new Date(this.timeOffset);
+                const newStartDateString = new Date(newStartDate.getTime() + tempTimeOffset.getTime()).toISOString();
+                newDateRange["START-DATE"] = newStartDateString;
+                q["daterange"] = newDateRange;
               }
 
               if (!similarSegItemDuration) {
