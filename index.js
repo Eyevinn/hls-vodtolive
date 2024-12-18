@@ -2824,9 +2824,10 @@ class HLSVod {
 
                 if (playlistItemWithInterstitialsMetadata(playlistItem)) {
                   const newDateRange = playlistItem.attributes.attributes["daterange"];
-                  const newStartDate = new Date(newDateRange["START-DATE"]);
-                  const tempTimeOffset = new Date(this.timeOffset);
-                  const newStartDateString = new Date(newStartDate.getTime() + tempTimeOffset.getTime()).toISOString();
+                  const vodsInputTimestamp = new Date(this.timeOffset);
+                  const extraDurationSec = i == 0 && q.duration ? 0 : q.duration;
+                  const startTimeOffsetMs = (position + extraDurationSec) * 1000;
+                  const newStartDateString = new Date(vodsInputTimestamp.getTime() + startTimeOffsetMs).toISOString();
                   newDateRange["START-DATE"] = newStartDateString;
                   q["daterange"] = newDateRange;
                 }
