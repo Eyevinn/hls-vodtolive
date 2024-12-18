@@ -3809,5 +3809,35 @@ describe("HLSVod delta time and positions", () => {
         });
       });
     });
+
+    it("with Program date time enabled and VODs have HLS Interstitial Tag", (done) => {
+      mockVod = new HLSVod("http://mock.com/mock.m3u8", null, Date.now(), 0, null, {
+        sequenceAlwaysContainNewSegments: 0,
+        forcedDemuxMode: true,
+      });
+      mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, Date.now() + 90000, 0, null, {
+        sequenceAlwaysContainNewSegments: 0,
+        forcedDemuxMode: true,
+      });
+      mockVod.load(mock_vod_3.master, mock_vod_3.media, mock_vod_3.audio).then(() => {
+        mockVod2.loadAfter(mockVod, mock_vod_3.master, mock_vod_3.media, mock_vod_3.audio).then(() => {
+          let m3u8 = mockVod2.getLiveMediaAudioSequences(0, "audio-aacl-256", "sv", 4);
+          let lines = m3u8.split("\n");
+          expect(
+            lines[16].includes('#EXT-X-DATERANGE:ID="ad1",CLASS="com.apple.hls.interstitial",START-DATE') &&
+              lines[16].includes(
+                ',DURATION="15.0",X-ASSET-URI="http://example.com/ad1.m3u8",X-RESUME-OFFSET="0",X-RESTRICT="SKIP,JUMP",X-COM-EXAMPLE-BEACON="123"'
+              )
+          ).toBe(true);
+          expect(
+            lines[17].includes('#EXT-X-DATERANGE:ID="ad1",CLASS="com.apple.hls.interstitial",START-DATE') &&
+              lines[16].includes(
+                ',DURATION="15.0",X-ASSET-URI="http://example.com/ad1.m3u8",X-RESUME-OFFSET="0",X-RESTRICT="SKIP,JUMP",X-COM-EXAMPLE-BEACON="123"'
+              )
+          ).toBe(false);
+          done();
+        });
+      });
+    });
   });
 });
