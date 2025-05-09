@@ -238,7 +238,7 @@ describe("HLSVod CMAF after another CMAF VOD, for demuxed tracks with unmatching
     });
   });
 
-  it("and with 'sequenceAlwaysContainNewSegments=true' will have correct positions", (done) => {
+  fit("and with 'sequenceAlwaysContainNewSegments=true' will have correct positions", (done) => {
     process.env.SEQUENCE_DURATION = 59;
     mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: 1, forcedDemuxMode: 1 });
     mockVod2 = new HLSVod("http://mock.com/mock_2.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: 1, forcedDemuxMode: 1 });
@@ -332,10 +332,14 @@ describe("HLSVod CMAF after another CMAF VOD, for demuxed tracks with unmatching
 
         //console.log(mapPositions(playheadPositionsV, playheadPositionsA), m3u8_audio_on_ad_end, m3u8_video_on_ad_end);
         expect(mapPositions(playheadPositionsV, playheadPositionsA)).toEqual(expectedPositionAndIndexMapping);
-
+        
+        expect(lines_1[34]).toBe("http://mock.com/vod1-audio=256000-77.m4s");
         expect(lines_1[36]).toBe("http://mock.com/vod1-audio=256000-78.m4s");
+        expect(lines_2[34]).toBe("http://mock.com/vod1-video=300000-76.m4s");
         expect(lines_2[36]).toBe("http://mock.com/vod1-video=300000-77.m4s");
+        expect(lines_3[35]).toBe("#EXT-X-DISCONTINUITY");
         expect(lines_3[36]).toBe("#EXT-X-CUE-OUT:DURATION=83");
+        expect(lines_4[35]).toBe("#EXT-X-DISCONTINUITY");
         expect(lines_4[36]).toBe("#EXT-X-CUE-OUT:DURATION=83");
         expect(lines_5[44]).toBe("http://mock.com/bumper1-audio=128000-1.m4s");
         expect(lines_6[42]).toBe("http://mock.com/bumper1-video=300000-1.m4s");
