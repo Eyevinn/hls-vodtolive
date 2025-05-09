@@ -238,7 +238,7 @@ describe("HLSVod CMAF after another CMAF VOD, for demuxed tracks with unmatching
     });
   });
 
-  fit("and with 'sequenceAlwaysContainNewSegments=true' will have correct positions", (done) => {
+  it("and with 'sequenceAlwaysContainNewSegments=true' will have correct positions", (done) => {
     process.env.SEQUENCE_DURATION = 59;
     mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: 1, forcedDemuxMode: 1 });
     mockVod2 = new HLSVod("http://mock.com/mock_2.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: 1, forcedDemuxMode: 1 });
@@ -332,7 +332,7 @@ describe("HLSVod CMAF after another CMAF VOD, for demuxed tracks with unmatching
 
         //console.log(mapPositions(playheadPositionsV, playheadPositionsA), m3u8_audio_on_ad_end, m3u8_video_on_ad_end);
         expect(mapPositions(playheadPositionsV, playheadPositionsA)).toEqual(expectedPositionAndIndexMapping);
-        
+
         expect(lines_1[34]).toBe("http://mock.com/vod1-audio=256000-77.m4s");
         expect(lines_1[36]).toBe("http://mock.com/vod1-audio=256000-78.m4s");
         expect(lines_2[34]).toBe("http://mock.com/vod1-video=300000-76.m4s");
