@@ -35,8 +35,39 @@ function urlResolve(from, to) {
   return resolvedUrl.toString();
 }
 
-function segToM3u8(v, i, len, nextSegment, previousSegment) {
+function insertCueTagData(v, i, len, nextSegment, m3u8Str) {  
+  if (v.cue) {
+    if (v.cue.out) {
+      if (v.cue.scteData) {
+        m3u8Str += "#EXT-OATCLS-SCTE35:" + v.cue.scteData + "\n";
+      }
+      if (v.cue.assetData) {
+        m3u8Str += "#EXT-X-ASSET:" + v.cue.assetData + "\n";
+      }
+      m3u8Str += "#EXT-X-CUE-OUT:DURATION=" + v.cue.duration + "\n";
+    }
+    if (v.cue.cont) {
+      if (v.cue.scteData) {
+        m3u8Str += "#EXT-X-CUE-OUT-CONT:ElapsedTime=" + v.cue.cont + ",Duration=" + v.cue.duration + ",SCTE35=" + v.cue.scteData + "\n";
+      } else {
+        m3u8Str += "#EXT-X-CUE-OUT-CONT:" + v.cue.cont + "/" + v.cue.duration + "\n";
+      }
+    }
+    if (v.cue.in) {
+      if (nextSegment && nextSegment.discontinuity && i + 1 == len - 1) {
+        // Do not add a closing cue-in if next is not a segment and last one in the list
+      } else {
+        m3u8Str += "#EXT-X-CUE-IN" + "\n"; 
+      }
+    }
+  }
+  return m3u8Str;
+};
+
+function segToM3u8(vin, i, len, nextSegment, previousSegment) {
   let m3u8 = "";
+  
+  const v = JSON.parse(JSON.stringify(vin));
 
   if (previousSegment != null) {
     if (previousSegment.discontinuity) {
@@ -44,6 +75,10 @@ function segToM3u8(v, i, len, nextSegment, previousSegment) {
         let byteRangeStr = "";
         if (v.initSegmentByteRange) {
           byteRangeStr = `,BYTERANGE="${v.initSegmentByteRange}"`;
+        }
+        if (v.cue) {
+          m3u8 = insertCueTagData(v, i, len, nextSegment, m3u8);
+          v.cue = null;
         }
         m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRangeStr}\n`;
       }
@@ -58,6 +93,10 @@ function segToM3u8(v, i, len, nextSegment, previousSegment) {
       let byteRangeStr = "";
       if (v.initSegmentByteRange) {
         byteRangeStr = `,BYTERANGE="${v.initSegmentByteRange}"`;
+      }
+      if (v.cue) {
+        m3u8 = insertCueTagData(v, i, len, nextSegment, m3u8);
+        v.cue = null;
       }
       m3u8 += `#EXT-X-MAP:URI="${v.initSegment}"${byteRangeStr}\n`;
     }
