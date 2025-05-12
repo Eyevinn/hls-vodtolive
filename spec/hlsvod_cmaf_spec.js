@@ -147,27 +147,30 @@ describe("HLSVod CMAF after another CMAF VOD", () => {
       .then(() => {
         let m3u8 = mockVod2.getLiveMediaSequences(0, "2500000", 10);
         let lines = m3u8.split("\n");
+
         expect(lines[6]).toEqual(`#EXT-X-MAP:URI="http://mock.com/test-video=2500000.m4s"`);
         expect(lines[8]).toEqual(`http://mock.com/test-video=2500000-51.m4s`);
-        expect(lines[26]).toEqual(
+        expect(lines[27]).toEqual(
           `#EXT-X-MAP:URI="https://ovpuspvod.a2d-stage.tv/trailers/63ef9c36e3ffa90028603374/output.ism/hls/output-video=1500000.m4s"`
         );
-        expect(lines[27]).toEqual(`#EXT-X-CUE-OUT:DURATION=20`);
+
+        expect(lines[26]).toEqual(`#EXT-X-CUE-OUT:DURATION=20`);
         expect(lines[29]).toEqual(`https://ovpuspvod.a2d-stage.tv/trailers/63ef9c36e3ffa90028603374/output.ism/hls/output-video=1500000-1.m4s`);
-        expect(lines[41]).toEqual(`#EXT-X-MAP:URI="http://mock.com/test-video=2500000.m4s"`);
-        expect(lines[42]).toEqual(`#EXT-X-CUE-IN`);
+        expect(lines[42]).toEqual(`#EXT-X-MAP:URI="http://mock.com/test-video=2500000.m4s"`);
+        expect(lines[41]).toEqual(`#EXT-X-CUE-IN`);
         expect(lines[44]).toEqual(`http://mock.com/test-video=2500000-1.m4s`);
         m3u8 = mockVod2.getLiveMediaAudioSequences(0, "audio-aacl-256", "sv", 10);
         lines = m3u8.split("\n");
+
         expect(lines[6]).toEqual(`#EXT-X-MAP:URI="http://mock.com/test-audio=256000.m4s"`);
         expect(lines[8]).toEqual(`http://mock.com/test-audio=256000-73.m4s`);
-        expect(lines[48]).toEqual(
+        expect(lines[49]).toEqual(
           `#EXT-X-MAP:URI="https://ovpuspvod.a2d-stage.tv/trailers/63ef9c36e3ffa90028603374/output.ism/hls/output-audio=128000.m4s"`
         );
-        expect(lines[49]).toEqual(`#EXT-X-CUE-OUT:DURATION=20.032`);
+        expect(lines[48]).toEqual(`#EXT-X-CUE-OUT:DURATION=20.032`);
         expect(lines[51]).toEqual(`https://ovpuspvod.a2d-stage.tv/trailers/63ef9c36e3ffa90028603374/output.ism/hls/output-audio=128000-1.m4s`);
-        expect(lines[63]).toEqual(`#EXT-X-MAP:URI="http://mock.com/test-audio=256000.m4s"`);
-        expect(lines[64]).toEqual(`#EXT-X-CUE-IN`);
+        expect(lines[64]).toEqual(`#EXT-X-MAP:URI="http://mock.com/test-audio=256000.m4s"`);
+        expect(lines[63]).toEqual(`#EXT-X-CUE-IN`);
         expect(lines[66]).toEqual(`http://mock.com/test-audio=256000-1.m4s`);
         done();
       });
@@ -250,7 +253,7 @@ describe("HLSVod CMAF after another CMAF VOD, for demuxed tracks with unmatching
         let m3u8_video_before_ad_end = mockVod2.getLiveMediaSequences(0, "1120000", 23);
         let m3u8_audio_on_ad_end = mockVod2.getLiveMediaAudioSequences(0, "aac", "en", 24);
         let m3u8_video_on_ad_end = mockVod2.getLiveMediaSequences(0, "1120000", 24);
-
+        
         let lines_1 = m3u8_audio_before_ad_start.split("\n");
         let lines_2 = m3u8_video_before_ad_start.split("\n");
         let lines_3 = m3u8_audio_on_ad_start.split("\n");
@@ -330,14 +333,18 @@ describe("HLSVod CMAF after another CMAF VOD, for demuxed tracks with unmatching
         //console.log(mapPositions(playheadPositionsV, playheadPositionsA), m3u8_audio_on_ad_end, m3u8_video_on_ad_end);
         expect(mapPositions(playheadPositionsV, playheadPositionsA)).toEqual(expectedPositionAndIndexMapping);
 
+        expect(lines_1[34]).toBe("http://mock.com/vod1-audio=256000-77.m4s");
         expect(lines_1[36]).toBe("http://mock.com/vod1-audio=256000-78.m4s");
+        expect(lines_2[34]).toBe("http://mock.com/vod1-video=300000-76.m4s");
         expect(lines_2[36]).toBe("http://mock.com/vod1-video=300000-77.m4s");
-        expect(lines_3[37]).toBe("#EXT-X-CUE-OUT:DURATION=83");
-        expect(lines_4[37]).toBe("#EXT-X-CUE-OUT:DURATION=83");
+        expect(lines_3[35]).toBe("#EXT-X-DISCONTINUITY");
+        expect(lines_3[36]).toBe("#EXT-X-CUE-OUT:DURATION=83");
+        expect(lines_4[35]).toBe("#EXT-X-DISCONTINUITY");
+        expect(lines_4[36]).toBe("#EXT-X-CUE-OUT:DURATION=83");
         expect(lines_5[44]).toBe("http://mock.com/bumper1-audio=128000-1.m4s");
-        expect(lines_6[44]).toBe("http://mock.com/bumper1-video=300000-1.m4s");
-        expect(lines_7[43]).toBe("#EXT-X-CUE-IN");
-        expect(lines_8[45]).toBe("#EXT-X-CUE-IN");
+        expect(lines_6[42]).toBe("http://mock.com/bumper1-video=300000-1.m4s");
+        expect(lines_7[42]).toBe("#EXT-X-CUE-IN");
+        expect(lines_8[42]).toBe("#EXT-X-CUE-IN");
         process.env.SEQUENCE_DURATION = 60;
         done();
       });
