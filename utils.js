@@ -231,10 +231,9 @@ function findIndexReversed(arr, fn) {
   return -1;
 };
 
-
 const findBottomSegItem = (arr) => {
   for (let i = arr.length - 1; i >= 0; i--) {
-    if (arr[i].hasOwnProperty('duration')) {
+    if (arr[i].hasOwnProperty('duration') && arr[i].hasOwnProperty('uri') ) {
       return arr[i];
     }
   }
