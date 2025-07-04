@@ -1708,7 +1708,9 @@ class HLSVod {
                       }
                       debug(segIdx, `WARNING! The _${type}Sequence[id=${groupId}][lang=${lang}] pushed seg=${seq_seg}`);
                     } else {
-                      _sequence[groupId][lang].push(seq_seg);
+                      if (!(type === "subtitle" && seq_seg && seq_seg.cue && seq_seg.cue.in && !seq_seg.uri)) {
+                        _sequence[groupId][lang].push(seq_seg);
+                      }
                     }
                   }
                 }
@@ -1754,6 +1756,14 @@ class HLSVod {
                   debug(segIdx, `WARNING! The _${type}Sequence[id=${groupId}][lang=${lang}] pushed seg=${seq_seg}`);
                 } else {
                   _sequence[groupId][lang].push(seq_seg);
+                  if (totalSeqDur >= this.SEQUENCE_DURATION && segIdx + 1 == SIZE) {
+                    // Special Case where we have a cuein and no uri in the last segment.
+                    // We want to include it.
+                    const seq_seg = segments[groupId][lang][segIdx+1];
+                    if (seq_seg) {
+                      _sequence[groupId][lang].push(seq_seg);
+                    }
+                  }
                 }
               });
             });

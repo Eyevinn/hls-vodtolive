@@ -132,6 +132,7 @@ function segToM3u8(vin, i, len, nextSegment, previousSegment) {
         m3u8 += "#EXT-X-CUE-OUT-CONT:" + v.cue.cont + "/" + v.cue.duration + "\n";
       }
     }
+    //console.log("my v::",JSON.stringify(v,null, 2), 19993.66, "..aacuein")
     if (v.cue && v.cue.in) {
       if (nextSegment && nextSegment.discontinuity && i + 1 == len - 1) {
         // Do not add a closing cue-in if next is not a segment and last one in the list
