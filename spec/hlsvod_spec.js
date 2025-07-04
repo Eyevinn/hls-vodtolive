@@ -3841,3 +3841,74 @@ describe("HLSVod delta time and positions", () => {
     });
   });
 });
+
+describe("HLSVod with demuxed vod and set option-> sequenceAlwaysContainNewSegments", () => {
+  let mock_vod_001;
+  const testvector_name = "hls_ts_vas_demux_broken";
+  beforeEach(() => {
+    mock_vod_001 = {
+      master: () => {
+        return fs.createReadStream(`testvectors/${testvector_name}/master.m3u8`);
+      },
+      media: (bandwidth) => {
+        return fs.createReadStream(`testvectors/${testvector_name}/media7070700.m3u8`);
+      },
+      audio: (groupId, lang) => {
+        return fs.createReadStream(`testvectors/${testvector_name}/audio.m3u8`);
+      },
+      subtitle: (groupId, lang) => {
+        return fs.createReadStream(`testvectors/${testvector_name}/subtitle.m3u8`);
+      },
+    };
+  });
+
+  it("set to true, will NOT fail to load after a vod with adbreak in ", (done) => {
+
+    const subtitleTracks = [
+      { language: "sv", name: "Swedish" }
+    ]
+  
+    const hlsOptsAlwaysNewSegmentsTrue = {
+      dummySubtitleEndpoint: "/dummysubs.vtt",
+      subtitleSliceEndpoint: "/subtitlevtt.vtt",
+      shouldContainSubtitles: true,
+      expectedSubtitleTracks: subtitleTracks,
+      sequenceAlwaysContainNewSegments: true
+    }
+
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, hlsOptsAlwaysNewSegmentsTrue);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, hlsOptsAlwaysNewSegmentsTrue);
+    mockVod
+      .load(mock_vod_001.master, mock_vod_001.media, mock_vod_001.audio, mock_vod_001.subtitle)
+      .then(() => {
+        mockVod2.loadAfter(mockVod, mock_vod_001.master, mock_vod_001.media, mock_vod_001.audio, mock_vod_001.subtitle).then(() => {
+          // Assert Video
+          let m3u8Video = mockVod2.getLiveMediaSequences(0, 7070700, 4);
+          let linesVideo = m3u8Video.split("\n");
+
+          expect(linesVideo[14]).toBe(`https://adfiles.dev.tv/mcdonalds/ads/4445/video-1/3.ts`);
+          expect(linesVideo[15]).toBe(`#EXT-X-CUE-IN`);
+          expect(linesVideo[16]).toBe(`#EXT-X-DISCONTINUITY`);
+          expect(linesVideo[18]).toBe(`https://vodfiles.dev.tv/hits/333/video_x-1/644.ts`);
+          // Assert Audio
+          let m3u8Audio = mockVod2.getLiveMediaAudioSequences(0, "aac", "en", 4);
+          let linesAudio = m3u8Audio.split("\n");
+
+          expect(linesAudio[18]).toBe(`https://adfiles.dev.tv/mcdonalds/ads/4445/audio/4.aac`);
+          expect(linesAudio[19]).toBe(`#EXT-X-CUE-IN`);
+          expect(linesAudio[20]).toBe(`#EXT-X-DISCONTINUITY`);
+          expect(linesAudio[22]).toBe(`https://vodfiles.dev.tv/hits/333/audio_x/852.aac`);
+          // Assert Subtitle
+          let m3u8Subtitle = mockVod2.getLiveMediaSubtitleSequences(0, "textstream", "sv", 4);
+          let linesSubtitle = m3u8Subtitle.split("\n");
+
+          expect(linesSubtitle[14]).toBe(`https://adfiles.dev.tv/mcdonalds/ads/4445/textstream-1/3.vtt`);
+          expect(linesSubtitle[15]).toBe(`#EXT-X-CUE-IN`);
+          expect(linesSubtitle[16]).toBe(`#EXT-X-DISCONTINUITY`);
+          expect(linesSubtitle[18]).toBe(`https://vodfiles.dev.tv/hits/333/textstream-1/644.vtt`);
+          done();
+        });
+      });
+  });
+
+});
