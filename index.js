@@ -1420,6 +1420,7 @@ class HLSVod {
 
     return video_sequence_list;
   }
+  
   generateSequencesTypeAExtraMedia(segments, firstGroupId, firstLanguage, type) {
 
     let segmentLength = segments[firstGroupId][firstLanguage].length;
@@ -1504,6 +1505,7 @@ class HLSVod {
     }
     return sequenceList;
   }
+
   generateSequencesTypeBVideo(bw, bandwidths) {
     let seqIndex = 0;
     let totalRemovedDiscTags = 0;
@@ -2948,7 +2950,7 @@ class HLSVod {
               let removed;
               if (sameLength) {
                 removed = m3u.items.PlaylistItem.shift();
-              } else if (m3u.items.PlaylistItem[0] && m3u.items.PlaylistItem[0].get("duration") * 1000 < remain) {
+              } else if (m3u.items.PlaylistItem[0] && m3u.items.PlaylistItem[0].get("duration") * 1000 <= remain) {
                 removed = m3u.items.PlaylistItem.shift();
               }
               if (!removed) {
@@ -3300,7 +3302,6 @@ class HLSVod {
     });
   }
 
-
   _getNearestBandwidthInList(bandwidthToMatch, array) {
     let bandwidth = bandwidthToMatch;
     const filteredBandwidths = array;
@@ -3316,23 +3317,6 @@ class HLSVod {
       }
     }
     return availableBandwidths[availableBandwidths.length - 1];
-  }
-
-  _getNearestBandwidth(bandwidth) {
-    if (this.usageProfileMappingRev != null) {
-      return this.usageProfileMappingRev[bandwidth];
-    }
-    const filteredBandwidths = Object.keys(this.segments).filter((bw) => this.segments[bw].length > 0);
-    const availableBandwidths = filteredBandwidths.sort((a, b) => a - b);
-
-    debug(`Find ${bandwidth} in ${availableBandwidths}`);
-    for (let i = 0; i < availableBandwidths.length; i++) {
-      if (Number(bandwidth) <= Number(availableBandwidths[i])) {
-        return availableBandwidths[i];
-      }
-    }
-    return null;
-    //return availableBandwidths[availableBandwidths.length - 1];
   }
 
   _getTrueNearestBandwidth(bandwidth) {
