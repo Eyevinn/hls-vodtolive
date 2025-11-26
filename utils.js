@@ -145,7 +145,7 @@ function segToM3u8(vin, i, len, nextSegment, previousSegment) {
         const d = new Date(v.timelinePosition);
         m3u8 += "#EXT-X-PROGRAM-DATE-TIME:" + d.toISOString() + "\n";
       }
-      m3u8 += "#EXTINF:" + v.duration.toFixed(3) + ",\n";
+      m3u8 += "#EXTINF:" + v.duration.toFixed(5) + ",\n";
       if (v.byteRange) {
         m3u8 += `#EXT-X-BYTERANGE:${v.byteRange}\n`;
       }
