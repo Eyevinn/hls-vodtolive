@@ -291,7 +291,7 @@ describe("HLSVod with subtitles", () => {
           const subStrings2 = m3u8_2.split("\n")
           expect(subStrings[35]).toEqual("https://vod.streaming.a2d.tv/3e542405-583b-4edc-93ab-eca86427d148/ab92a690-62de-11ed-aa51-c96fb4f9434f_20337209.ism/hls/ab92a690-62de-11ed-aa51-c96fb4f9434f_20337209-textstream_swe=1000-693.webvtt");
           expect(subStrings2[34]).toEqual("#EXT-X-DISCONTINUITY")
-          expect(subStrings2[35]).toEqual("#EXTINF:3.000,");
+          expect(subStrings2[35]).toEqual("#EXTINF:3.00000,");
           expect(subStrings2[36]).toEqual("https://d3t8zrj2x5ol3r.cloudfront.net/u/file~text_vtt~dummy.vtt/1/s/webvtt.vtt");
           done();
         });
@@ -307,10 +307,10 @@ describe("HLSVod with subtitles", () => {
           const m3u8_2 = mockVod2.getLiveMediaSubtitleSequences(0, "subs", "fr", 2);
           const subStrings = m3u8.split("\n");
           const subStrings2 = m3u8_2.split("\n");
-          expect(subStrings[16]).toEqual("#EXTINF:2.000,");
+          expect(subStrings[16]).toEqual("#EXTINF:2.00000,");
           expect(subStrings[17]).toEqual("http://mock.com/subs/7.webvtt");
           expect(subStrings2[16]).toEqual("#EXT-X-DISCONTINUITY")
-          expect(subStrings2[17]).toEqual("#EXTINF:6.000,");
+          expect(subStrings2[17]).toEqual("#EXTINF:6.00000,");
           expect(subStrings2[18]).toEqual("/subtitlevtt.vtt?vtturi=http%3A%2F%2Fmock.com%2Fsubtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA%3D%3D_0.webvtt&starttime=0&endtime=6&elapsedtime=0");
           done();
         });
@@ -326,10 +326,10 @@ describe("HLSVod with subtitles", () => {
           const m3u8_2 = mockVod2.getLiveMediaSubtitleSequences(0, "subs", "fr", 1);
           const subStrings = m3u8.split("\n");
           const subStrings2 = m3u8_2.split("\n");
-          expect(subStrings[20]).toEqual("#EXTINF:6.000,");
+          expect(subStrings[20]).toEqual("#EXTINF:6.00000,");
           expect(subStrings[21]).toEqual("/dummysubs.vtt?p=107");
           expect(subStrings2[20]).toEqual("#EXT-X-DISCONTINUITY")
-          expect(subStrings2[21]).toEqual("#EXTINF:4.000,");
+          expect(subStrings2[21]).toEqual("#EXTINF:4.00000,");
           expect(subStrings2[22]).toEqual("http://mock.com/subs/0.webvtt");
           done();
         });
@@ -346,10 +346,10 @@ describe("HLSVod with subtitles", () => {
           const m3u8_2 = mockVod2.getLiveMediaSubtitleSequences(0, "subs", "fr", 1);
           const subStrings = m3u8.split("\n")
           const subStrings2 = m3u8_2.split("\n")
-          expect(subStrings[20]).toEqual("#EXTINF:2.000,");
+          expect(subStrings[20]).toEqual("#EXTINF:2.00000,");
           expect(subStrings[21]).toEqual("http://mock.com/subs/7.webvtt");
           expect(subStrings2[20]).toEqual("#EXT-X-DISCONTINUITY")
-          expect(subStrings2[21]).toEqual("#EXTINF:6.000,");
+          expect(subStrings2[21]).toEqual("#EXTINF:6.00000,");
           expect(subStrings2[22]).toEqual("/subtitlevtt.vtt?vtturi=http%3A%2F%2Fmock.com%2Fsubtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA%3D%3D_0.webvtt&starttime=0&endtime=6&elapsedtime=0");
           done();
 
@@ -367,10 +367,10 @@ describe("HLSVod with subtitles", () => {
           const m3u8_2 = mockVod2.getLiveMediaSubtitleSequences(0, "subs", "fr", 1);
           const subStrings = m3u8.split("\n")
           const subStrings2 = m3u8_2.split("\n")
-          expect(subStrings[22]).toEqual("#EXTINF:6.000,");
+          expect(subStrings[22]).toEqual("#EXTINF:6.00000,");
           expect(subStrings[23]).toEqual("/dummysubs.vtt?p=107");
           expect(subStrings2[22]).toEqual("#EXT-X-DISCONTINUITY")
-          expect(subStrings2[23]).toEqual("#EXTINF:4.000,");
+          expect(subStrings2[23]).toEqual("#EXTINF:4.00000,");
           expect(subStrings2[24]).toEqual("http://mock.com/subs/0.webvtt");
           done();
         });
@@ -515,7 +515,7 @@ describe("HLSVod with subtitles", () => {
           const subStrings = m3u8.split("\n")
           expect(subStrings[21]).toEqual("/dummysubs.vtt?p=107");
           expect(subStrings[22]).toEqual("#EXT-X-DISCONTINUITY")
-          expect(subStrings[23]).toEqual("#EXTINF:2.000,");
+          expect(subStrings[23]).toEqual("#EXTINF:2.00000,");
           expect(subStrings[24]).toEqual("/dummysubs.vtt?p=9");
           done();
         });
@@ -532,7 +532,7 @@ describe("HLSVod with subtitles", () => {
           const subStrings = m3u8.split("\n")
           expect(subStrings[17]).toEqual("/dummysubs.vtt?p=6");
           expect(subStrings[18]).toEqual("#EXT-X-DISCONTINUITY")
-          expect(subStrings[19]).toEqual("#EXTINF:6.000,");
+          expect(subStrings[19]).toEqual("#EXTINF:6.00000,");
           expect(subStrings[20]).toEqual("/subtitlevtt.vtt?vtturi=http%3A%2F%2Fmock.com%2Fsubtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA%3D%3D_0.webvtt&starttime=0&endtime=6&elapsedtime=0");
           done();
         });
@@ -551,10 +551,10 @@ describe("HLSVod with subtitles", () => {
         .then(() => {
           const m3u8_3 = mockVod3.getLiveMediaSubtitleSequences(0, "subs", "fr", 1);
           const subStrings3 = m3u8_3.split("\n")
-          expect(subStrings3[29]).toEqual("#EXTINF:2.000,");
+          expect(subStrings3[29]).toEqual("#EXTINF:2.00000,");
           expect(subStrings3[30]).toEqual("/dummysubs.vtt?p=15");
           expect(subStrings3[31]).toEqual("#EXT-X-DISCONTINUITY")
-          expect(subStrings3[32]).toEqual("#EXTINF:6.000,");
+          expect(subStrings3[32]).toEqual("#EXTINF:6.00000,");
           expect(subStrings3[33]).toEqual("/subtitlevtt.vtt?vtturi=http%3A%2F%2Fmock.com%2Fsubtitlechunk_lfra_w1588523518_b160000_slen_t64RW5nbGlzaA%3D%3D_0.webvtt&starttime=0&endtime=6&elapsedtime=0");
           done();
         });
@@ -571,10 +571,10 @@ describe("HLSVod with subtitles", () => {
         .then(() => {
           const m3u8_3 = mockVod2.getLiveMediaSubtitleSequences(0, "subs", "fr", 1);
           const subStrings3 = m3u8_3.split("\n")
-          expect(subStrings3[32]).toEqual("#EXTINF:1.320,");
+          expect(subStrings3[32]).toEqual("#EXTINF:1.32000,");
           expect(subStrings3[33]).toEqual("/dummysubs.vtt?p=62");
           expect(subStrings3[34]).toEqual("#EXT-X-DISCONTINUITY");
-          expect(subStrings3[35]).toEqual("#EXTINF:3.840,");
+          expect(subStrings3[35]).toEqual("#EXTINF:3.84000,");
           expect(subStrings3[36]).toEqual("/dummysubs.vtt?p=16");
           done();
         });
