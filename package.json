@@ -1,6 +1,6 @@
 {
   "name": "@eyevinn/hls-vodtolive",
-  "version": "2.2.0",
+  "version": "4.1.7",
   "description": "NPM library to generate HLS Live from HLS VOD",
   "main": "index.js",
   "scripts": {
@@ -8,6 +8,7 @@
     "doc": "jsdoc2md index.js > API.md",
     "prebuild": "npm test",
     "build": "npm run doc",
+    "version:rc": "npm version prerelease --preid=rc",
     "version": "npm run build && git add API.md",
     "postversion": "git push && git push --tags",
     "coverage": "nyc npm test && nyc report",
@@ -39,7 +40,7 @@
     "nyc": "^15.0.1"
   },
   "dependencies": {
-    "@eyevinn/m3u8": "^0.5.3",
+    "@eyevinn/m3u8": "^0.5.8",
     "abort-controller": "^3.0.0",
     "debug": "^4.1.1",
     "node-fetch": "2.6.7"

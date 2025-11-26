@@ -15,6 +15,8 @@ describe("HLSVod standalone", () => {
   let mockMasterManifestNoUri;
   let mockAudioManifest;
   let mockMediaManifest3;
+  let mockMasterManifest4;
+  let mockMediaManifest4;
   beforeEach(() => {
     mockMasterManifest = function () {
       return fs.createReadStream("testvectors/hls1/master.m3u8");
@@ -48,6 +50,13 @@ describe("HLSVod standalone", () => {
     };
     mockMediaManifest3 = function (bandwidth) {
       return fs.createReadStream("testvectors/hls7/video-241929.m3u8");
+    };
+
+    mockMasterManifest4 = function () {
+      return fs.createReadStream("testvectors/hls17/master.m3u8");
+    };
+    mockMediaManifest4 = function (bandwidth) {
+      return fs.createReadStream("testvectors/hls17/" + bandwidth + ".m3u8");
     };
   });
 
@@ -232,6 +241,20 @@ describe("HLSVod standalone", () => {
         done();
       });
   });
+
+  it("should fail loading a VOD with different lengths of video segments", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod
+      .load(mockMasterManifest4, mockMediaManifest4)
+      .then(() => {
+        expect(mockVod.getVodUri()).toBe("http://mock.com/mock.m3u8");
+        done();
+      })
+      .catch((err) => {
+        expect(err.toString()).toBe("Error: The VOD loading was rejected because it contains video variants with different segment counts");
+        done();
+      });
+  });
 });
 
 describe("HLSVod after another VOD", () => {
@@ -280,7 +303,7 @@ describe("HLSVod after another VOD", () => {
       });
   });
 
-  it("never contains duplicate segments for two consecutive media sequences", async (done) => {
+  it("never contains duplicate segments for two consecutive media sequences", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8");
     mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
     mockVod
@@ -638,10 +661,37 @@ describe("HLSVod with timeline", () => {
     });
   });
 
+  it("inserts PDT on each segment", (done) => {
+    const now = Date.now();
+    let mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
+    mockVod.load(mockMasterManifest, mockMediaManifest).then(() => {
+      let m3u8 = mockVod.getLiveMediaSequences(0, "2497000", 0);
+      const lines = m3u8.split("\n");
+      expect(lines[6]).toEqual(`#EXT-X-PROGRAM-DATE-TIME:${new Date(now).toISOString()}`);
+      expect(lines[9]).toEqual(`#EXT-X-PROGRAM-DATE-TIME:${new Date(now + 9 * 1000).toISOString()}`);
+      done();
+    });
+  });
+
+  it("does inserts PDT on each segment if not initiated with unixts", (done) => {
+    const now = Date.now();
+    let mockVod = new HLSVod("http://mock.com/mock.m3u8", [], null);
+    mockVod.load(mockMasterManifest, mockMediaManifest).then(() => {
+      let m3u8 = mockVod.getLiveMediaSequences(0, "2497000", 0);
+      const lines = m3u8.split("\n");
+      expect(lines[6]).toEqual(`#EXTINF:9.000,`);
+      expect(lines[9]).toEqual(
+        `https://tv4play-i.akamaihd.net/i/mp4root/2018-01-26/pid200032972(3953564_,T3MP445,T3MP435,T3MP425,T3MP415,T3MP48,T3MP43,T3MP4130,).mp4.csmil/segment2_2_av.ts`
+      );
+      done();
+    });
+  });
+
   it("can handle vod after another vod", (done) => {
+    const VOD_LENGTH_MS = 2646000 + 6266;
     const now = Date.now();
     mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
-    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", []);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", [], now + VOD_LENGTH_MS);
     mockVod
       .load(mockMasterManifest, mockMediaManifest)
       .then(() => {
@@ -649,8 +699,27 @@ describe("HLSVod with timeline", () => {
       })
       .then(() => {
         const seqSegments = mockVod2.getLiveMediaSequenceSegments(0);
-        expect(seqSegments["2497000"][4].timelinePosition).toEqual(now + 2646 * 1000);
-        expect(seqSegments["2497000"][6].timelinePosition).toEqual(now + 2646 * 1000 + 6266);
+        expect(seqSegments["2497000"][4].timelinePosition).toEqual(now + VOD_LENGTH_MS - 6266);
+        expect(seqSegments["2497000"][6].timelinePosition).toEqual(now + VOD_LENGTH_MS);
+        done();
+      });
+  });
+
+  it("can handle vod after another vod, with later vod disabling timeOffset", (done) => {
+    const now = 1692110553608;
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", [], (timeOffet = null));
+    mockVod
+      .load(mockMasterManifest, mockMediaManifest)
+      .then(() => {
+        return mockVod2.loadAfter(mockVod, mockMasterManifest, mockMediaManifest);
+      })
+      .then(() => {
+        const seqSegments = mockVod2.getLiveMediaSequenceSegments(0);
+        const size = seqSegments["2497000"].length;
+        expect(seqSegments["2497000"][size - 3].timelinePosition).toEqual(now + 2646 * 1000);
+        expect(seqSegments["2497000"][size - 2].discontinuity).toEqual(true);
+        expect(seqSegments["2497000"][size - 1].timelinePosition).toEqual(null);
         done();
       });
   });
@@ -689,8 +758,9 @@ describe("HLSVod with timeline", () => {
       },
     ];
     const now = Date.now();
+    const VOD_LENGTH_MS = 2646000 + 6266;
     mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
-    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", splices);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", splices, now + VOD_LENGTH_MS);
     mockVod
       .load(mockMasterManifest, mockMediaManifest)
       .then(() => {
@@ -698,8 +768,8 @@ describe("HLSVod with timeline", () => {
       })
       .then(() => {
         const seqSegments = mockVod2.getLiveMediaSequenceSegments(0);
-        expect(seqSegments["2497000"][4].timelinePosition).toEqual(now + 2646 * 1000);
-        expect(seqSegments["2497000"][6].timelinePosition).toEqual(now + 2646 * 1000 + 6266);
+        expect(seqSegments["2497000"][4].timelinePosition).toEqual(now + VOD_LENGTH_MS - 6266);
+        expect(seqSegments["2497000"][6].timelinePosition).toEqual(now + VOD_LENGTH_MS);
         done();
       });
   });
@@ -707,7 +777,7 @@ describe("HLSVod with timeline", () => {
   it("outputs EXT-X-PROGRAM-DATE-TIME after discontinuity", (done) => {
     const now = Date.now();
     mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
-    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", []);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", [], now + 1);
     mockVod
       .load(mockMasterManifest, mockMediaManifest)
       .then(() => {
@@ -842,6 +912,9 @@ describe("HLSVod with not equal usage profiles", () => {
     mockMasterManifest.push(function () {
       return fs.createReadStream("testvectors/hls_abr4/master.m3u8");
     });
+    mockMasterManifest.push(function () {
+      return fs.createReadStream("testvectors/hls_abr6/master.m3u8");
+    });
     mockMediaManifest.push(function (bandwidth) {
       return fs.createReadStream("testvectors/hls1/" + bandwidth + ".m3u8");
     });
@@ -862,6 +935,9 @@ describe("HLSVod with not equal usage profiles", () => {
     });
     mockMediaManifest.push(function (bandwidth) {
       return fs.createReadStream("testvectors/hls_abr4/" + bandwidth + ".m3u8");
+    });
+    mockMediaManifest.push(function (bandwidth) {
+      return fs.createReadStream("testvectors/hls_abr6/" + bandwidth + ".m3u8");
     });
   });
 
@@ -1153,6 +1229,26 @@ describe("HLSVod with not equal usage profiles", () => {
         done();
       });
   });
+
+  it("can match by true nearest when options-> alwaysMapBandwidthByNearest is true", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { alwaysMapBandwidthByNearest: 1 });
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, { alwaysMapBandwidthByNearest: 1 });
+    mockVod
+      .load(mockMasterManifest[0], mockMediaManifest[0])
+      .then(() => {
+        return mockVod2.loadAfter(mockVod, mockMasterManifest[7], mockMediaManifest[7]);
+      })
+      .then(() => {
+        const seqSegments = mockVod2.getLiveMediaSequenceSegments(0);
+        const lastIdx = seqSegments["1497000"].length - 1;
+        expect(seqSegments["1497000"][lastIdx].uri).toEqual("https://mock.vod.media/segment1_0_av.ts");
+        expect(seqSegments["3496000"][lastIdx].uri).toEqual("https://mock.vod.media/segment1_1_av.ts");
+        expect(seqSegments["4497000"][lastIdx].uri).toEqual("https://mock.vod.media/segment1_2_av.ts");
+        expect(seqSegments["5544000"][lastIdx].uri).toEqual("https://mock.vod.media/segment1_3_av.ts");
+        expect(seqSegments["6655000"][lastIdx].uri).toEqual("https://mock.vod.media/segment1_4_av.ts");
+        done();
+      });
+  });
 });
 /**
  *  Changes:
@@ -1289,7 +1385,7 @@ describe("HLSVod with separate audio variants", () => {
     const now = Date.now();
     // # Two demuxed vods with some different languages.
     mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
-    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", []);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", [], now + 1);
     mockVod
       .load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
       .then(() => {
@@ -1312,11 +1408,40 @@ describe("HLSVod with separate audio variants", () => {
       });
   });
 
+  it("can handle vod after another vod, loading same groupId & languages, but with later vod disabling timeOffset", (done) => {
+    const now = Date.now();
+    // # Two demuxed vods with some different languages.
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", [], (timeOffest = null));
+    mockVod
+      .load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
+      .then(() => {
+        return mockVod2.loadAfter(mockVod, mockMasterManifest2, mockMediaManifest2, mockAudioManifest2);
+      })
+      .then(() => {
+        const seqSegments1 = mockVod.getLiveMediaSequenceSegments(0);
+        const seqSegments2 = mockVod2.getLiveMediaSequenceSegments(0);
+        expect(seqSegments1["354000"][0].uri).toEqual("http://mock.com/1woxvooiidb(11186147_ISMUSP)-video=241929-1.ts");
+        expect(seqSegments2["354000"][seqSegments2["354000"].length - 1 - 1].discontinuity).toBe(true);
+        expect(seqSegments2["354000"][seqSegments2["354000"].length - 1].uri).toEqual(
+          "http://mock.com/1woxvooiidb(11186147_ISMUSP)-video=241929-1.ts"
+        );
+        const seqAudioSegments1 = mockVod.getLiveMediaSequenceAudioSegments("audio-aacl-96", "de", 0);
+        const seqAudioSegments2 = mockVod2.getLiveMediaSequenceAudioSegments("audio-aacl-96", "de", 0);
+        expect(seqAudioSegments1[0].uri).toEqual("http://mock.com/1woxvooiidb(11186147_ISMUSP)-audio=96000_de-1.aac");
+        expect(seqAudioSegments2[seqAudioSegments2.length - 3].timelinePosition).toEqual(now + 75030.19995117188);
+        expect(seqAudioSegments2[[seqAudioSegments2.length - 2]].discontinuity).toBe(true);
+        expect(seqAudioSegments2[seqAudioSegments2.length - 1].uri).toEqual("http://mock.com/media_mock/audioplaylist/i-audio_de-1.aac");
+        expect(seqAudioSegments2[seqAudioSegments2.length - 1].timelinePosition).toEqual(null);
+        done();
+      });
+  });
+
   it("can handle vod after another vod, loading same groupId but missing a language, type 1", (done) => {
     const now = Date.now();
     // # Two demuxed vods with some different languages.
     mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
-    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", []);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", [], now + 1);
     mockVod
       .load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
       .then(() => {
@@ -1348,7 +1473,7 @@ describe("HLSVod with separate audio variants", () => {
     const now = Date.now();
     // # Two demuxed vods with some different languages.
     mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
-    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", []);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", [], now + 1);
     mockVod
       .load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
       .then(() => {
@@ -1381,7 +1506,7 @@ describe("HLSVod with separate audio variants", () => {
     const now = Date.now();
     // # Two demuxed vods with different languages.
     mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
-    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", []);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", [], now + 1);
     mockVod
       .load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
       .then(() => {
@@ -1410,7 +1535,7 @@ describe("HLSVod with separate audio variants", () => {
     const now = Date.now();
     // # Two demuxed vods with different languages.
     mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
-    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", []);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", [], now + 1);
     mockVod
       .load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
       .then(() => {
@@ -1438,7 +1563,7 @@ describe("HLSVod with separate audio variants", () => {
   it("can return an audio variant manifest", (done) => {
     const now = Date.now();
     mockVod = new HLSVod("http://mock.com/mock.m3u8", [], now);
-    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", []);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", [], now + 1);
     mockVod
       .load(mockMasterManifest, mockMediaManifest, mockAudioManifest)
       .then(() => {
@@ -2026,6 +2151,7 @@ describe("HLSVod with mixed target durations", () => {
 describe("HLSVod serializing", () => {
   let mockMasterManifest;
   let mockMediaManifest;
+  let mockM3u8Item1;
 
   beforeEach(() => {
     mockMasterManifest = function () {
@@ -2034,6 +2160,21 @@ describe("HLSVod serializing", () => {
 
     mockMediaManifest = function (bandwidth) {
       return fs.createReadStream("testvectors/hls1/" + bandwidth + ".m3u8");
+    };
+
+    mockM3u8Item1 = {
+      master: () => {
+        return fs.createReadStream("testvectors/hls_abr7/master.m3u8");
+      },
+      media: (bw) => {
+        return fs.createReadStream(`testvectors/hls_abr7/master${bw}.m3u8`);
+      },
+      audio: (g, l) => {
+        return fs.createReadStream(`testvectors/hls_abr7/master-${g}_${l}.m3u8`);
+      },
+      subtitle: (g, l) => {
+        return fs.createReadStream(`testvectors/hls_abr7/master-${g}_${l}.m3u8`);
+      },
     };
   });
 
@@ -2086,6 +2227,174 @@ describe("HLSVod serializing", () => {
         );
 
         done();
+      });
+  });
+
+  it("can handle a sequence of VODs, with skipSerializeMediaSequences set -> true (TYPE-A)", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, {
+      sequenceAlwaysContainNewSegments: 0,
+      forcedDemuxMode: 1,
+      shouldContainSubtitles: 1,
+      subtitleSliceEndpoint: "https://test.test.com",
+      expectedSubtitleTracks: [
+        { language: "sv", name: "sv" },
+        { language: "en", name: "en" },
+        { language: "no", name: "no" },
+      ],
+      dummySubtitleEndpoint: "fake/subs/here",
+      alwaysMapBandwidthByNearest: 1,
+      skipSerializeMediaSequences: false,
+    });
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, {
+      sequenceAlwaysContainNewSegments: 0,
+      forcedDemuxMode: 1,
+      shouldContainSubtitles: 1,
+      subtitleSliceEndpoint: "https://test.test.com",
+      expectedSubtitleTracks: [
+        { language: "sv", name: "sv" },
+        { language: "en", name: "en" },
+        { language: "no", name: "no" },
+      ],
+      dummySubtitleEndpoint: "fake/subs/here",
+      alwaysMapBandwidthByNearest: 1,
+      skipSerializeMediaSequences: false,
+    });
+    mockVod
+      .load(mockM3u8Item1.master, mockM3u8Item1.media, mockM3u8Item1.audio, mockM3u8Item1.subtitle)
+      .then(() => {
+        return mockVod2.loadAfter(mockVod, mockM3u8Item1.master, mockM3u8Item1.media, mockM3u8Item1.audio, mockM3u8Item1.subtitle);
+      })
+      .then(() => {
+        const bytesToMB = (bytes) => {
+          const megabytes = bytes / (1024 * 1024);
+          return megabytes.toFixed(2);
+        };
+        const expectedJSONSizeInMBFull = "5.26";
+        const expectedJSONSizeInMBPartial = "0.38";
+        const expectedJSONSizeInMBFullAgain = expectedJSONSizeInMBFull;
+        const expectedMseqCountFull = 145;
+        const expectedMseqCountPartial = 0;
+        const expectedMseqCountFullAgain = expectedMseqCountFull;
+
+        const mseqCountFull = mockVod2.getLiveMediaSequencesCount();
+        const fullySerialized = mockVod2.toJSON();
+        const sizeFull = Buffer.byteLength(JSON.stringify(fullySerialized));
+        const sizeInMBFull = bytesToMB(sizeFull);
+        const fullyDeserializedVod = new HLSVod();
+        fullyDeserializedVod.fromJSON(fullySerialized);
+
+        fullyDeserializedVod.skipSerializeMediaSequences = true;
+        const partiallySerialized = fullyDeserializedVod.toJSON();
+        const partiallyDeserializedVod = new HLSVod();
+        partiallyDeserializedVod.fromJSON(partiallySerialized);
+
+        const mseqCountPart = partiallyDeserializedVod.getLiveMediaSequencesCount();
+        const sizePart = Buffer.byteLength(JSON.stringify(partiallySerialized));
+        const sizeInMBPart = bytesToMB(sizePart);
+
+        partiallyDeserializedVod.generateMediaSequences().then(() => {
+          const mseqCountFullAgain = partiallyDeserializedVod.getLiveMediaSequencesCount();
+          partiallyDeserializedVod.skipSerializeMediaSequences = false;
+          const fullySerializedAgain = partiallyDeserializedVod.toJSON();
+          const sizeFullAgain = Buffer.byteLength(JSON.stringify(fullySerializedAgain));
+          const sizeInMBFullAgain = bytesToMB(sizeFullAgain);
+
+          expect(sizeInMBFull).toBe(expectedJSONSizeInMBFull);
+          expect(sizeInMBPart).toBe(expectedJSONSizeInMBPartial);
+          expect(sizeInMBFullAgain).toBe(expectedJSONSizeInMBFullAgain);
+          expect(mseqCountFull).toBe(expectedMseqCountFull);
+          expect(mseqCountPart).toBe(expectedMseqCountPartial);
+          expect(mseqCountFullAgain).toBe(expectedMseqCountFullAgain);
+
+          expect(sizeInMBFull).toEqual(sizeInMBFullAgain);
+          expect(fullySerialized).toEqual(fullySerializedAgain);
+
+          done();
+        });
+      });
+  });
+
+  it("can handle a sequence of VODs, with skipSerializeMediaSequences set -> true (TYPE-B)", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, {
+      sequenceAlwaysContainNewSegments: 1,
+      forcedDemuxMode: 1,
+      shouldContainSubtitles: 1,
+      subtitleSliceEndpoint: "https://test.test.com",
+      expectedSubtitleTracks: [
+        { language: "sv", name: "sv" },
+        { language: "en", name: "en" },
+        { language: "no", name: "no" },
+      ],
+      dummySubtitleEndpoint: "fake/subs/here",
+      alwaysMapBandwidthByNearest: 1,
+      skipSerializeMediaSequences: false,
+    });
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, {
+      sequenceAlwaysContainNewSegments: 1,
+      forcedDemuxMode: 1,
+      shouldContainSubtitles: 1,
+      subtitleSliceEndpoint: "https://test.test.com",
+      expectedSubtitleTracks: [
+        { language: "sv", name: "sv" },
+        { language: "en", name: "en" },
+        { language: "no", name: "no" },
+      ],
+      dummySubtitleEndpoint: "fake/subs/here",
+      alwaysMapBandwidthByNearest: 1,
+      skipSerializeMediaSequences: false,
+    });
+    mockVod
+      .load(mockM3u8Item1.master, mockM3u8Item1.media, mockM3u8Item1.audio, mockM3u8Item1.subtitle)
+      .then(() => {
+        return mockVod2.loadAfter(mockVod, mockM3u8Item1.master, mockM3u8Item1.media, mockM3u8Item1.audio, mockM3u8Item1.subtitle);
+      })
+      .then(() => {
+        const bytesToMB = (bytes) => {
+          const megabytes = bytes / (1024 * 1024);
+          return megabytes.toFixed(2);
+        };
+        const expectedJSONSizeInMBFull = "5.29";
+        const expectedJSONSizeInMBPartial = "0.38";
+        const expectedJSONSizeInMBFullAgain = expectedJSONSizeInMBFull;
+        const expectedMseqCountFull = 146;
+        const expectedMseqCountPartial = 0;
+        const expectedMseqCountFullAgain = expectedMseqCountFull;
+
+        const mseqCountFull = mockVod2.getLiveMediaSequencesCount();
+        const fullySerialized = mockVod2.toJSON();
+        const sizeFull = Buffer.byteLength(JSON.stringify(fullySerialized));
+        const sizeInMBFull = bytesToMB(sizeFull);
+        const fullyDeserializedVod = new HLSVod();
+        fullyDeserializedVod.fromJSON(fullySerialized);
+
+        fullyDeserializedVod.skipSerializeMediaSequences = true;
+        const partiallySerialized = fullyDeserializedVod.toJSON();
+        const partiallyDeserializedVod = new HLSVod();
+        partiallyDeserializedVod.fromJSON(partiallySerialized);
+
+        const mseqCountPart = partiallyDeserializedVod.getLiveMediaSequencesCount();
+        const sizePart = Buffer.byteLength(JSON.stringify(partiallySerialized));
+        const sizeInMBPart = bytesToMB(sizePart);
+
+        partiallyDeserializedVod.generateMediaSequences().then(() => {
+          const mseqCountFullAgain = partiallyDeserializedVod.getLiveMediaSequencesCount();
+          partiallyDeserializedVod.skipSerializeMediaSequences = false;
+          const fullySerializedAgain = partiallyDeserializedVod.toJSON();
+          const sizeFullAgain = Buffer.byteLength(JSON.stringify(fullySerializedAgain));
+          const sizeInMBFullAgain = bytesToMB(sizeFullAgain);
+
+          expect(sizeInMBFull).toBe(expectedJSONSizeInMBFull);
+          expect(sizeInMBPart).toBe(expectedJSONSizeInMBPartial);
+          expect(sizeInMBFullAgain).toBe(expectedJSONSizeInMBFullAgain);
+          expect(mseqCountFull).toBe(expectedMseqCountFull);
+          expect(mseqCountPart).toBe(expectedMseqCountPartial);
+          expect(mseqCountFullAgain).toBe(expectedMseqCountFullAgain);
+
+          expect(sizeInMBFull).toEqual(sizeInMBFullAgain);
+          expect(fullySerialized).toEqual(fullySerializedAgain);
+
+          done();
+        });
       });
   });
 });
@@ -2515,7 +2824,6 @@ describe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
       .load(mock1_MasterManifest, mock1_MediaManifest)
       .then(() => {
         const someBW = Object.keys(mockVod.segments)[0];
-        let seq = 1;
         const mseqs = mockVod.mediaSequenceValues;
         const dseqs = mockVod.discontinuities;
         const lastMseq = mockVod.mediaSequences[mockVod.mediaSequences.length - 1]["segments"][someBW];
@@ -2525,20 +2833,20 @@ describe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
         };
 
         const expectedMseqVals = {
-          0: 1,
-          1: 2,
-          2: 3,
-          3: 4,
-          4: 5,
-          5: 6,
-          6: 7,
-          7: 8,
-          8: 9,
-          9: 10,
-          10: 11,
-          11: 12,
-          12: 13,
-          13: 14,
+          0: 0,
+          1: 1,
+          2: 2,
+          3: 3,
+          4: 4,
+          5: 5,
+          6: 6,
+          7: 7,
+          8: 8,
+          9: 9,
+          10: 10,
+          11: 11,
+          12: 12,
+          13: 13,
         };
         const expectedDseqVals = {
           0: 0,
@@ -2584,23 +2892,42 @@ describe("HLSVod with set option-> sequenceAlwaysContainNewSegments", () => {
         });
         topAndBottomSegURIList.push({
           top: mseq_2[0].uri,
-          bottom: mseq_2[mseq_2.length - 1].uri,
+          bottom: mseq_2[mseq_2.length - 1 - 1].uri,
         });
-
-        const expectedMseqVals = { 0: 1, 1: 3, 2: 5, 3: 7, 4: 11, 5: 12, 6: 13 };
-        const expectedDseqVals = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 1, 5: 2, 6: 2 };
+        const expectedMseqVals = {
+          0: 0,
+          1: 1,
+          2: 2,
+          3: 3,
+          4: 5,
+          5: 7,
+          6: 11,
+          7: 12,
+          8: 13,
+        };
+        const expectedDseqVals = {
+          0: 0,
+          1: 0,
+          2: 0,
+          3: 0,
+          4: 0,
+          5: 0,
+          6: 1,
+          7: 2,
+          8: 2,
+        };
         const expectedTopAndBottomSegURIList = [
           {
+            top: "http://mock.com/level0/seg_43.ts",
+            bottom: "http://mock.com/level0/seg_51.ts",
+          },
+          {
             top: "http://mock.com/level0/seg_44.ts",
+            bottom: "https://maitv-vod.lab.eyevinn.technology/ads/apotea-15s.mp4/level0/2000-00000.ts",
+          },
+          {
+            top: "http://mock.com/level0/seg_45.ts",
             bottom: "https://maitv-vod.lab.eyevinn.technology/ads/apotea-15s.mp4/level0/2000-00001.ts",
-          },
-          {
-            top: "http://mock.com/level0/seg_46.ts",
-            bottom: "http://mock.com/level0/seg_0000.ts",
-          },
-          {
-            top: "http://mock.com/level0/seg_48.ts",
-            bottom: "http://mock.com/level0/seg_0001.ts",
           },
         ];
         expect(mseqs).toEqual(expectedMseqVals);
@@ -2738,6 +3065,9 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
   let mock2_MasterManifest;
   let mock2_MediaManifest;
   let mock2_AudioManifest;
+  let mock3_MasterManifest;
+  let mock3_MediaManifest;
+  let mock3_AudioManifest;
 
   beforeEach(() => {
     mock1_MasterManifest = function () {
@@ -2767,6 +3097,46 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
         return fs.createReadStream(`testvectors/hls_always_1_demux/${groupId}.m3u8`);
       }
     };
+
+    mock3_MasterManifest = function () {
+      return fs.createReadStream("testvectors/hls_multiaudiotracks4/master.m3u8");
+    };
+    mock3_MediaManifest = function (bandwidth) {
+      return fs.createReadStream("testvectors/hls_multiaudiotracks4/video-" + bandwidth + ".m3u8");
+    };
+    mock3_AudioManifest = function (groupId, lang) {
+      if (groupId && lang) {
+        return fs.createReadStream(`testvectors/hls_multiaudiotracks4/audio_${groupId}-${lang}.m3u8`);
+      } else {
+        return fs.createReadStream(`testvectors/hls_multiaudiotracks4/${groupId}.m3u8`);
+      }
+    };
+  });
+
+  xit("should fail loading a VOD with different lengths of audio segments", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: 1 });
+    mockVod
+      .load(mock4_MasterManifest, mock4_MediaManifest, mock4_AudioManifest)
+      .then(() => {
+        expect(mockVod.getVodUri()).toBe("http://mock.com/mock.m3u8");
+        done();
+      })
+      .catch((err) => {
+        expect(err.toString()).toBe("Error: The VOD loading was rejected because it contains audio variants with different segment counts");
+        done();
+      });
+  });
+
+  it("set to true, will create 60s Audio Media Sequences when multiple groupIds", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: 1 });
+    mockVod.load(mock3_MasterManifest, mock3_MediaManifest, mock3_AudioManifest).then(() => {
+      let audioSeqSegs1 = mockVod.getLiveMediaSequenceAudioSegments("stereo", "en", 0);
+      let videoSeqSegs1 = mockVod.getLiveMediaSequenceSegments(0)["244000"];
+      expect(videoSeqSegs1).not.toBeNull();
+      expect(audioSeqSegs1).not.toBeNull();
+      expect(videoSeqSegs1.length).toBe(audioSeqSegs1.length);
+      done();
+    });
   });
 
   it("set to true, will never create media sequences that have the same last segment", (done) => {
@@ -2794,38 +3164,38 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
           bottom: lastMseqAudio[lastMseqAudio.length - 1].uri,
         };
         const expectedMseqVals = {
-          0: 1,
-          1: 2,
-          2: 3,
-          3: 4,
-          4: 5,
-          5: 6,
-          6: 7,
-          7: 8,
-          8: 9,
-          9: 10,
-          10: 11,
-          11: 12,
-          12: 13,
-          13: 14,
-          14: 15,
+          0: 0,
+          1: 1,
+          2: 2,
+          3: 3,
+          4: 4,
+          5: 5,
+          6: 6,
+          7: 7,
+          8: 8,
+          9: 9,
+          10: 10,
+          11: 11,
+          12: 12,
+          13: 13,
+          14: 14,
         };
         const expectedMseqValsAudio = {
-          0: 1,
-          1: 2,
-          2: 3,
-          3: 4,
-          4: 5,
-          5: 6,
-          6: 7,
-          7: 8,
-          8: 9,
-          9: 10,
-          10: 11,
-          11: 12,
-          12: 13,
-          13: 14,
-          14: 15,
+          0: 0,
+          1: 1,
+          2: 2,
+          3: 3,
+          4: 4,
+          5: 5,
+          6: 6,
+          7: 7,
+          8: 8,
+          9: 9,
+          10: 10,
+          11: 11,
+          12: 12,
+          13: 13,
+          14: 14,
         };
         const expectedDseqVals = {
           0: 0,
@@ -2920,14 +3290,15 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
         });
 
         const expectedMseqVals = {
-          0: 1,
-          1: 2,
-          2: 4,
-          3: 6,
-          4: 8,
-          5: 10,
-          6: 11,
-          7: 12,
+          0: 0,
+          1: 1,
+          2: 2,
+          3: 4,
+          4: 6,
+          5: 8,
+          6: 10,
+          7: 11,
+          8: 12,
         };
         const expectedDseqVals = {
           0: 0,
@@ -2935,11 +3306,16 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
           2: 0,
           3: 0,
           4: 0,
-          5: 1,
-          6: 2,
+          5: 0,
+          6: 1,
           7: 2,
+          8: 2,
         };
         const expectedTopAndBottomSegURIList = [
+          {
+            top: "http://mock.com/level0/seg_44.ts",
+            bottom: "http://mock.com/level0/seg_52.ts",
+          },
           {
             top: "http://mock.com/level0/seg_45.ts",
             bottom: "https://maitv-vod.lab.eyevinn.technology/ads/apotea-15s.mp4/level0/2000-00000.ts",
@@ -2948,12 +3324,12 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
             top: "http://mock.com/level0/seg_46.ts",
             bottom: "https://maitv-vod.lab.eyevinn.technology/ads/apotea-15s.mp4/level0/2000-00001.ts",
           },
-          {
-            top: "http://mock.com/level0/seg_48.ts",
-            bottom: "http://mock.com/level0/seg_0000.ts",
-          },
         ];
         const expectedTopAndBottomSegURIListAudio = [
+          {
+            top: "http://mock.com/audio/seg_en_44.ts",
+            bottom: "http://mock.com/audio/seg_en_52.ts",
+          },
           {
             top: "http://mock.com/audio/seg_en_45.ts",
             bottom: "https://maitv-vod.lab.eyevinn.technology/ads/apotea-15s.mp4/audio/en-00000.ts",
@@ -2962,12 +3338,7 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
             top: "http://mock.com/audio/seg_en_46.ts",
             bottom: "https://maitv-vod.lab.eyevinn.technology/ads/apotea-15s.mp4/audio/en-00001.ts",
           },
-          {
-            top: "http://mock.com/audio/seg_en_48.ts",
-            bottom: "http://mock.com/audio/seg_en_0000.ts",
-          },
         ];
-
         expect(mseqs).toEqual(expectedMseqVals);
         expect(dseqs).toEqual(expectedDseqVals);
         expect(topAndBottomSegURIList).toEqual(expectedTopAndBottomSegURIList);
@@ -2998,6 +3369,7 @@ describe("HLSVod for demuxed audio, with set option-> sequenceAlwaysContainNewSe
           top: lastMseqAudio[0].uri,
           bottom: lastMseqAudio[lastMseqAudio.length - 1].uri,
         };
+
         // Assert
         const expectedMseqVals = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, 11: 11, 12: 12, 13: 13, 14: 14 };
         const expectedDseqVals = {
@@ -3259,18 +3631,18 @@ describe("HLSVod delta time and positions", () => {
           }
         });
         let allsegs = mockVod2.segments[bw_];
-        const secondVodDuration = getDur(allsegs) - getDur(mockVod2.mediaSequences[0].segments[bw_]) + 3 + 3;
+        const secondVodDuration = getDur(allsegs) - getDur(mockVod2.mediaSequences[0].segments[bw_]);
         const expectedPlayheadPositions = [
-          0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 49.5, 53.5, 57.5, 61.5, 65.5, 69.5, 72.5, 76.5, 80.5, 84.5, 88.5,
-          92.5, 96.5, 100.5, 104.5, 108.5, 112.5, 116.5, 120.5, 124.5, 128.5, 132.5, 136.5, 140.5, 146.5, 149.5, 152.5, 158.5, 161.5, 164.5,
-          170.5, 173.5, 176.5, 182.5, 185.5, 188.5, 194.5, 196,
+          0, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 55.5, 59.5, 63.5, 67.5, 71.5, 75.5, 78.5, 82.5, 86.5, 90.5, 94.5,
+          98.5, 102.5, 106.5, 110.5, 114.5, 118.5, 122.5, 126.5, 130.5, 134.5, 138.5, 142.5, 146.5, 152.5, 155.5, 158.5, 164.5, 167.5, 170.5,
+          176.5, 179.5, 182.5, 188.5, 191.5, 194.5, 200.5, 202,
         ];
         const expectedDeltaTimes = [
-          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1.5, 3.5, 0, 0, 0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0,
-          0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, -1.5,
+          0, 5.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1.5, 3.5, 0, 0, 0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          2, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, -1.5,
         ];
-        const expectedSeqcount = 55;
-        const expectedVodSegmentsCount = 87;
+        const expectedSeqcount = 56;
+        const expectedVodSegmentsCount = 88;
         const expectedVodDuration = 202;
         const expectedSeqWithNoNewSegmentCount = 0;
 
@@ -3354,6 +3726,7 @@ describe("HLSVod delta time and positions", () => {
     let mock2_MasterManifest;
     let mock2_MediaManifest;
     let mock2_AudioManifest;
+    let mock_vod_3;
 
     beforeEach(() => {
       mock1_MasterManifest = function () {
@@ -3386,6 +3759,17 @@ describe("HLSVod delta time and positions", () => {
           return fs.createReadStream(`testvectors/hls_always_4_demux/${groupId}.m3u8`);
         }
       };
+      mock_vod_3 = {
+        master: () => {
+          return fs.createReadStream("testvectors/hls_cmaf_interstitial_1/master.m3u8");
+        },
+        media: (bandwidth) => {
+          return fs.createReadStream("testvectors/hls_cmaf_interstitial_1/test-video=" + bandwidth + ".m3u8");
+        },
+        audio: (groupId, lang) => {
+          return fs.createReadStream("testvectors/hls_cmaf_interstitial_1/test-audio=256000.m3u8");
+        },
+      };
     });
 
     it("and there is no matching group ID, then it sets default target group ID to load next VOD segments into", (done) => {
@@ -3401,5 +3785,130 @@ describe("HLSVod delta time and positions", () => {
         });
       });
     });
+
+    it("with Program date time enabled and VODs have HLS Interstitial Tag", (done) => {
+      mockVod = new HLSVod("http://mock.com/mock.m3u8", null, Date.now(), 0, null, {
+        sequenceAlwaysContainNewSegments: 0,
+        forcedDemuxMode: true,
+      });
+      mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, Date.now() + 90000, 0, null, {
+        sequenceAlwaysContainNewSegments: 0,
+        forcedDemuxMode: true,
+      });
+      mockVod.load(mock_vod_3.master, mock_vod_3.media, mock_vod_3.audio).then(() => {
+        mockVod2.loadAfter(mockVod, mock_vod_3.master, mock_vod_3.media, mock_vod_3.audio).then(() => {
+          let m3u8 = mockVod2.getLiveMediaAudioSequences(0, "audio-aacl-256", "sv", 4);
+          let lines = m3u8.split("\n");
+          expect(
+            lines[16].includes('#EXT-X-DATERANGE:ID="ad1",CLASS="com.apple.hls.interstitial",START-DATE') &&
+              lines[16].includes(
+                ',DURATION="15.0",X-ASSET-URI="http://example.com/ad1.m3u8",X-RESUME-OFFSET="0",X-RESTRICT="SKIP,JUMP",X-COM-EXAMPLE-BEACON="123"'
+              )
+          ).toBe(true);
+          done();
+        });
+      });
+    });
+
+    it("with Program date time enabled and VODs have HLS Interstitial Tag", (done) => {
+      mockVod = new HLSVod("http://mock.com/mock.m3u8", null, Date.now(), 0, null, {
+        sequenceAlwaysContainNewSegments: 0,
+        forcedDemuxMode: true,
+      });
+      mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, Date.now() + 90000, 0, null, {
+        sequenceAlwaysContainNewSegments: 0,
+        forcedDemuxMode: true,
+      });
+      mockVod.load(mock_vod_3.master, mock_vod_3.media, mock_vod_3.audio).then(() => {
+        mockVod2.loadAfter(mockVod, mock_vod_3.master, mock_vod_3.media, mock_vod_3.audio).then(() => {
+          let m3u8 = mockVod2.getLiveMediaAudioSequences(0, "audio-aacl-256", "sv", 4);
+          let lines = m3u8.split("\n");
+          expect(
+            lines[16].includes('#EXT-X-DATERANGE:ID="ad1",CLASS="com.apple.hls.interstitial",START-DATE') &&
+              lines[16].includes(
+                ',DURATION="15.0",X-ASSET-URI="http://example.com/ad1.m3u8",X-RESUME-OFFSET="0",X-RESTRICT="SKIP,JUMP",X-COM-EXAMPLE-BEACON="123"'
+              )
+          ).toBe(true);
+          expect(
+            lines[17].includes('#EXT-X-DATERANGE:ID="ad1",CLASS="com.apple.hls.interstitial",START-DATE') &&
+              lines[16].includes(
+                ',DURATION="15.0",X-ASSET-URI="http://example.com/ad1.m3u8",X-RESUME-OFFSET="0",X-RESTRICT="SKIP,JUMP",X-COM-EXAMPLE-BEACON="123"'
+              )
+          ).toBe(false);
+          done();
+        });
+      });
+    });
   });
+});
+
+describe("HLSVod with demuxed vod and set option-> sequenceAlwaysContainNewSegments", () => {
+  let mock_vod_001;
+  const testvector_name = "hls_ts_vas_demux_broken";
+  beforeEach(() => {
+    mock_vod_001 = {
+      master: () => {
+        return fs.createReadStream(`testvectors/${testvector_name}/master.m3u8`);
+      },
+      media: (bandwidth) => {
+        return fs.createReadStream(`testvectors/${testvector_name}/media7070700.m3u8`);
+      },
+      audio: (groupId, lang) => {
+        return fs.createReadStream(`testvectors/${testvector_name}/audio.m3u8`);
+      },
+      subtitle: (groupId, lang) => {
+        return fs.createReadStream(`testvectors/${testvector_name}/subtitle.m3u8`);
+      },
+    };
+  });
+
+  it("set to true, will NOT fail to load after a vod with adbreak in ", (done) => {
+
+    const subtitleTracks = [
+      { language: "sv", name: "Swedish" }
+    ]
+  
+    const hlsOptsAlwaysNewSegmentsTrue = {
+      dummySubtitleEndpoint: "/dummysubs.vtt",
+      subtitleSliceEndpoint: "/subtitlevtt.vtt",
+      shouldContainSubtitles: true,
+      expectedSubtitleTracks: subtitleTracks,
+      sequenceAlwaysContainNewSegments: true
+    }
+
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, hlsOptsAlwaysNewSegmentsTrue);
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, hlsOptsAlwaysNewSegmentsTrue);
+    mockVod
+      .load(mock_vod_001.master, mock_vod_001.media, mock_vod_001.audio, mock_vod_001.subtitle)
+      .then(() => {
+        mockVod2.loadAfter(mockVod, mock_vod_001.master, mock_vod_001.media, mock_vod_001.audio, mock_vod_001.subtitle).then(() => {
+          // Assert Video
+          let m3u8Video = mockVod2.getLiveMediaSequences(0, 7070700, 4);
+          let linesVideo = m3u8Video.split("\n");
+
+          expect(linesVideo[14]).toBe(`https://adfiles.dev.tv/mcdonalds/ads/4445/video-1/3.ts`);
+          expect(linesVideo[15]).toBe(`#EXT-X-CUE-IN`);
+          expect(linesVideo[16]).toBe(`#EXT-X-DISCONTINUITY`);
+          expect(linesVideo[18]).toBe(`https://vodfiles.dev.tv/hits/333/video_x-1/644.ts`);
+          // Assert Audio
+          let m3u8Audio = mockVod2.getLiveMediaAudioSequences(0, "aac", "en", 4);
+          let linesAudio = m3u8Audio.split("\n");
+
+          expect(linesAudio[18]).toBe(`https://adfiles.dev.tv/mcdonalds/ads/4445/audio/4.aac`);
+          expect(linesAudio[19]).toBe(`#EXT-X-CUE-IN`);
+          expect(linesAudio[20]).toBe(`#EXT-X-DISCONTINUITY`);
+          expect(linesAudio[22]).toBe(`https://vodfiles.dev.tv/hits/333/audio_x/852.aac`);
+          // Assert Subtitle
+          let m3u8Subtitle = mockVod2.getLiveMediaSubtitleSequences(0, "textstream", "sv", 4);
+          let linesSubtitle = m3u8Subtitle.split("\n");
+
+          expect(linesSubtitle[14]).toBe(`https://adfiles.dev.tv/mcdonalds/ads/4445/textstream-1/3.vtt`);
+          expect(linesSubtitle[15]).toBe(`#EXT-X-CUE-IN`);
+          expect(linesSubtitle[16]).toBe(`#EXT-X-DISCONTINUITY`);
+          expect(linesSubtitle[18]).toBe(`https://vodfiles.dev.tv/hits/333/textstream-1/644.vtt`);
+          done();
+        });
+      });
+  });
+
 });

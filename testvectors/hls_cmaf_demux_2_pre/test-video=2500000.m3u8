@@ -1,0 +1,97 @@
+#EXTM3U
+#EXT-X-VERSION:6
+## Created with Unified Streaming Platform (version=1.11.23-28141)
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXT-X-MEDIA-SEQUENCE:1
+#EXT-X-INDEPENDENT-SEGMENTS
+#EXT-X-TARGETDURATION:6
+#USP-X-TIMESTAMP-MAP:MPEGTS=900000,LOCAL=1970-01-01T00:00:00Z
+#EXT-X-DISCONTINUITY
+#EXT-X-CUE-OUT:DURATION=83
+#EXT-X-MAP:URI="bumper1-video=300000.m4s"
+#EXTINF:3.0000, no desc
+bumper1-video=300000-1.m4s
+#EXT-X-DISCONTINUITY
+#EXT-X-MAP:URI="trailers/6410780885837c53d76220fa/seg-video=300000.m4s"
+#EXTINF:3.8400, no desc
+trailers/6410780885837c53d76220fa/seg-video=300000-1.m4s
+#EXTINF:3.8400, no desc
+trailers/6410780885837c53d76220fa/seg-video=300000-2.m4s
+#EXTINF:3.8400, no desc
+trailers/6410780885837c53d76220fa/seg-video=300000-3.m4s
+#EXTINF:3.8400, no desc
+trailers/6410780885837c53d76220fa/seg-video=300000-4.m4s
+#EXTINF:3.8400, no desc
+trailers/6410780885837c53d76220fa/seg-video=300000-5.m4s
+#EXTINF:0.8000, no desc
+trailers/6410780885837c53d76220fa/seg-video=300000-6.m4s
+#EXT-X-DISCONTINUITY
+#EXT-X-MAP:URI="trailers/64258163d9bd4e002a287286/seg-video=300000.m4s"
+#EXTINF:3.8400, no desc
+trailers/64258163d9bd4e002a287286/seg-video=300000-1.m4s
+#EXTINF:3.8400, no desc
+trailers/64258163d9bd4e002a287286/seg-video=300000-2.m4s
+#EXTINF:3.8400, no desc
+trailers/64258163d9bd4e002a287286/seg-video=300000-3.m4s
+#EXTINF:3.8400, no desc
+trailers/64258163d9bd4e002a287286/seg-video=300000-4.m4s
+#EXTINF:3.8400, no desc
+trailers/64258163d9bd4e002a287286/seg-video=300000-5.m4s
+#EXTINF:3.8400, no desc
+trailers/64258163d9bd4e002a287286/seg-video=300000-6.m4s
+#EXTINF:3.8400, no desc
+trailers/64258163d9bd4e002a287286/seg-video=300000-7.m4s
+#EXTINF:3.1200, no desc
+trailers/64258163d9bd4e002a287286/seg-video=300000-8.m4s
+#EXT-X-DISCONTINUITY
+#EXT-X-MAP:URI="trailers/640f15469b636e51dcca74ba/seg-video=300000.m4s"
+#EXTINF:3.8400, no desc
+trailers/640f15469b636e51dcca74ba/seg-video=300000-1.m4s
+#EXTINF:3.1600, no desc
+trailers/640f15469b636e51dcca74ba/seg-video=300000-2.m4s
+#EXT-X-MAP:URI="bumper1-video=300000.m4s"
+#EXT-X-MAP:URI="trailers/6409d2ff3d431f3269303b33/seg-video=300000.m4s"
+#EXTINF:3.8400, no desc
+trailers/6409d2ff3d431f3269303b33/seg-video=300000-1.m4s
+#EXTINF:3.8400, no desc
+trailers/6409d2ff3d431f3269303b33/seg-video=300000-2.m4s
+#EXTINF:3.8400, no desc
+trailers/6409d2ff3d431f3269303b33/seg-video=300000-3.m4s
+#EXTINF:3.8400, no desc
+trailers/6409d2ff3d431f3269303b33/seg-video=300000-4.m4s
+#EXTINF:3.8400, no desc
+trailers/6409d2ff3d431f3269303b33/seg-video=300000-5.m4s
+#EXTINF:0.8000, no desc
+trailers/6409d2ff3d431f3269303b33/seg-video=300000-6.m4s
+#EXT-X-DISCONTINUITY
+#EXT-X-MAP:URI="bumper1-video=300000.m4s"
+#EXTINF:3.0000, no desc
+bumper1-video=300000-1.m4s
+#EXT-X-DISCONTINUITY
+#EXT-X-CUE-IN
+#EXT-X-MAP:URI="vod2-video=300000.m4s"
+#EXTINF:6.0000, no desc
+vod2-video=300000-1.m4s
+#EXTINF:3.0000, no desc
+vod2-video=300000-2.m4s
+#EXTINF:3.0000, no desc
+vod2-video=300000-3.m4s
+#EXTINF:6.0000, no desc
+vod2-video=300000-4.m4s
+#EXTINF:3.0000, no desc
+vod2-video=300000-5.m4s
+#EXTINF:3.0000, no desc
+vod2-video=300000-6.m4s
+#EXTINF:3.0000, no desc
+vod2-video=300000-7.m4s
+#EXTINF:6.0000, no desc
+vod2-video=300000-8.m4s
+#EXTINF:3.0000, no desc
+vod2-video=300000-9.m4s
+#EXTINF:3.0000, no desc
+vod2-video=300000-10.m4s
+#EXTINF:6.0000, no desc
+vod2-video=300000-11.m4s
+#EXTINF:1.6400, no desc
+vod2-video=300000-12.m4s
+#EXT-X-ENDLIST

@@ -1,0 +1,97 @@
+#EXTM3U
+#EXT-X-VERSION:6
+## Created with Unified Streaming Platform (version=1.11.23-28141)
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXT-X-MEDIA-SEQUENCE:1
+#EXT-X-INDEPENDENT-SEGMENTS
+#EXT-X-TARGETDURATION:4
+#USP-X-TIMESTAMP-MAP:MPEGTS=900000,LOCAL=1970-01-01T00:00:00Z
+#EXT-X-DISCONTINUITY
+#EXT-X-CUE-OUT:DURATION=83
+#EXT-X-MAP:URI="bumper1-audio=128000.m4s"
+#EXTINF:3.0293, no desc
+bumper1-audio=128000-1.m4s
+#EXT-X-DISCONTINUITY
+#EXT-X-MAP:URI="trailers/6410780885837c53d76220fa/seg-audio=128000.m4s"
+#EXTINF:3.8400, no desc
+trailers/6410780885837c53d76220fa/seg-audio=128000-1.m4s
+#EXTINF:3.8400, no desc
+trailers/6410780885837c53d76220fa/seg-audio=128000-2.m4s
+#EXTINF:3.8400, no desc
+trailers/6410780885837c53d76220fa/seg-audio=128000-3.m4s
+#EXTINF:3.8400, no desc
+trailers/6410780885837c53d76220fa/seg-audio=128000-4.m4s
+#EXTINF:3.8400, no desc
+trailers/6410780885837c53d76220fa/seg-audio=128000-5.m4s
+#EXTINF:0.8320, no desc
+trailers/6410780885837c53d76220fa/seg-audio=128000-6.m4s
+#EXT-X-DISCONTINUITY
+#EXT-X-MAP:URI="trailers/64258163d9bd4e002a287286/seg-audio=128000.m4s"
+#EXTINF:3.8400, no desc
+trailers/64258163d9bd4e002a287286/seg-audio=128000-1.m4s
+#EXTINF:3.8400, no desc
+trailers/64258163d9bd4e002a287286/seg-audio=128000-2.m4s
+#EXTINF:3.8400, no desc
+trailers/64258163d9bd4e002a287286/seg-audio=128000-3.m4s
+#EXTINF:3.8400, no desc
+trailers/64258163d9bd4e002a287286/seg-audio=128000-4.m4s
+#EXTINF:3.8400, no desc
+trailers/64258163d9bd4e002a287286/seg-audio=128000-5.m4s
+#EXTINF:3.8400, no desc
+trailers/64258163d9bd4e002a287286/seg-audio=128000-6.m4s
+#EXTINF:3.8400, no desc
+trailers/64258163d9bd4e002a287286/seg-audio=128000-7.m4s
+#EXTINF:3.1573, no desc
+trailers/64258163d9bd4e002a287286/seg-audio=128000-8.m4s
+#EXT-X-DISCONTINUITY
+#EXT-X-MAP:URI="trailers/640f15469b636e51dcca74ba/seg-audio=128000.m4s"
+#EXTINF:3.8400, no desc
+trailers/640f15469b636e51dcca74ba/seg-audio=128000-1.m4s
+#EXTINF:3.2000, no desc
+trailers/640f15469b636e51dcca74ba/seg-audio=128000-2.m4s
+#EXT-X-DISCONTINUITY
+#EXT-X-MAP:URI="trailers/6409d2ff3d431f3269303b33/seg-audio=128000.m4s"
+#EXTINF:3.8400, no desc
+trailers/6409d2ff3d431f3269303b33/seg-audio=128000-1.m4s
+#EXTINF:3.8400, no desc
+trailers/6409d2ff3d431f3269303b33/seg-audio=128000-2.m4s
+#EXTINF:3.8400, no desc
+trailers/6409d2ff3d431f3269303b33/seg-audio=128000-3.m4s
+#EXTINF:3.8400, no desc
+trailers/6409d2ff3d431f3269303b33/seg-audio=128000-4.m4s
+#EXTINF:3.8400, no desc
+trailers/6409d2ff3d431f3269303b33/seg-audio=128000-5.m4s
+#EXTINF:0.8320, no desc
+trailers/6409d2ff3d431f3269303b33/seg-audio=128000-6.m4s
+#EXT-X-DISCONTINUITY
+#EXT-X-MAP:URI="bumper1-audio=128000.m4s"
+#EXTINF:3.0293, no desc
+bumper1-audio=128000-1.m4s
+#EXT-X-DISCONTINUITY
+#EXT-X-CUE-IN
+#EXT-X-MAP:URI="vod2-audio=256000.m4s"
+#EXTINF:3.8400, no desc
+vod2-audio=256000-1.m4s
+#EXTINF:3.8400, no desc
+vod2-audio=256000-2.m4s
+#EXTINF:3.8400, no desc
+vod2-audio=256000-3.m4s
+#EXTINF:3.8400, no desc
+vod2-audio=256000-4.m4s
+#EXTINF:3.8400, no desc
+vod2-audio=256000-5.m4s
+#EXTINF:3.8400, no desc
+vod2-audio=256000-6.m4s
+#EXTINF:3.8400, no desc
+vod2-audio=256000-7.m4s
+#EXTINF:3.8400, no desc
+vod2-audio=256000-8.m4s
+#EXTINF:3.8400, no desc
+vod2-audio=256000-9.m4s
+#EXTINF:3.8400, no desc
+vod2-audio=256000-10.m4s
+#EXTINF:3.8400, no desc
+vod2-audio=256000-11.m4s
+#EXTINF:4.4586, no desc
+vod2-audio=256000-12.m4s
+#EXT-X-ENDLIST

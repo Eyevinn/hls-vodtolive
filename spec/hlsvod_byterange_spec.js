@@ -4,6 +4,7 @@ const m3u8 = require("@eyevinn/m3u8");
 
 describe("HLSVod CMAF with BYTERANGE standalone", () => {
   let mockMasterManifest;
+  let mockMasterManifestNoOffset;
 
   beforeEach(() => {
     mockMasterManifest = function () {
@@ -24,6 +25,26 @@ describe("HLSVod CMAF with BYTERANGE standalone", () => {
       };
       return fs.createReadStream("testvectors/hls_byterange/" + audiomap[groupId] + ".m3u8");
     };
+
+    mockMasterManifestNoOffset = function () {
+      return fs.createReadStream("testvectors/hls_byterange_no_offset/index.m3u8");
+    };
+
+    mockMediaManifestNoOffset = function (bandwidth) {
+      const bwmap = {
+        "783968": "video-avc-480p",
+        "1927194": "video-avc-720p",
+        "4024553": "video-avc-1080p"
+      }
+      return fs.createReadStream("testvectors/hls_byterange_no_offset/" + bwmap[bandwidth] + ".m3u8");
+    };
+
+    mockAudioManifestNoOffset = function (groupId, lang) {
+      const audiomap = {
+        "audio": "audio",
+      };
+      return fs.createReadStream("testvectors/hls_byterange_no_offset/" + audiomap[groupId] + ".m3u8");
+    };    
   });
 
   it("passes through the segments with byterange correctly", (done) => {
@@ -59,4 +80,28 @@ describe("HLSVod CMAF with BYTERANGE standalone", () => {
         done(err);
       })
   });
+
+  it("produces correct slices when offset is not specified on each segment", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod
+      .load(mockMasterManifestNoOffset, mockMediaManifestNoOffset, mockAudioManifestNoOffset)
+      .then(() => {
+        const seqSegments = mockVod.getLiveMediaSequenceSegments(0);
+        expect(seqSegments[4024553][0].initSegment).toEqual("http://mock.com/video-avc_1080p.mp4");
+        expect(seqSegments[4024553][0].initSegmentByteRange).toEqual("870@0");
+        expect(seqSegments[4024553][0].byteRange).toEqual("1915768@1118");
+        expect(seqSegments[4024553][1].byteRange).toEqual(`1783958@${1915768 + 1118}`);
+        expect(seqSegments[4024553][2].byteRange).toEqual(`1175162@${1915768 + 1118 + 1783958}`);
+
+        const audioSegments = mockVod.getLiveMediaSequenceAudioSegments("audio", "sv", 0);
+        expect(audioSegments[0].byteRange).toEqual("99886@1074");
+        expect(audioSegments[1].byteRange).toEqual(`100637@${99886 + 1074}`);
+        expect(audioSegments[2].byteRange).toEqual(`100589@${99886 + 1074 + 100637}`);
+        done();
+      })
+      .catch((err) => {
+        done(err);
+      });
+  });  
 });
+

@@ -1,0 +1,29 @@
+#EXTM3U
+#EXT-X-VERSION:6
+## Created with Unified Streaming Platform (version=1.11.20-26889)
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXT-X-MEDIA-SEQUENCE:1
+#EXT-X-INDEPENDENT-SEGMENTS
+#EXT-X-TARGETDURATION:3
+#EXT-X-PROGRAM-DATE-TIME:1970-01-01T00:00:00.001Z
+#EXT-X-MAP:URI="test-audio=256000.m4s"
+#EXTINF:10, no desc
+test-audio=2500000-1.m4s
+#EXTINF:10, no desc
+test-audio=2500000-2.m4s
+#EXTINF:10, no desc
+test-audio=2500000-3.m4s
+#EXT-X-DATERANGE:ID="ad1",CLASS="com.apple.hls.interstitial",START-DATE="1970-01-01T00:00:35.001Z",DURATION=15.0,X-ASSET-URI="http://example.com/ad1.m3u8",X-RESUME-OFFSET=0, X-RESTRICT="SKIP,JUMP",X-COM-EXAMPLE-BEACON=123
+#EXTINF:10, no desc
+test-audio=2500000-4.m4s
+#EXTINF:10, no desc
+test-audio=2500000-5.m4s
+#EXTINF:10, no desc
+test-audio=2500000-6.m4s
+#EXTINF:10, no desc
+test-audio=2500000-7.m4s
+#EXTINF:10, no desc
+test-audio=2500000-8.m4s
+#EXTINF:10, no desc
+test-audio=2500000-9.m4s
+#EXT-X-ENDLIST

@@ -12,14 +12,18 @@
     * [.addMetadata(key, value)](#HLSVod+addMetadata)
     * [.getVodUri()](#HLSVod+getVodUri)
     * [.getLiveMediaSequenceSegments(seqIdx)](#HLSVod+getLiveMediaSequenceSegments)
+    * [.getLiveAudioSequenceSegments(seqIdx)](#HLSVod+getLiveAudioSequenceSegments)
     * [.getMediaSegments()](#HLSVod+getMediaSegments)
     * [.getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx)](#HLSVod+getLiveMediaSequenceAudioSegments)
+    * [.getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage, seqIdx)](#HLSVod+getLiveMediaSequenceSubtitleSegments)
     * [.getBandwidths()](#HLSVod+getBandwidths)
     * [.getLiveMediaSequencesCount()](#HLSVod+getLiveMediaSequencesCount)
     * [.getLastSequenceMediaSequenceValue()](#HLSVod+getLastSequenceMediaSequenceValue)
     * [.getLastSequenceMediaSequenceValueAudio()](#HLSVod+getLastSequenceMediaSequenceValueAudio)
+    * [.getLastSequenceMediaSequenceValueSubtitle()](#HLSVod+getLastSequenceMediaSequenceValueSubtitle)
     * [.getLiveMediaSequences(offset, bandwidth, seqIdx, discOffset, padding, forceTargetDuration)](#HLSVod+getLiveMediaSequences)
     * [.getLiveMediaAudioSequences()](#HLSVod+getLiveMediaAudioSequences)
+    * [.getLiveMediaSubtitleSequences()](#HLSVod+getLiveMediaSubtitleSequences)
     * [.getUsageProfiles()](#HLSVod+getUsageProfiles)
     * [.getLastDiscontinuity()](#HLSVod+getLastDiscontinuity)
     * [.getLastDiscontinuityAudio()](#HLSVod+getLastDiscontinuityAudio)
@@ -29,6 +33,7 @@
     * [.getDuration()](#HLSVod+getDuration)
     * [.getLastUsedDiscSeq()](#HLSVod+getLastUsedDiscSeq)
     * [._copyAudioGroupsFromPrevious()](#HLSVod+_copyAudioGroupsFromPrevious)
+    * [._copySubtitleGroupsFromPrevious()](#HLSVod+_copySubtitleGroupsFromPrevious)
 
 <a name="new_HLSVod_new"></a>
 
@@ -117,6 +122,17 @@ Get all segments (duration, uri) for a specific media sequence
 | --- | --- | --- |
 | seqIdx | <code>number</code> | media sequence index (first is 0) |
 
+<a name="HLSVod+getLiveAudioSequenceSegments"></a>
+
+### hlsVod.getLiveAudioSequenceSegments(seqIdx)
+Get all audio segments (duration, uri) for a specific media sequence
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| seqIdx | <code>number</code> | media sequence index (first is 0) |
+
 <a name="HLSVod+getMediaSegments"></a>
 
 ### hlsVod.getMediaSegments()
@@ -126,7 +142,7 @@ Get all segments (duration, uri)
 <a name="HLSVod+getLiveMediaSequenceAudioSegments"></a>
 
 ### hlsVod.getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx)
-Get all audio segments (duration, uri) for a specific media sequence
+Get all audio segments (duration, uri) for a specific media sequence based on audio group and lang
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 
@@ -134,6 +150,19 @@ Get all audio segments (duration, uri) for a specific media sequence
 | --- | --- | --- |
 | audioGroupId | <code>string</code> | audio group Id |
 | audioLanguage | <code>string</code> | audio language |
+| seqIdx | <code>number</code> | media sequence index (first is 0) |
+
+<a name="HLSVod+getLiveMediaSequenceSubtitleSegments"></a>
+
+### hlsVod.getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage, seqIdx)
+Get all subtitle segments (duration, uri) for a specific media sequence
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| subtitleGroupId | <code>string</code> | subtitle group Id |
+| subtitleLanguage | <code>string</code> | subtitle language |
 | seqIdx | <code>number</code> | media sequence index (first is 0) |
 
 <a name="HLSVod+getBandwidths"></a>
@@ -160,6 +189,12 @@ Get the media-sequence value for the last media sequence of this VOD
 Get the media-sequence value for the last audio media sequence of this VOD
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+getLastSequenceMediaSequenceValueSubtitle"></a>
+
+### hlsVod.getLastSequenceMediaSequenceValueSubtitle()
+Get the media-sequence value for the last subtitle media sequence of this VOD
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 <a name="HLSVod+getLiveMediaSequences"></a>
 
 ### hlsVod.getLiveMediaSequences(offset, bandwidth, seqIdx, discOffset, padding, forceTargetDuration)
@@ -180,6 +215,13 @@ Get the HLS live media sequence for a specific media sequence and bandwidth
 
 ### hlsVod.getLiveMediaAudioSequences()
 Gets a hls/makes m3u8-file with all of the correct audio segments
+belonging to a given groupID & language for a particular sequence.
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+getLiveMediaSubtitleSequences"></a>
+
+### hlsVod.getLiveMediaSubtitleSequences()
+Gets a hls/makes m3u8-file with all of the correct subtitle segments
 belonging to a given groupID & language for a particular sequence.
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
@@ -236,5 +278,12 @@ Returns the last added Discontinuity sequence count from getLiveMediaSequences()
 ### hlsVod.\_copyAudioGroupsFromPrevious()
 Gets previous VOD's audio -groupIds, -langs, -segments from its last sequence
 and adds them to the current VOD's this.audioSegments property.
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+_copySubtitleGroupsFromPrevious"></a>
+
+### hlsVod.\_copySubtitleGroupsFromPrevious()
+Gets previous VOD's subtitle -groupIds, -langs, -segments from its last sequence
+and adds them to the current VOD's this.subtitleSegments property.
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
