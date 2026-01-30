@@ -510,11 +510,39 @@ class HLSVod {
    * contains the end sequences of the previous VOD
    *
    * @param {HLSVod} previousVod - the previous VOD to concatenate to
+   * @param {function} _injectMasterManifest - optional master manifest injection function
+   * @param {function} _injectMediaManifest - optional media manifest injection function
+   * @param {function} _injectAudioManifest - optional audio manifest injection function
+   * @param {function} _injectSubtitleManifest - optional subtitle manifest injection function
+   * @param {boolean} calculatePDT - optional flag to automatically calculate Program Date Time based on previous VOD
    */
-  loadAfter(previousVod, _injectMasterManifest, _injectMediaManifest, _injectAudioManifest, _injectSubtitleManifest) {
+  loadAfter(previousVod, _injectMasterManifest, _injectMediaManifest, _injectAudioManifest, _injectSubtitleManifest, calculatePDT = false) {
     debug(`Initializing Load VOD After VOD...`);
     return new Promise((resolve, reject) => {
       this.previousVod = previousVod;
+      
+      // Calculate PDT for current VOD if requested
+      // TODO: Backwards logic, fix
+      /**
+      * `previousVod.getDuration()` _always_ gives a non-null value (calculated on segment)
+      * `previousVod.timeOffset` is nullable, depending on how assetManager.getNextVod() works
+      * Thus, we need to handle both cases
+      * If timeOffset != null -> this.timeOffset = previous.offset + previousDuration
+      * else -> this.timeOffset = time.now() as unix
+      */
+      if (calculatePDT) {
+        const previousDuration = previousVod.getDuration(); 
+        if (previousVod.timeOffset) {
+          console.log("time offset in previous vod")
+            this.timeOffset = previousVod.timeOffset + (previousDuration * 1000);
+            debug(`Calculated PDT for chained VOD: ${this.timeOffset}`);
+        } else {
+          console.log("No time offset in previous vod")
+          this.timeOffset = Date.now();
+          debug(`Previous VOD has no timeOffset, using current time for PDT: ${this.timeOffset}`);
+        }
+      }
+      
       try {
         this._loadPrevious();
         this.load(_injectMasterManifest, _injectMediaManifest, _injectAudioManifest, _injectSubtitleManifest)
