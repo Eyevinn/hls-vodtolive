@@ -83,6 +83,9 @@ class HLSVod {
     if (opts && opts.skipSerializeMediaSequences) {
       this.skipSerializeMediaSequences = opts.skipSerializeMediaSequences;
     }
+    if (opts && opts.calculatePDT) {
+      this.calculatePDT = opts.calculatePDT
+    }
     this.videoSequencesCount = 0;
     this.audioSequencesCount = 0;
     this.defaultAudioGroupAndLang = null;
@@ -136,6 +139,7 @@ class HLSVod {
       alwaysMapBandwidthByNearest: this.alwaysMapBandwidthByNearest,
       skipSerializeMediaSequences: this.skipSerializeMediaSequences,
       cuedHlsInterstitialTag: this.cuedHlsInterstitialTag,
+      calculatePDT: this.calculatePDT
     };
     return JSON.stringify(serialized);
   }
@@ -190,6 +194,7 @@ class HLSVod {
     this.alwaysMapBandwidthByNearest = de.alwaysMapBandwidthByNearest;
     this.skipSerializeMediaSequences = de.skipSerializeMediaSequences;
     this.cuedHlsInterstitialTag = de.cuedHlsInterstitialTag;
+    this.calculatePDT = de.calculatePDT;
   }
 
   /**
@@ -510,11 +515,29 @@ class HLSVod {
    * contains the end sequences of the previous VOD
    *
    * @param {HLSVod} previousVod - the previous VOD to concatenate to
+   * @param {function} _injectMasterManifest - optional master manifest injection function
+   * @param {function} _injectMediaManifest - optional media manifest injection function
+   * @param {function} _injectAudioManifest - optional audio manifest injection function
+   * @param {function} _injectSubtitleManifest - optional subtitle manifest injection function
    */
   loadAfter(previousVod, _injectMasterManifest, _injectMediaManifest, _injectAudioManifest, _injectSubtitleManifest) {
     debug(`Initializing Load VOD After VOD...`);
     return new Promise((resolve, reject) => {
       this.previousVod = previousVod;
+
+      if (this.calculatePDT) {
+        const previousDuration = previousVod.getDuration(); 
+        if (previousVod.timeOffset) {
+          console.log("time offset in previous vod")
+            this.timeOffset = previousVod.timeOffset + (previousDuration * 1000);
+            debug(`Calculated PDT for chained VOD: ${this.timeOffset}`);
+        } else {
+          console.log("No time offset in previous vod")
+          this.timeOffset = Date.now();
+          debug(`Previous VOD has no timeOffset, using current time for PDT: ${this.timeOffset}`);
+        }
+      }
+      
       try {
         this._loadPrevious();
         this.load(_injectMasterManifest, _injectMediaManifest, _injectAudioManifest, _injectSubtitleManifest)

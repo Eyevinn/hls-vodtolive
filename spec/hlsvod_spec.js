@@ -391,6 +391,45 @@ describe("HLSVod after another VOD", () => {
         done();
       });
   });
+
+  it("calculates PDT when the corresponding argument is true", (done) => {
+    const fixedDate = new Date("2026-01-01T00:00:00.000Z");
+    mockVod = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod.timeOffset = fixedDate.getTime();
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
+    mockVod2.calculatePDT = true;
+    mockVod
+      .load(mockMasterManifest, mockMediaManifest)
+      .then(() => {
+        expect(mockVod.timeOffset).toEqual(fixedDate.getTime());
+        expect(mockVod.getDuration()).toEqual(2652.266);
+        return mockVod2.loadAfter(mockVod, mockMasterNoAudioOnly, mockMediaNoAudioOnly);
+      })
+      .then(() => {
+        expect(mockVod2.timeOffset).toEqual(fixedDate.getTime() + mockVod.getDuration() * 1000);
+        done();
+      });
+  });
+
+  it("Falls back to Date.now() if there is no timeOffset", (done) => {
+    const fixedDate = new Date("2026-01-01T00:00:00.000Z");
+    spyOn(Date, "now").and.callFake(() =>{
+      return fixedDate.getTime();
+    });
+    mockVod = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
+    mockVod2.calculatePDT = true;
+    mockVod
+      .load(mockMasterManifest, mockMediaManifest)
+      .then(() => {
+        expect(mockVod.getDuration()).toEqual(2652.266);
+        return mockVod2.loadAfter(mockVod, mockMasterNoAudioOnly, mockMediaNoAudioOnly);
+      })
+      .then(() => {
+        expect(mockVod2.timeOffset).toEqual(fixedDate.getTime());
+        done();
+      });
+  });
 });
 
 describe("HLSVod with ad splicing", () => {
