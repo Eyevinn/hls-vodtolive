@@ -83,6 +83,9 @@ class HLSVod {
     if (opts && opts.skipSerializeMediaSequences) {
       this.skipSerializeMediaSequences = opts.skipSerializeMediaSequences;
     }
+    if (opts && opts.calculatePDT) {
+      this.calculatePDT = opts.calculatePDT
+    }
     this.videoSequencesCount = 0;
     this.audioSequencesCount = 0;
     this.defaultAudioGroupAndLang = null;
@@ -136,6 +139,7 @@ class HLSVod {
       alwaysMapBandwidthByNearest: this.alwaysMapBandwidthByNearest,
       skipSerializeMediaSequences: this.skipSerializeMediaSequences,
       cuedHlsInterstitialTag: this.cuedHlsInterstitialTag,
+      calculatePDT: this.calculatePDT
     };
     return JSON.stringify(serialized);
   }
@@ -514,23 +518,13 @@ class HLSVod {
    * @param {function} _injectMediaManifest - optional media manifest injection function
    * @param {function} _injectAudioManifest - optional audio manifest injection function
    * @param {function} _injectSubtitleManifest - optional subtitle manifest injection function
-   * @param {boolean} calculatePDT - optional flag to automatically calculate Program Date Time based on previous VOD
    */
-  loadAfter(previousVod, _injectMasterManifest, _injectMediaManifest, _injectAudioManifest, _injectSubtitleManifest, calculatePDT = false) {
+  loadAfter(previousVod, _injectMasterManifest, _injectMediaManifest, _injectAudioManifest, _injectSubtitleManifest) {
     debug(`Initializing Load VOD After VOD...`);
     return new Promise((resolve, reject) => {
       this.previousVod = previousVod;
-      
-      // Calculate PDT for current VOD if requested
-      // TODO: Backwards logic, fix
-      /**
-      * `previousVod.getDuration()` _always_ gives a non-null value (calculated on segment)
-      * `previousVod.timeOffset` is nullable, depending on how assetManager.getNextVod() works
-      * Thus, we need to handle both cases
-      * If timeOffset != null -> this.timeOffset = previous.offset + previousDuration
-      * else -> this.timeOffset = time.now() as unix
-      */
-      if (calculatePDT) {
+
+      if (this.calculatePDT) {
         const previousDuration = previousVod.getDuration(); 
         if (previousVod.timeOffset) {
           console.log("time offset in previous vod")
