@@ -194,6 +194,7 @@ class HLSVod {
     this.alwaysMapBandwidthByNearest = de.alwaysMapBandwidthByNearest;
     this.skipSerializeMediaSequences = de.skipSerializeMediaSequences;
     this.cuedHlsInterstitialTag = de.cuedHlsInterstitialTag;
+    this.calculatePDT = de.calculatePDT;
   }
 
   /**
