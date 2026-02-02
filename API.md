@@ -7,7 +7,7 @@
     * [new HLSVod(vodManifestUri, splices, timeOffset, startTimeOffset, header, opts)](#new_HLSVod_new)
     * [.defaultAudioGroupAndLang](#HLSVod+defaultAudioGroupAndLang)
     * [.load()](#HLSVod+load)
-    * [.loadAfter(previousVod)](#HLSVod+loadAfter)
+    * [.loadAfter(previousVod, _injectMasterManifest, _injectMediaManifest, _injectAudioManifest, _injectSubtitleManifest)](#HLSVod+loadAfter)
     * [.reload(mediaSeqNo, additionalSegments, additionalAudioSegments, insertAfter)](#HLSVod+reload) ⇒
     * [.addMetadata(key, value)](#HLSVod+addMetadata)
     * [.getVodUri()](#HLSVod+getVodUri)
@@ -66,7 +66,7 @@ Load and parse the HLS VOD
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 <a name="HLSVod+loadAfter"></a>
 
-### hlsVod.loadAfter(previousVod)
+### hlsVod.loadAfter(previousVod, _injectMasterManifest, _injectMediaManifest, _injectAudioManifest, _injectSubtitleManifest)
 Load and parse the HLS VOD where the first media sequences
 contains the end sequences of the previous VOD
 
@@ -75,6 +75,10 @@ contains the end sequences of the previous VOD
 | Param | Type | Description |
 | --- | --- | --- |
 | previousVod | [<code>HLSVod</code>](#HLSVod) | the previous VOD to concatenate to |
+| _injectMasterManifest | <code>function</code> | optional master manifest injection function |
+| _injectMediaManifest | <code>function</code> | optional media manifest injection function |
+| _injectAudioManifest | <code>function</code> | optional audio manifest injection function |
+| _injectSubtitleManifest | <code>function</code> | optional subtitle manifest injection function |
 
 <a name="HLSVod+reload"></a>
 
