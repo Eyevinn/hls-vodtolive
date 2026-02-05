@@ -526,7 +526,7 @@ class HLSVod {
       this.previousVod = previousVod;
 
       if (this.calculatePDT) {
-        const previousDuration = previousVod.getDuration(); 
+        const previousDuration = previousVod.getNextVodDuration(); 
         if (previousVod.timeOffset) {
           console.log("time offset in previous vod")
             this.timeOffset = previousVod.timeOffset + (previousDuration * 1000);
@@ -1241,6 +1241,32 @@ class HLSVod {
     }
     const duration = this.segments[bw].reduce((acc, s) => (s.duration ? acc + s.duration : acc), 0);
     return duration;
+  }
+
+    /**
+   * Returns the current duration calculated from the sum of the duration of all segments
+   * belonging to the next VOD, excludeing the copied segments from previous VOD, if any.
+   */
+  getNextVodDuration() {
+    if (!this.segments) {
+      return null;
+    }
+    const bw = Object.keys(this.segments)[0];
+    if (!bw) {
+      return null;
+    }
+
+    const segments = Array.isArray(this.segments[bw]) ? this.segments[bw] : [];
+    const sumDuration = (list) =>
+      list.reduce((acc, s) => acc + (typeof s?.duration === "number" ? s.duration : 0), 0);
+
+    const vodTransitionIndex = segments.findIndex((segment) => !!segment?.vodTransition);
+    if (vodTransitionIndex >= 0) {
+      const segmentsAfterTransition = segments.slice(vodTransitionIndex);
+      return sumDuration(segmentsAfterTransition);
+    }
+    
+    return sumDuration(segments);
   }
 
   /**

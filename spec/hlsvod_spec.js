@@ -398,15 +398,24 @@ describe("HLSVod after another VOD", () => {
     mockVod.timeOffset = fixedDate.getTime();
     mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");
     mockVod2.calculatePDT = true;
+    mockVod3 = new HLSVod("http://mock.com/mock3.m3u8");
+    mockVod3.calculatePDT = true;
     mockVod
       .load(mockMasterManifest, mockMediaManifest)
       .then(() => {
         expect(mockVod.timeOffset).toEqual(fixedDate.getTime());
         expect(mockVod.getDuration()).toEqual(2652.266);
-        return mockVod2.loadAfter(mockVod, mockMasterNoAudioOnly, mockMediaNoAudioOnly);
+        expect(mockVod.getNextVodDuration()).toEqual(2652.266);
+        return mockVod2.loadAfter(mockVod, mockMasterManifest, mockMediaManifest);
       })
       .then(() => {
         expect(mockVod2.timeOffset).toEqual(fixedDate.getTime() + mockVod.getDuration() * 1000);
+        expect(mockVod2.getDuration()).toEqual(2694.532 );
+        expect(mockVod2.getNextVodDuration()).toEqual(2652.266);
+        return mockVod3.loadAfter(mockVod2, mockMasterManifest, mockMediaManifest);
+      })
+      .then(() => {
+        expect(mockVod3.timeOffset).toEqual(mockVod2.timeOffset + mockVod2.getNextVodDuration() * 1000);
         done();
       });
   });
