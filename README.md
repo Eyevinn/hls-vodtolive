@@ -126,6 +126,9 @@ subtitleSliceEndpoint: "/subtitlevtt.vtt", // it should link to an endpoint that
     subtitle segments longer than video segments.
 ```
 
+Additional constructor option:
+- `calculatePDT: true` - when chaining VODs with `loadAfter`, calculate the next VOD `timeOffset` (PDT) from the previous VOD duration; if the previous VOD has no `timeOffset`, the current time is used.
+
 # Documentation
 
 - [API Documentation](API.md)

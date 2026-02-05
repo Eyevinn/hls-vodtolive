@@ -9,14 +9,23 @@
     * [.load()](#HLSVod+load)
     * [.loadAfter(previousVod, _injectMasterManifest, _injectMediaManifest, _injectAudioManifest, _injectSubtitleManifest)](#HLSVod+loadAfter)
     * [.reload(mediaSeqNo, additionalSegments, additionalAudioSegments, insertAfter)](#HLSVod+reload) ⇒
+    * [.toJSON()](#HLSVod+toJSON)
+    * [.fromJSON(serialized)](#HLSVod+fromJSON)
     * [.addMetadata(key, value)](#HLSVod+addMetadata)
     * [.getVodUri()](#HLSVod+getVodUri)
     * [.getLiveMediaSequenceSegments(seqIdx)](#HLSVod+getLiveMediaSequenceSegments)
     * [.getLiveAudioSequenceSegments(seqIdx)](#HLSVod+getLiveAudioSequenceSegments)
     * [.getMediaSegments()](#HLSVod+getMediaSegments)
+    * [.getAudioSegments()](#HLSVod+getAudioSegments)
     * [.getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx)](#HLSVod+getLiveMediaSequenceAudioSegments)
     * [.getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage, seqIdx)](#HLSVod+getLiveMediaSequenceSubtitleSegments)
     * [.getBandwidths()](#HLSVod+getBandwidths)
+    * [.getAudioGroups()](#HLSVod+getAudioGroups)
+    * [.getAudioLangsForAudioGroup(groupId)](#HLSVod+getAudioLangsForAudioGroup)
+    * [.getAudioGroupIdForCodecs(audioCodecs, channels)](#HLSVod+getAudioGroupIdForCodecs)
+    * [.getAudioCodecsAndChannelsForGroupId(groupId)](#HLSVod+getAudioCodecsAndChannelsForGroupId)
+    * [.getSubtitleGroups(all)](#HLSVod+getSubtitleGroups)
+    * [.getSubtitleLangsForSubtitleGroup(groupId)](#HLSVod+getSubtitleLangsForSubtitleGroup)
     * [.getLiveMediaSequencesCount()](#HLSVod+getLiveMediaSequencesCount)
     * [.getLastSequenceMediaSequenceValue()](#HLSVod+getLastSequenceMediaSequenceValue)
     * [.getLastSequenceMediaSequenceValueAudio()](#HLSVod+getLastSequenceMediaSequenceValueAudio)
@@ -27,11 +36,20 @@
     * [.getUsageProfiles()](#HLSVod+getUsageProfiles)
     * [.getLastDiscontinuity()](#HLSVod+getLastDiscontinuity)
     * [.getLastDiscontinuityAudio()](#HLSVod+getLastDiscontinuityAudio)
+    * [.getLastDiscontinuitySubtitle()](#HLSVod+getLastDiscontinuitySubtitle)
     * [.getDeltaTimes()](#HLSVod+getDeltaTimes)
     * [.getPlayheadPositions()](#HLSVod+getPlayheadPositions)
     * [.releasePreviousVod()](#HLSVod+releasePreviousVod)
     * [.getDuration()](#HLSVod+getDuration)
+    * [.getNextVodDuration()](#HLSVod+getNextVodDuration)
     * [.getLastUsedDiscSeq()](#HLSVod+getLastUsedDiscSeq)
+    * [.generateSmallerSubtitleSegments(segment, offset, leftover, useDummyUrl, first, elapsedTime)](#HLSVod+generateSmallerSubtitleSegments)
+    * [.generateSequencesTypeAVideo(bw)](#HLSVod+generateSequencesTypeAVideo)
+    * [.generateSequencesTypeAExtraMedia(segments, firstGroupId, firstLanguage, type)](#HLSVod+generateSequencesTypeAExtraMedia)
+    * [.generateSequencesTypeBVideo(bw, bandwidths)](#HLSVod+generateSequencesTypeBVideo)
+    * [.generateSequencesTypeBExtraMedia(segments, firstGroupId, firstLanguage, type)](#HLSVod+generateSequencesTypeBExtraMedia)
+    * [.generateMediaSequences()](#HLSVod+generateMediaSequences)
+    * [.calculateDeltaAndPositionExtraMedia(type)](#HLSVod+calculateDeltaAndPositionExtraMedia)
     * [._copyAudioGroupsFromPrevious()](#HLSVod+_copyAudioGroupsFromPrevious)
     * [._copySubtitleGroupsFromPrevious()](#HLSVod+_copySubtitleGroupsFromPrevious)
 
@@ -48,7 +66,7 @@ Create an HLS VOD instance
 | timeOffset | <code>number</code> | time offset as unix timestamp ms |
 | startTimeOffset | <code>number</code> | start time offset in N ms from start |
 | header | <code>string</code> | prepend the m3u8 playlist with this text |
-| opts | <code>string</code> | other options |
+| opts | <code>Object</code> | other options (e.g. <code>calculatePDT</code> to auto-calc next VOD timeOffset/PDT when chaining with <code>loadAfter</code>) |
 
 <a name="HLSVod+defaultAudioGroupAndLang"></a>
 
@@ -97,6 +115,23 @@ It finally creates new media sequences with the updated collection of segments.
 | additionalAudioSegments | <code>object</code> | New group of audio segments to merge with a possible subset of this.segments |
 | insertAfter | <code>boolean</code> | Whether the additional segments are to be added in front of the live index or behind |
 
+<a name="HLSVod+toJSON"></a>
+
+### hlsVod.toJSON()
+Serialize this HLSVod instance to JSON
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+fromJSON"></a>
+
+### hlsVod.fromJSON(serialized)
+Restore this HLSVod instance from JSON
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| serialized | <code>string</code> | JSON string from <code>toJSON()</code> |
+
 <a name="HLSVod+addMetadata"></a>
 
 ### hlsVod.addMetadata(key, value)
@@ -143,6 +178,12 @@ Get all audio segments (duration, uri) for a specific media sequence
 Get all segments (duration, uri)
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+getAudioSegments"></a>
+
+### hlsVod.getAudioSegments()
+Get all audio segments (duration, uri)
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 <a name="HLSVod+getLiveMediaSequenceAudioSegments"></a>
 
 ### hlsVod.getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx)
@@ -175,6 +216,68 @@ Get all subtitle segments (duration, uri) for a specific media sequence
 Get the available bandwidths for this VOD
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+getAudioGroups"></a>
+
+### hlsVod.getAudioGroups()
+Get audio group IDs
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+getAudioLangsForAudioGroup"></a>
+
+### hlsVod.getAudioLangsForAudioGroup(groupId)
+Get audio languages for a group ID
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| groupId | <code>string</code> | audio group Id |
+
+<a name="HLSVod+getAudioGroupIdForCodecs"></a>
+
+### hlsVod.getAudioGroupIdForCodecs(audioCodecs, channels)
+Get audio group ID for codec and channels
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| audioCodecs | <code>string</code> | audio codec string |
+| channels | <code>string</code> | channel count |
+
+<a name="HLSVod+getAudioCodecsAndChannelsForGroupId"></a>
+
+### hlsVod.getAudioCodecsAndChannelsForGroupId(groupId)
+Get audio codec and channels for group ID
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| groupId | <code>string</code> | audio group Id |
+
+<a name="HLSVod+getSubtitleGroups"></a>
+
+### hlsVod.getSubtitleGroups(all)
+Get subtitle group IDs
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| all | <code>boolean</code> | include dummy group |
+
+<a name="HLSVod+getSubtitleLangsForSubtitleGroup"></a>
+
+### hlsVod.getSubtitleLangsForSubtitleGroup(groupId)
+Get subtitle languages for a group ID
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| groupId | <code>string</code> | subtitle group Id |
+
 <a name="HLSVod+getLiveMediaSequencesCount"></a>
 
 ### hlsVod.getLiveMediaSequencesCount()
@@ -247,6 +350,12 @@ Get the last discontinuity sequence number
 Get the last audio discontinuity sequence number
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+getLastDiscontinuitySubtitle"></a>
+
+### hlsVod.getLastDiscontinuitySubtitle()
+Get the last subtitle discontinuity sequence number
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 <a name="HLSVod+getDeltaTimes"></a>
 
 ### hlsVod.getDeltaTimes()
@@ -271,12 +380,101 @@ Remove pointers to previous VOD and release to garbage collector
 Returns the current duration calculated from the sum of the duration of all segments
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+getNextVodDuration"></a>
+
+### hlsVod.getNextVodDuration()
+Returns the duration of the next VOD excluding copied segments from a previous VOD
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
 <a name="HLSVod+getLastUsedDiscSeq"></a>
 
 ### hlsVod.getLastUsedDiscSeq()
 Returns the last added Discontinuity sequence count from getLiveMediaSequences()
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+generateSmallerSubtitleSegments"></a>
+
+### hlsVod.generateSmallerSubtitleSegments(segment, offset, leftover, useDummyUrl, first, elapsedTime)
+Generate smaller subtitle segments from a source segment
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| segment | <code>object</code> | subtitle segment |
+| offset | <code>number</code> | segment offset |
+| leftover | <code>object</code> | leftover segment state |
+| useDummyUrl | <code>boolean</code> | use dummy subtitle URL |
+| first | <code>boolean</code> | first segment flag |
+| elapsedTime | <code>number</code> | elapsed time |
+
+<a name="HLSVod+generateSequencesTypeAVideo"></a>
+
+### hlsVod.generateSequencesTypeAVideo(bw)
+Generate type A video sequences for a bandwidth
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| bw | <code>string</code> | bandwidth |
+
+<a name="HLSVod+generateSequencesTypeAExtraMedia"></a>
+
+### hlsVod.generateSequencesTypeAExtraMedia(segments, firstGroupId, firstLanguage, type)
+Generate type A audio/subtitle sequences
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| segments | <code>object</code> | audio/subtitle segments |
+| firstGroupId | <code>string</code> | group Id |
+| firstLanguage | <code>string</code> | language |
+| type | <code>string</code> | <code>audio</code> or <code>subtitle</code> |
+
+<a name="HLSVod+generateSequencesTypeBVideo"></a>
+
+### hlsVod.generateSequencesTypeBVideo(bw, bandwidths)
+Generate type B video sequences
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| bw | <code>string</code> | bandwidth |
+| bandwidths | <code>Array.&lt;string&gt;</code> | bandwidth list |
+
+<a name="HLSVod+generateSequencesTypeBExtraMedia"></a>
+
+### hlsVod.generateSequencesTypeBExtraMedia(segments, firstGroupId, firstLanguage, type)
+Generate type B audio/subtitle sequences
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| segments | <code>object</code> | audio/subtitle segments |
+| firstGroupId | <code>string</code> | group Id |
+| firstLanguage | <code>string</code> | language |
+| type | <code>string</code> | <code>audio</code> or <code>subtitle</code> |
+
+<a name="HLSVod+generateMediaSequences"></a>
+
+### hlsVod.generateMediaSequences()
+Generate media sequences for this VOD
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+calculateDeltaAndPositionExtraMedia"></a>
+
+### hlsVod.calculateDeltaAndPositionExtraMedia(type)
+Calculate delta times and positions for audio/subtitle sequences
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| type | <code>string</code> | <code>audio</code> or <code>subtitle</code> |
 <a name="HLSVod+_copyAudioGroupsFromPrevious"></a>
 
 ### hlsVod.\_copyAudioGroupsFromPrevious()
