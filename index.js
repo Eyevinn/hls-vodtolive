@@ -208,6 +208,7 @@ class HLSVod {
         let mediaManifestPromises = [];
         let audioManifestPromises = [];
         let subtitleManifestPromises = [];
+        let defaultAudioTargetLoaded = false;
         let baseUrl;
         const m = this.masterManifestUri.match("^(.*)/.*?$");
         if (m) {
@@ -358,6 +359,13 @@ class HLSVod {
                     if (HAS_AUDIO_DEFAULTS) {
                       targetGroup = this.defaultAudioGroupAndLang.audioGroupId;
                       targetLang = this.defaultAudioGroupAndLang.audioLanguage;
+                      // When multiple source languages map to the same default target,
+                      // only load the first one to avoid doubling audio segments.
+                      if (defaultAudioTargetLoaded) {
+                        debug(`Audio manifest for default target [${targetGroup}][${targetLang}] already loaded, skipping "${audioLang}"`);
+                        continue;
+                      }
+                      defaultAudioTargetLoaded = true;
                       debug(`Loading Audio manifest onto Default GroupID=${targetGroup} and Language=${targetLang}`);
                     }
                     audioManifestPromises.push(this._loadAudioManifest(audioManifestUrl, targetGroup, targetLang, _injectAudioManifest));
