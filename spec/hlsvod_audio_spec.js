@@ -101,6 +101,45 @@ describe("HLSVod with demuxed audio", () => {
       };
     });
 
+    it("does not double audio segments when loadAfter VOD has more audio languages than previous VOD", (done) => {
+      // VOD1: 1 audio lang (en), VOD2: 2 audio langs (en + sv)
+      // This triggers HAS_AUDIO_DEFAULTS which maps both VOD2 langs onto VOD1's single slot.
+      // Without the fix, audio segments get doubled.
+      const mockMasterSingle = function () {
+        return fs.createReadStream("testvectors/hls_always_3_demux/master.m3u8");
+      };
+      const mockMediaSingle = function () {
+        return fs.createReadStream("testvectors/hls_always_3_demux/4850073.m3u8");
+      };
+      const mockAudioSingle = function () {
+        return fs.createReadStream("testvectors/hls_always_3_demux/aac-en.m3u8");
+      };
+      const mockMasterDual = function () {
+        return fs.createReadStream("testvectors/hls_always_0_demux/master.m3u8");
+      };
+      const mockMediaDual = function () {
+        return fs.createReadStream("testvectors/hls_always_0_demux/4850073.m3u8");
+      };
+      const mockAudioDual = function () {
+        return fs.createReadStream("testvectors/hls_always_0_demux/aac-en.m3u8");
+      };
+
+      const vod1 = new HLSVod("http://mock.com/single.m3u8");
+      const vod2 = new HLSVod("http://mock.com/dual.m3u8");
+
+      vod1
+        .load(mockMasterSingle, mockMediaSingle, mockAudioSingle)
+        .then(() => {
+          return vod2.loadAfter(vod1, mockMasterDual, mockMediaDual, mockAudioDual);
+        })
+        .then(() => {
+          const videoSeqCount = vod2.getLiveMediaSequencesCount();
+          const audioSeqCount = vod2.getLiveMediaSequencesCount("audio");
+          expect(audioSeqCount).toEqual(videoSeqCount);
+          done();
+        });
+    });
+
     it("can reload at the beginning of a HLSVod", (done) => {
       let vod1segments = {};
       let vod1AudioSegments = {};
