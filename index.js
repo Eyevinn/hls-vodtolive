@@ -210,7 +210,7 @@ class HLSVod {
     this.keyHomeResolution = de.keyHomeResolution || {};
     this.servedResolution = de.servedResolution || {};
     this.servedKey = de.servedKey || {};
-    this.channelProfile = de.channelProfile || null;
+    this.channelProfile = de.channelProfile;
     this.segmentsInitiated = de.segmentsInitiated;
     this.splices = de.splices;
     this.timeOffset = de.timeOffset;
@@ -368,6 +368,22 @@ class HLSVod {
               }
             }
             debug(`Resolution mapping ${JSON.stringify(this.usageProfileMapping)} dup ${JSON.stringify(this.duplicateSlots)}`);
+          } else if (prevKeys.length === m3u.items.StreamItem.length) {
+            // No resolution information on one side: keep the equal-count
+            // bitrate mapping so the incoming asset still lands on the
+            // existing keys.
+            debug(`Previous VOD bandwidths matches amount of current. A mapping is possible`);
+            const previousBandwidths = prevKeys.slice().sort((a, b) => a - b);
+            this.usageProfileMapping = {};
+            this.usageProfileMappingRev = {};
+            const bandwidths = m3u.items.StreamItem.slice().sort((a, b) => {
+              return a.get("bandwidth") - b.get("bandwidth");
+            }).map((v) => v.get("bandwidth"));
+            debug(`${previousBandwidths} : ${bandwidths}`);
+            for (let i = 0; i < previousBandwidths.length; i++) {
+              this.usageProfileMapping[previousBandwidths[i]] = bandwidths[i] + "";
+              this.usageProfileMappingRev[bandwidths[i]] = previousBandwidths[i];
+            }
           }
         }
         } catch (err) {
