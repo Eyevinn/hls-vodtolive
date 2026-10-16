@@ -357,8 +357,12 @@ describe("HLSVod after another VOD", () => {
         return mockVod2.loadAfter(mockVod, mockMasterNoAudioOnly, mockMediaNoAudioOnly);
       })
       .then(() => {
-        expect(mockVod2.getBandwidths().length).toBe(5);
-        expect(mockVod2.getBandwidths()).toEqual(["884000", "1497000", "1626000", "2497000", "3496000"]);
+        // The previous VOD's four keys are kept, each carrying the new asset's flavor at its own height.
+        expect(mockVod2.getBandwidths().length).toBe(4);
+        expect(mockVod2.getBandwidths()).toEqual(["1497000", "2497000", "3496000", "4497000"]);
+        expect(mockVod2.keyResolution["1497000"]).toEqual("768x432");
+        expect(mockVod2.keyResolution["2497000"]).toEqual("1024x576");
+        expect(mockVod2.keyResolution["3496000"]).toEqual("1280x720");
         done();
       });
   });
@@ -937,6 +941,20 @@ describe("HLSVod with timeline", () => {
 describe("HLSVod with not equal usage profiles", () => {
   let mockMasterManifest = [];
   let mockMediaManifest = [];
+  // The channel's advertised ladder, as a session passes it to every VOD.
+  // Variants are matched to keys by resolution; a key is created for an
+  // advertised height the session lacks when an asset supplies it.
+  const ladderOf = (file) =>
+    fs
+      .readFileSync(file, "utf8")
+      .split("\n")
+      .filter((l) => l.startsWith("#EXT-X-STREAM-INF"))
+      .map((l) => {
+        const bw = /BANDWIDTH=(\d+)/.exec(l);
+        const res = /RESOLUTION=(\d+)x(\d+)/.exec(l);
+        return res ? { bw: Number(bw[1]), resolution: [Number(res[1]), Number(res[2])] } : null;
+      })
+      .filter(Boolean);
 
   beforeEach(() => {
     mockMasterManifest.push(function () {
@@ -1156,8 +1174,10 @@ describe("HLSVod with not equal usage profiles", () => {
   });
 
   it("can match a VOD with more ladder steps", (done) => {
-    mockVod = new HLSVod("http://mock.com/abr3.m3u8");
-    mockVod2 = new HLSVod("http://mock.com/abr4.m3u8");
+    // The channel advertises the four-rung ladder; the 1280x720 rung gets a key when an asset supplies it.
+    const opts = { channelProfile: ladderOf("testvectors/hls1/master.m3u8") };
+    mockVod = new HLSVod("http://mock.com/abr3.m3u8", null, null, null, null, opts);
+    mockVod2 = new HLSVod("http://mock.com/abr4.m3u8", null, null, null, null, opts);
     // 1497k=768x432, 2497k=1024x576, 3000k=1024x576
     mockVod
       .load(mockMasterManifest[3], mockMediaManifest[3])
@@ -1184,22 +1204,23 @@ describe("HLSVod with not equal usage profiles", () => {
         return mockVod2.loadAfter(mockVod, mockMasterManifest[3], mockMediaManifest[3]);
       })
       .then(() => {
+        // Keys are kept, not dropped: the 1280x720 keys carry the asset's 1024x576 so the rungs keep serving.
         const bandwidths = Object.keys(mockVod2.getLiveMediaSequenceSegments(0));
-        expect(bandwidths.length).toEqual(3);
-        expect(bandwidths.includes("4497000")).toBeFalse();
+        expect(bandwidths.length).toEqual(4);
+        expect(bandwidths.includes("4497000")).toBeTrue();
+        expect(mockVod2.keyResolution["4497000"]).toEqual("1024x576");
+        expect(mockVod2.keyResolution["1497000"]).toEqual("768x432");
         done();
       });
   });
 
   it("can avoid matching two ladder steps into the same one", (done) => {
     // VOD A:
-    // 1497k, 2497k, 3496k, 4497k
+    // 1497k=768x432, 2497k=1024x576, 3496k=1280x720, 4497k=1280x720
     // VOD B:
-    // 1497k, 3220k, 3496k
-    // Expected:
-    // 1497k, 3220k, 3496k
-    // Not expected:
-    // 1497k, 3496k
+    // 1497k=768x432, 3220k=1024x576, 3496k=1024x576
+    // Expected: all four keys kept and both 1024x576 flavors used
+    // Not expected: both 1024x576 slots filled from the same flavor
     mockVod = new HLSVod("http://mock.com/voda.m3u8");
     mockVod2 = new HLSVod("http://mock.com/vodb.m3u8");
     mockVod
@@ -1209,9 +1230,11 @@ describe("HLSVod with not equal usage profiles", () => {
       })
       .then(() => {
         const bandwidths = Object.keys(mockVod2.getLiveMediaSequenceSegments(0));
-        expect(bandwidths.length).not.toEqual(2);
-        expect(bandwidths.length).toEqual(3);
-        expect(bandwidths).toEqual(["1497000", "3220000", "3496000"]);
+        expect(bandwidths.length).toEqual(4);
+        const used = new Set(Object.values(mockVod2.usageProfileMapping));
+        expect(used.has("3220000")).toBeTrue();
+        expect(used.has("3496000")).toBeTrue();
+        expect(used.has("1497000")).toBeTrue();
         done();
       });
   });
@@ -1221,8 +1244,10 @@ describe("HLSVod with not equal usage profiles", () => {
     // 1497k, 3220k, 3496k
     // VOD B:
     // 1497k, 2497k, 3496k, 4497k
-    mockVod = new HLSVod("http://mock.com/voda.m3u8");
-    mockVod2 = new HLSVod("http://mock.com/vodb.m3u8");
+    // The channel advertises VOD B's ladder; its 1280x720 rung gets a key when VOD B supplies it.
+    const opts = { channelProfile: ladderOf("testvectors/hls1/master.m3u8") };
+    mockVod = new HLSVod("http://mock.com/voda.m3u8", null, null, null, null, opts);
+    mockVod2 = new HLSVod("http://mock.com/vodb.m3u8", null, null, null, null, opts);
     mockVod
       .load(mockMasterManifest[4], mockMediaManifest[4])
       .then(() => {
@@ -1239,11 +1264,14 @@ describe("HLSVod with not equal usage profiles", () => {
 
   it("can handle when more than one new higher ladder step is to be added", (done) => {
     // VOD A:
-    // 1497k, 3220k, 3496k
+    // 1497k=768x432, 3220k=1024x576, 3496k=1024x576
     // VOD B:
-    // 1497k, 2497k, 3496k, 4497k, 5800k
-    mockVod = new HLSVod("http://mock.com/voda.m3u8");
-    mockVod2 = new HLSVod("http://mock.com/vodb.m3u8");
+    // 1497k=768x432, 2497k=1024x576, 3496k=1024x576, 4497k=1920x1080, 5800k=1920x1080
+    // The channel advertises VOD B's ladder. One key is created per advertised height the
+    // session lacks, so the two 1920x1080 flavors add one key, not two.
+    const opts = { channelProfile: ladderOf("testvectors/hls_abr5/master.m3u8") };
+    mockVod = new HLSVod("http://mock.com/voda.m3u8", null, null, null, null, opts);
+    mockVod2 = new HLSVod("http://mock.com/vodb.m3u8", null, null, null, null, opts);
     mockVod
       .load(mockMasterManifest[4], mockMediaManifest[4])
       .then(() => {
@@ -1251,7 +1279,9 @@ describe("HLSVod with not equal usage profiles", () => {
       })
       .then(() => {
         const bandwidths = Object.keys(mockVod2.getLiveMediaSequenceSegments(0));
-        expect(bandwidths.length).toEqual(5);
+        expect(bandwidths.length).toEqual(4);
+        expect(bandwidths.includes("5800000")).toBeTrue();
+        expect(mockVod2.keyResolution["5800000"]).toEqual("1920x1080");
         done();
       });
   });
