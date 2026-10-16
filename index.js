@@ -13,6 +13,16 @@ const {
   appendHlsInterstitialLineWithCUE,
 } = require("./utils.js");
 
+// The engine loads the next VOD before the current one has served, so
+// per-instance hold state is empty at the handoff. Key the hold on the
+// profile array the session passes to every VOD instead.
+const SESSION_HOLD = new WeakMap();
+const sessionHold = (profile) => {
+  if (!profile || typeof profile !== "object") return null;
+  if (!SESSION_HOLD.has(profile)) SESSION_HOLD.set(profile, { servedKey: {} });
+  return SESSION_HOLD.get(profile);
+};
+
 class HLSVod {
   /**
    * Create an HLS VOD instance
@@ -38,6 +48,23 @@ class HLSVod {
     this.targetSubtitleDuration = {};
     this.previousVod = null;
     this.usageProfile = [];
+    // Resolution actually backing each internal segment key. Keys are source
+    // bitrates and are remapped between assets, so this is the only reliable
+    // record of what a key is carrying.
+    this.keyResolution = {};
+    // Height a key is FOR, fixed when the key is first created. keyResolution
+    // is what it carries now; a degraded key must still be offered its own
+    // height when a later asset has it.
+    this.keyHomeResolution = {};
+    // Resolution each advertised variant has settled on.
+    this.servedResolution = {};
+    // Key each variant served last. Among keys of equal height the variant
+    // stays on it: switching keys mid-window re-keys the positions the old
+    // key still holds.
+    this.servedKey = {};
+    // Segments each key carried over from the previous VOD, so a duplicate
+    // slot can take the owner's new segments without losing its own tail.
+    this._tailLen = {};
     this.segmentsInitiated = {};
     this.splices = splices || [];
     this.timeOffset = timeOffset || null;
@@ -80,6 +107,17 @@ class HLSVod {
     if (opts && opts.alwaysMapBandwidthByNearest) {
       this.alwaysMapBandwidthByNearest = opts.alwaysMapBandwidthByNearest;
     }
+    if (opts && opts.channelProfile) {
+      // Advertised rungs of the channel this VOD serves ({bw, resolution:[w,h]}).
+      // The ceiling for what a rung may be pinned to or fall back to.
+      this.channelProfile = opts.channelProfile;
+    }
+    // Resolution each key was created with. Labels move with the content a
+    // key carries; the home resolution is what the key is FOR, so a key that
+    // degraded for one title claims its height back on the next.
+    // Key each advertised rung last served from. A rung stays on its key
+    // while that key is still at the height it would choose, so equally
+    // labelled keys never swap under a published window.
     if (opts && opts.skipSerializeMediaSequences) {
       this.skipSerializeMediaSequences = opts.skipSerializeMediaSequences;
     }
@@ -110,6 +148,11 @@ class HLSVod {
       targetSubtitleDuration: this.targetSubtitleDuration,
       previousVod: this.previousVod ? this.previousVod.toJSON() : null,
       usageProfile: this.usageProfile,
+      keyResolution: this.keyResolution,
+      keyHomeResolution: this.keyHomeResolution,
+      servedResolution: this.servedResolution,
+      servedKey: this.servedKey,
+      channelProfile: this.channelProfile,
       segmentsInitiated: this.segmentsInitiated,
       splices: this.splices,
       timeOffset: this.timeOffset,
@@ -163,6 +206,11 @@ class HLSVod {
       this.previousVod = prevVod.fromJSON(de.previousVod);
     }
     this.usageProfile = de.usageProfile;
+    this.keyResolution = de.keyResolution || {};
+    this.keyHomeResolution = de.keyHomeResolution || {};
+    this.servedResolution = de.servedResolution || {};
+    this.servedKey = de.servedKey || {};
+    this.channelProfile = de.channelProfile || null;
     this.segmentsInitiated = de.segmentsInitiated;
     this.splices = de.splices;
     this.timeOffset = de.timeOffset;
@@ -215,19 +263,122 @@ class HLSVod {
           baseUrl = m[1] + "/";
         }
         const HAS_AUDIO_DEFAULTS = this.defaultAudioGroupAndLang === null ? false : true;
-        if (!this.alwaysMapBandwidthByNearest && this.previousVod && this.previousVod.getBandwidths().length === m3u.items.StreamItem.length) {
-          debug(`Previous VOD bandwidths matches amount of current. A mapping is possible`);
-          const previousBandwidths = this.previousVod.getBandwidths().sort((a, b) => a - b);
-          this.usageProfileMapping = {};
-          this.usageProfileMappingRev = {};
-          const bandwidths = m3u.items.StreamItem.sort((a, b) => {
-            return a.get("bandwidth") - b.get("bandwidth");
-          }).map((v) => v.get("bandwidth"));
-          debug(`${previousBandwidths} : ${bandwidths}`);
-          for (let i = 0; i < previousBandwidths.length; i++) {
-            this.usageProfileMapping[previousBandwidths[i]] = bandwidths[i] + "";
-            this.usageProfileMappingRev[bandwidths[i]] = previousBandwidths[i];
+        this.duplicateSlots = {};
+        this.claimedSources = null;
+        try {
+        if (!this.alwaysMapBandwidthByNearest && this.previousVod) {
+          // Map the incoming asset's flavors onto the EXISTING SEGMENT KEYS by
+          // resolution.
+          //
+          // The transcode pipeline forces a resolution per flavor and only
+          // targets a bitrate, so measured bitrate moves with content while
+          // resolution does not. Matching on bitrate re-points a slot at a
+          // different rendition when the next asset's encode differs, which
+          // changes resolution at positions already published.
+          //
+          // Note this maps against getBandwidths() -- the real keys -- and not
+          // getUsageProfiles(), which reports the previous asset's own master
+          // bitrates and can differ from the keys after remapping.
+          const prevKeys = this.previousVod.getBandwidths() || [];
+          const prevRes = this.previousVod.keyResolution || {};
+          const prevHome = this.previousVod.keyHomeResolution || {};
+          const newItems = m3u.items.StreamItem
+            .filter((v) => v.get("bandwidth") && v.get("resolution"))
+            .map((v) => ({ bw: v.get("bandwidth"),
+                           res: v.get("resolution")[0] + "x" + v.get("resolution")[1],
+                           h: v.get("resolution")[1] }));
+          // Slots are grouped by the height each key is for, not the height it
+          // carried last. A key that degraded when an asset lacked its height
+          // otherwise keeps the lower label and can never take its own height
+          // again; every later asset then fills two slots with one flavor.
+          const slotRes = (k) => prevHome[k] || prevRes[k];
+          const prevItems = prevKeys.filter((k) => slotRes(k))
+            .map((k) => ({ bw: k, res: slotRes(k),
+                           h: parseInt(String(slotRes(k)).split("x")[1], 10) }));
+
+          if (prevItems.length && newItems.length) {
+            const grp = (l) => { const g = {};
+              l.forEach((x) => { (g[x.res] = g[x.res] || []).push(x); });
+              Object.keys(g).forEach((r) => g[r].sort((a, b) => b.bw - a.bw));
+              return g; };
+            const newG = grp(newItems), prevG = grp(prevItems);
+            const newHeights = newItems.map((x) => x.h);
+            this.usageProfileMapping = {}; this.usageProfileMappingRev = {};
+            this.claimedSources = {};
+            const owner = {};
+            Object.keys(prevG).forEach((res) => {
+              const slots = prevG[res];
+              let cands = newG[res];
+              if (!cands) {
+                // The incoming ladder may be anything at all, including a
+                // single rung. Degrade to the closest height below, or to the
+                // lowest available if there is nothing below. Never reach
+                // upward: that is what leaks a higher resolution into a lower
+                // slot. This always yields a candidate, so an unusual ladder
+                // cannot fail the load.
+                const want = slots[0].h;
+                const below = newHeights.filter((h) => h <= want);
+                const target = below.length ? Math.max.apply(null, below)
+                                            : Math.min.apply(null, newHeights);
+                cands = newG[Object.keys(newG).find((r) => newG[r][0].h === target)];
+                debug(`No ${res} in incoming asset; slot degrades to ${target}p`);
+              }
+              for (let i = 0; i < slots.length; i++) {
+                const pick = cands[Math.min(i, cands.length - 1)];
+                this.usageProfileMapping[slots[i].bw] = pick.bw + "";
+                this.claimedSources[pick.bw] = true;
+                if (owner[pick.bw] === undefined) {
+                  owner[pick.bw] = slots[i].bw;
+                  this.usageProfileMappingRev[pick.bw] = slots[i].bw;
+                } else {
+                  // Fewer flavors at this height than slots for it: the same
+                  // flavor fills every one of those slots.
+                  this.duplicateSlots[slots[i].bw] = owner[pick.bw];
+                }
+              }
+            });
+            // The key set is otherwise fixed by the first asset of the session:
+            // a session that opens on a ladder missing an advertised height
+            // never gains a key for it. Create one when an asset supplies the
+            // height, seeded with the nearest carried key's tail so positions
+            // already published keep their URLs.
+            if (Array.isArray(this.channelProfile) && this.channelProfile.length) {
+              const hOf = (r) => Array.isArray(r) ? Number(r[1]) : parseInt(String(r).split("x")[1], 10);
+              const homes = new Set(prevItems.map((x) => x.h));
+              const advHeights = [...new Set(this.channelProfile.map((p) => hOf(p.resolution)).filter((h) => h > 0))];
+              for (const H of advHeights) {
+                if (homes.has(H)) continue;
+                const cands = newItems.filter((x) => x.h === H && !this.claimedSources[x.bw]).sort((a, b) => b.bw - a.bw);
+                if (!cands.length) continue;
+                const pick = cands[0];
+                let newKey = Number(pick.bw);
+                while (this.segments[String(newKey)] || prevKeys.map(String).includes(String(newKey))) newKey += 1;
+                newKey = String(newKey);
+                const carried = prevKeys.filter((k) => prevRes[k]).map((k) => ({ bw: k, h: parseInt(String(prevRes[k]).split("x")[1], 10) }));
+                if (!carried.length) continue;
+                const belowH = carried.filter((c) => c.h <= H);
+                const donor = (belowH.length ? belowH : carried).reduce((a, b) => Math.abs(b.h - H) < Math.abs(a.h - H) ? b : a);
+                this.keyHomeResolution[newKey] = pick.res;
+                this._copyFromPrevious(newKey, donor.bw);
+                this.usageProfileMapping[newKey] = pick.bw + "";
+                this.usageProfileMappingRev[pick.bw] = newKey;
+                this.claimedSources[pick.bw] = true;
+                homes.add(H);
+                debug(`No key for advertised ${H}p; created ${newKey} for flavor ${pick.bw} (${pick.res}), tail from ${donor.bw}`);
+              }
+            }
+            debug(`Resolution mapping ${JSON.stringify(this.usageProfileMapping)} dup ${JSON.stringify(this.duplicateSlots)}`);
           }
+        }
+        } catch (err) {
+          // An incoming ladder can be anything -- a single rung, no RESOLUTION
+          // attributes, values that make no sense. None of that may break a
+          // load, so discard the mapping and fall through to stock behaviour.
+          debug(`Resolution mapping skipped: ${err && err.message}`);
+          this.usageProfileMapping = null;
+          this.usageProfileMappingRev = null;
+          this.duplicateSlots = {};
+          this.claimedSources = null;
         }
 
         for (let i = 0; i < m3u.items.StreamItem.length; i++) {
@@ -248,7 +399,11 @@ class HLSVod {
 
             // Do not add if it is a variant included in an audio group as it will be loaded and parsed separate
             if (!m3u.items.MediaItem.find((mediaItem) => mediaItem.get("type") === "AUDIO" && mediaItem.get("uri") == streamItem.get("uri"))) {
-              if (streamItem.get("codecs") !== "mp4a.40.2") {
+              if (this.claimedSources && !this.claimedSources[streamItem.get("bandwidth")]) {
+                // No slot maps to this flavor. Loading it anyway resolves to an
+                // undefined key and corrupts the segment store.
+                debug(`Skipping unmapped flavor ${streamItem.get("bandwidth")}`);
+              } else if (streamItem.get("codecs") !== "mp4a.40.2") {
                 mediaManifestPromises.push(this._loadMediaManifest(mediaManifestUrl, streamItem.get("bandwidth"), _injectMediaManifest));
               }
             }
@@ -486,7 +641,8 @@ class HLSVod {
           debug(this.audioCodecsMap);
 
           return Promise.all(audioManifestPromises.concat(subtitleManifestPromises))
-        }).then(this._cleanupUnused.bind(this))
+        }).then(this._fillDuplicateSlots.bind(this))
+          .then(this._cleanupUnused.bind(this))
           .then(this._createMediaSequences.bind(this))
           .then(resolve)
           .catch((err) => {
@@ -532,6 +688,13 @@ class HLSVod {
     debug(`Initializing Load VOD After VOD...`);
     return new Promise((resolve, reject) => {
       this.previousVod = previousVod;
+      if (previousVod) {
+        // Both maps describe content that survives into this VOD's window.
+        this.keyResolution = Object.assign({}, previousVod.keyResolution || {}, this.keyResolution);
+        this.keyHomeResolution = Object.assign({}, previousVod.keyHomeResolution || {}, this.keyHomeResolution);
+        this.servedResolution = Object.assign({}, previousVod.servedResolution || {});
+        this.servedKey = Object.assign({}, previousVod.servedKey || {});
+      }
 
       if (this.calculatePDT) {
         const previousDuration = previousVod.getNextVodDuration(); 
@@ -2081,6 +2244,12 @@ class HLSVod {
     if (!sourceBw) {
       sourceBw = destBw;
     }
+    if (this.previousVod.keyResolution && this.previousVod.keyResolution[sourceBw]) {
+      this.keyResolution[destBw] = this.previousVod.keyResolution[sourceBw];
+    }
+    if (this.previousVod.keyHomeResolution && this.previousVod.keyHomeResolution[sourceBw] && !this.keyHomeResolution[destBw]) {
+      this.keyHomeResolution[destBw] = this.previousVod.keyHomeResolution[sourceBw];
+    }
     const lastMediaSequence = this.previousVod.getLiveMediaSequenceSegments(previousVodSeqCount - 1)[sourceBw];
 
     if (!lastMediaSequence || lastMediaSequence === undefined) {
@@ -2113,6 +2282,7 @@ class HLSVod {
         this.segments[destBw].push(q);
       }
     }
+    if (this._tailLen) this._tailLen[destBw] = (this.segments[destBw] || []).length;
 
     this.segments[destBw].push({
       discontinuity: true,
@@ -2225,6 +2395,32 @@ class HLSVod {
           });
         }
       }
+    }
+  }
+
+  _fillDuplicateSlots() {
+    if (!this.duplicateSlots) return;
+    try {
+    Object.keys(this.duplicateSlots).forEach((dest) => {
+      const src = this.duplicateSlots[dest];
+      if (!this.segments[src] || !this.segments[src].length) return;
+      // Keep the duplicate's own tail (already copied from the previous VOD)
+      // and take only the owner's new segments; copying the owner's tail too
+      // re-keys positions this slot has already published.
+      const ownTail = (this._tailLen && this._tailLen[dest] != null) ? this._tailLen[dest] : 0;
+      const srcTail = (this._tailLen && this._tailLen[src] != null) ? this._tailLen[src] : 0;
+      const own = (this.segments[dest] || []).slice(0, ownTail);
+      const fresh = JSON.parse(JSON.stringify(this.segments[src].slice(srcTail)));
+      this.segments[dest] = own.length === srcTail ? own.concat(fresh) : JSON.parse(JSON.stringify(this.segments[src]));
+      this.segmentsInitiated[dest] = true;
+      if (this.keyResolution[src]) this.keyResolution[dest] = this.keyResolution[src];
+      if (!this.keyHomeResolution[dest] && this.keyHomeResolution[src]) this.keyHomeResolution[dest] = this.keyHomeResolution[src];
+      debug(`Slot ${dest} filled from ${src}`);
+    });
+    } catch (err) {
+      // Never let slot filling fail a load; a slot left unfilled is cleaned
+      // up by the existing sweep.
+      debug(`Slot fill skipped: ${err && err.message}`);
     }
   }
 
@@ -2694,6 +2890,14 @@ class HLSVod {
           this.segments[bw] = [];
         }
       }
+      // Record what this key is carrying, on every load including the first.
+      // Without the first VOD's entries there is nothing for later assets to
+      // match their flavors against.
+      const _up = this.usageProfile.find((p) => String(p.bw) === String(bandwidth));
+      if (_up && _up.resolution) {
+        this.keyResolution[bw] = _up.resolution;
+        if (!this.keyHomeResolution[bw]) this.keyHomeResolution[bw] = _up.resolution;
+      }
       let timelinePosition = 0;
 
       parser.on("m3u", (m3u) => {
@@ -2905,6 +3109,28 @@ class HLSVod {
                 position += q.duration;
                 timelinePosition += q.duration * 1000;
               }
+            }
+
+            // Drop a degenerate trailing segment. Packaging can leave one on
+            // an asset whose duration exceeds a multiple of the segment size
+            // by a sub-frame amount: it declares a fraction of a frame and
+            // carries no media payload at all (observed at 0.095s / 376 bytes,
+            // which is PAT and PMT and nothing else). Consumers that hard-fail
+            // on a stream-less segment stall on it.
+            //
+            // The floor is deliberately low. Across five hours of capture the
+            // only unusable segments were the 0.095s ones, and the shortest
+            // segment carrying valid media was 0.248s, so 0.1s removes the
+            // empty ones and no real content. Its duration is not folded into
+            // the previous segment: that would make a segment's declared
+            // duration disagree with its media, which is a worse problem than
+            // losing 95ms.
+            const MIN_SEGMENT_DURATION = 0.1;
+            const _segs = this.segments[bw];
+            const _tail = _segs && _segs.length > 1 ? _segs[_segs.length - 1] : null;
+            if (_tail && _tail.duration && _tail.duration < MIN_SEGMENT_DURATION) {
+              _segs.pop();
+              debug(`Dropped degenerate tail segment (${_tail.duration}s) for ${bw}`);
             }
 
             this.targetDuration[bw] = Math.ceil(
@@ -3403,24 +3629,117 @@ class HLSVod {
     return closestBandwidth;
   }
 
+
   _getNearestBandwidthWithInitiatedSegments(bandwidthToMatch) {
     let bandwidth = bandwidthToMatch;
     const filteredBandwidths = Object.keys(this.segments).filter((bw) => this.segmentsInitiated[bw]);
     const availableBandwidths = filteredBandwidths.sort((a, b) => a - b);
 
     debug(`Find ${bandwidth} in ${availableBandwidths}`);
-    const exactMatch = availableBandwidths.find((a) => a == bandwidth);
-    if (exactMatch) {
-      return exactMatch;
+
+    // Keys are source bitrates and their values move with content, so picking
+    // by bitrate alone lets an advertised variant land on a different
+    // resolution once the key set changes. Hold each variant on the
+    // resolution it settled on, degrading downward only when the asset has
+    // nothing at that height.
+    // The advertised resolution of this rung is the ceiling for what it may
+    // serve: a pin above it (an opening slate whose ladder has 1080 on a 720
+    // channel) must not carry into later titles, and the bitrate fallback
+    // below must not round up past it.
+    const h = (r) => parseInt(String(r).split("x")[1], 10) || 0;
+    const adv = (this.channelProfile || []).find((p) => String(p.bw) === String(bandwidth));
+    const advH = adv && adv.resolution
+      ? (Array.isArray(adv.resolution) ? Number(adv.resolution[1]) : h(adv.resolution)) : 0;
+    let pinned = this.servedResolution ? this.servedResolution[bandwidth] : null;
+    if (advH && pinned && h(pinned) > advH) {
+      debug(`Variant ${bandwidth} pin ${pinned} exceeds advertised ${advH}p; re-pinning within the ceiling`);
+      pinned = null;
+      delete this.servedResolution[bandwidth];
     }
-    for (let i = 0; i < availableBandwidths.length; i++) {
-      if (Number(bandwidth) <= Number(availableBandwidths[i])) {
-        return availableBandwidths[i];
+    // With a ceiling and no pin, pin to the advertised height itself so the
+    // first title of a session is chosen by resolution, not by bitrate.
+    if (advH && !pinned) {
+      pinned = adv.resolution ? (Array.isArray(adv.resolution) ? adv.resolution.join("x") : String(adv.resolution)) : null;
+    }
+    let chosen = null;
+    try {
+    if (pinned) {
+      const withRes = availableBandwidths.filter((b) => this.keyResolution[b])
+        .filter((b) => !advH || h(this.keyResolution[b]) <= advH);
+      if (withRes.length) {
+        const same = withRes.filter((b) => this.keyResolution[b] === pinned);
+        let pool = same;
+        if (!pool.length) {
+          const want = h(pinned);
+          const heights = withRes.map((b) => h(this.keyResolution[b]));
+          const below = withRes.filter((b) => h(this.keyResolution[b]) <= want);
+          const target = below.length
+            ? Math.max.apply(null, below.map((b) => h(this.keyResolution[b])))
+            : Math.min.apply(null, heights);
+          pool = withRes.filter((b) => h(this.keyResolution[b]) === target);
+        }
+        if (pool.length) {
+          chosen = pool.reduce((x, y) =>
+            Math.abs(Number(y) - Number(bandwidth)) < Math.abs(Number(x) - Number(bandwidth)) ? y : x);
+        }
       }
     }
-    debug("No match found - using fallback");
-    return availableBandwidths[availableBandwidths.length - 1];
+    } catch (err) {
+      // Selection must always return something; fall through to the original
+      // bitrate match below.
+      debug(`Resolution pin skipped: ${err && err.message}`);
+      chosen = null;
+    }
+
+    if (chosen === null) {
+      // Bitrate match, restricted to keys at or below the advertised height
+      // when their resolution is known. Keys of unknown resolution stay
+      // eligible so an unusual ladder cannot fail the selection.
+      const eligible = advH
+        ? availableBandwidths.filter((b) => !this.keyResolution[b] || h(this.keyResolution[b]) <= advH)
+        : availableBandwidths;
+      const pool = eligible.length ? eligible : availableBandwidths;
+      const exactMatch = pool.find((a) => a == bandwidth);
+      if (exactMatch) {
+        chosen = exactMatch;
+      } else {
+        for (let i = 0; i < pool.length; i++) {
+          if (Number(bandwidth) <= Number(pool[i])) { chosen = pool[i]; break; }
+        }
+        if (chosen === null) {
+          debug("No match found - using fallback");
+          chosen = pool[pool.length - 1];
+        }
+      }
+    }
+
+    const holdState = sessionHold(this.channelProfile) || this;
+    if (advH && chosen !== null && chosen !== undefined && holdState.servedKey && holdState.servedKey[bandwidth]) {
+      // A tie between keys of the same height is not a reason to move: the key
+      // this variant served last keeps the positions it already published.
+      const held = String(holdState.servedKey[bandwidth]);
+      if (held !== String(chosen) && availableBandwidths.map(String).includes(held)
+          && this.keyResolution[held] && this.keyResolution[chosen]
+          && h(this.keyResolution[held]) === h(this.keyResolution[chosen])) {
+        if (!holdState.logged) holdState.logged = {};
+        if (holdState.logged[bandwidth] !== held + ">" + chosen) {
+          holdState.logged[bandwidth] = held + ">" + chosen;
+          debug(`Variant ${bandwidth} holds key ${held} (same ${h(this.keyResolution[held])}p as ${chosen})`);
+        }
+        chosen = held;
+      }
+    }
+    if (chosen !== null && chosen !== undefined) {
+      if (holdState.servedKey) holdState.servedKey[bandwidth] = String(chosen);
+      if (this.servedKey) this.servedKey[bandwidth] = String(chosen);
+      if (this.keyResolution[chosen] && !this.servedResolution[bandwidth]) {
+        this.servedResolution[bandwidth] = this.keyResolution[chosen];
+        debug(`Variant ${bandwidth} settled on ${this.keyResolution[chosen]}`);
+      }
+    }
+    return chosen;
   }
+
 
   _getNearestBandwidthForSplice(splice, bandwidth) {
     const availableBandwidths = Object.keys(splice.segments);
