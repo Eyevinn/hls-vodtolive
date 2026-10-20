@@ -131,6 +131,73 @@ Additional constructor option:
 - `expectedAudioLanguages: ["en", "sv"]` - explicit list of audio language codes that must always be present in the generated live output, regardless of what any individual VOD contains. When a loaded VOD is missing one of these languages, the default (first available) language's audio segments are injected for it so the track keeps playing. When this option is omitted, the set of audio languages is instead determined by the first VOD loaded and is then persisted across all following VODs - it is never shrunk when a later VOD exposes fewer languages (e.g. loading a 2-language VOD followed by a 1-language VOD keeps both languages).
 - `expectedAudioCodecs: ["mp4a.40.2", "ec-3"]` - explicit list of audio codecs that the generated live output must contain exactly. Audio groups whose codec is not in this list are dropped, and when a loaded VOD is missing one of the listed codecs the default (first available) codec's audio segments are reused for that codec's track so it keeps playing. When this option is omitted, the set of audio codecs is instead determined by the first VOD loaded and is then persisted across all following VODs - it is never shrunk when a later VOD exposes fewer codecs (e.g. loading a 2-codec VOD followed by a 1-codec VOD keeps both codecs).
 
+# Pass-through model for unknown HLS tags/attributes
+
+HLS manifests can carry vendor or otherwise non-standard tags and attributes that this library
+does not natively interpret. By default such data is read-through only where the library
+explicitly reads it and is otherwise dropped. The *pass-through model* defines a stable,
+serializable representation for preserving that data verbatim so it can later be re-emitted
+unchanged.
+
+This section documents the **agreed data-structure shape** (issue #146). It is foundation
+scaffolding: the fields exist, default to empty, and round-trip through `toJSON`/`fromJSON`
+unchanged. Parse-time capture from `@eyevinn/m3u8` (#147), output re-emission in the manifest
+generator (#148) and master-playlist wiring (#149) build on this contract and are tracked
+separately — nothing populates the model yet.
+
+### Shape
+
+- **Segment level** — each media-playlist segment object (video, audio and subtitle) *may*
+  carry:
+  - `unknownTags: string[]` — ordered list of complete, raw tag lines (e.g.
+    `"#EXT-X-CUSTOM-MARKER:foo=bar"`) that appeared immediately before the segment's URI and
+    that the library does not natively interpret. Source order is preserved.
+  - `unknownAttributes: { [name]: string }` — attributes on a tag the library recognizes
+    structurally but whose specific attribute it does not read (e.g. a vendor attribute on
+    `#EXTINF` or `#EXT-X-KEY`), stored verbatim as raw strings.
+
+  These fields are **optional**: mirroring the existing optional segment fields (`initSegment`,
+  `uri`, `keys`), they are attached only when non-empty so the serialized payload is not
+  inflated with empty objects for every segment. An absent field is equivalent to an empty bag.
+
+- **Master / stream / media level** — a single container on the VOD instance,
+  `vod.unknownMasterData`, always present with the shape:
+  ```js
+  {
+    tags: [],     // raw, uninterpreted master-level tag lines, in source order
+    streams: {},  // bandwidth (string) -> { unknownAttributes: { name: rawValue } }  (one per #EXT-X-STREAM-INF)
+    media: {}     // `${type}-${groupId}-${language}` -> { unknownAttributes: { name: rawValue } }  (one per #EXT-X-MEDIA)
+  }
+  ```
+  Each stream/media entry exposes its own `unknownAttributes` map of attribute-name to raw,
+  uninterpreted string value.
+
+### Intended capture mechanism (wiring is #147)
+
+`@eyevinn/m3u8` exposes the recognized attributes of each item via `item.get(...)`; this
+library reads only the ones it understands. Capture will, at parse time, collect the tag lines
+and attribute names that are **not** consumed by any `.get(...)` the library performs and store
+them verbatim (no interpretation, no normalization) into the bags above — segment-level bags are
+filled from each `PlaylistItem` before the segment object is built (see the `unknownSegmentTags`
+/ `unknownSegmentAttributes` capture hook in `index.js`), and master-level bags from the
+`StreamItem`/`MediaItem`s.
+
+### Ordering / placement rules (re-emission is #148)
+
+- `unknownTags` are re-emitted verbatim, in array order, immediately before the segment's own
+  recognized tags and URI.
+- `unknownAttributes` are appended to their host tag after the attributes the library itself
+  writes; relative order among unknown attributes follows insertion order.
+- Master-level `tags` are re-emitted in array order at the top of the master playlist; per-entry
+  `unknownAttributes` are appended to the corresponding `#EXT-X-STREAM-INF` / `#EXT-X-MEDIA` line.
+
+### Serialization guarantee
+
+The entire model MUST round-trip through the `toJSON()` / `fromJSON()` (serialize /
+`JSON.parse` deserialize) path unchanged. Segment-level bags are serialized as part of
+`vod.segments`; `vod.unknownMasterData` is serialized as a top-level field and is backfilled to
+the empty shape when deserializing a blob produced before the model existed.
+
 # Documentation
 
 - [API Documentation](API.md)
