@@ -128,6 +128,7 @@ subtitleSliceEndpoint: "/subtitlevtt.vtt", // it should link to an endpoint that
 
 Additional constructor option:
 - `calculatePDT: true` - when chaining VODs with `loadAfter`, calculate the next VOD `timeOffset` (PDT) from the previous VOD duration; if the previous VOD has no `timeOffset`, the current time is used.
+- `expectedAudioLanguages: ["en", "sv"]` - explicit list of audio language codes that must always be present in the generated live output, regardless of what any individual VOD contains. When a loaded VOD is missing one of these languages, the default (first available) language's audio segments are injected for it so the track keeps playing. When this option is omitted, the set of audio languages is instead determined by the first VOD loaded and is then persisted across all following VODs - it is never shrunk when a later VOD exposes fewer languages (e.g. loading a 2-language VOD followed by a 1-language VOD keeps both languages).
 
 # Documentation
 

@@ -414,4 +414,67 @@ describe("HLSVod with demuxed audio", () => {
         });
     });
   });
+
+  describe("persists audio languages across VOD transitions", () => {
+    // hls_always_0_demux has two audio languages (en + sv) in group "aac".
+    // hls_always_3_demux has a single audio language (en) in group "aac".
+    const mockMasterDual = () => fs.createReadStream("testvectors/hls_always_0_demux/master.m3u8");
+    const mockMediaDual = () => fs.createReadStream("testvectors/hls_always_0_demux/4850073.m3u8");
+    const mockAudioDual = () => fs.createReadStream("testvectors/hls_always_0_demux/aac-en.m3u8");
+    const mockMasterSingle = () => fs.createReadStream("testvectors/hls_always_3_demux/master.m3u8");
+    const mockMediaSingle = () => fs.createReadStream("testvectors/hls_always_3_demux/4850073.m3u8");
+    const mockAudioSingle = () => fs.createReadStream("testvectors/hls_always_3_demux/aac-en.m3u8");
+
+    it("keeps both languages when a 2-language VOD is followed by a 1-language VOD", (done) => {
+      const vod1 = new HLSVod("http://mock.com/dual.m3u8");
+      const vod2 = new HLSVod("http://mock.com/single.m3u8");
+
+      vod1
+        .load(mockMasterDual, mockMediaDual, mockAudioDual)
+        .then(() => {
+          // Sanity: first VOD exposes both languages.
+          const group = vod1.getAudioGroups()[0];
+          expect(vod1.getAudioLangsForAudioGroup(group).sort()).toEqual(["en", "sv"]);
+          return vod2.loadAfter(vod1, mockMasterSingle, mockMediaSingle, mockAudioSingle);
+        })
+        .then(() => {
+          const group = vod2.getAudioGroups()[0];
+          const langs = vod2.getAudioLangsForAudioGroup(group).sort();
+          // Regression: the missing "sv" language must NOT be dropped by the cleanup block.
+          expect(langs).toEqual(["en", "sv"]);
+          // The persisted language must have real (non-empty) segments and match the audio seq count.
+          const audioSeqCount = vod2.getLiveMediaSequencesCount("audio");
+          const videoSeqCount = vod2.getLiveMediaSequencesCount();
+          expect(audioSeqCount).toEqual(videoSeqCount);
+          const svSegments = vod2.getLiveAudioSequenceSegments(audioSeqCount - 1)[group]["sv"];
+          expect(svSegments.length).toBeGreaterThan(0);
+          done();
+        });
+    });
+
+    it("generates an explicitly expected language list even when the first VOD has fewer languages", (done) => {
+      const opts = { expectedAudioLanguages: ["en", "sv"] };
+      const vod1 = new HLSVod("http://mock.com/single.m3u8", null, 0, 0, null, opts);
+      const vod2 = new HLSVod("http://mock.com/dual.m3u8", null, 0, 0, null, opts);
+
+      vod1
+        .load(mockMasterSingle, mockMediaSingle, mockAudioSingle)
+        .then(() => {
+          // Even though this VOD only contains "en", the explicit list forces "sv" to exist.
+          const group = vod1.getAudioGroups()[0];
+          expect(vod1.getAudioLangsForAudioGroup(group).sort()).toEqual(["en", "sv"]);
+          const audioSeqCount = vod1.getLiveMediaSequencesCount("audio");
+          const svSegments = vod1.getLiveAudioSequenceSegments(audioSeqCount - 1)[group]["sv"];
+          expect(svSegments.length).toBeGreaterThan(0);
+          return vod2.loadAfter(vod1, mockMasterDual, mockMediaDual, mockAudioDual);
+        })
+        .then(() => {
+          const group = vod2.getAudioGroups()[0];
+          expect(vod2.getAudioLangsForAudioGroup(group).sort()).toEqual(["en", "sv"]);
+          const audioSeqCount = vod2.getLiveMediaSequencesCount("audio");
+          expect(audioSeqCount).toEqual(vod2.getLiveMediaSequencesCount());
+          done();
+        });
+    });
+  });
 });

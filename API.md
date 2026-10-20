@@ -35,6 +35,7 @@
     * [.getLastUsedDiscSeq()](#HLSVod+getLastUsedDiscSeq)
     * [._copyAudioGroupsFromPrevious()](#HLSVod+_copyAudioGroupsFromPrevious)
     * [._copySubtitleGroupsFromPrevious()](#HLSVod+_copySubtitleGroupsFromPrevious)
+    * [._persistMissingAudioLanguages()](#HLSVod+_persistMissingAudioLanguages)
 
 <a name="new_HLSVod_new"></a>
 
@@ -49,7 +50,8 @@ Create an HLS VOD instance
 | timeOffset | <code>number</code> | time offset as unix timestamp ms |
 | startTimeOffset | <code>number</code> | start time offset in N ms from start |
 | header | <code>string</code> | prepend the m3u8 playlist with this text |
-| opts | <code>string</code> | other options |
+| opts | <code>Object</code> | other options |
+| opts.expectedAudioLanguages | <code>Array</code> | explicit list of audio language codes that must always   be present in the generated live output, regardless of what any individual VOD contains. When a   loaded VOD is missing one of these languages, the default (first available) language's audio   segments are injected for it. When omitted, the set of audio languages is determined by the first   VOD loaded and is then persisted across all following VODs (it is never shrunk when a later VOD   exposes fewer languages). |
 
 <a name="HLSVod+defaultAudioGroupAndLang"></a>
 
@@ -297,5 +299,15 @@ and adds them to the current VOD's this.audioSegments property.
 ### hlsVod.\_copySubtitleGroupsFromPrevious()
 Gets previous VOD's subtitle -groupIds, -langs, -segments from its last sequence
 and adds them to the current VOD's this.subtitleSegments property.
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+_persistMissingAudioLanguages"></a>
+
+### hlsVod.\_persistMissingAudioLanguages()
+Ensures every persisted/expected audio language is present after all audio manifests
+have loaded. For any expected language that the currently loaded VOD does not actually
+provide, the default (first available) language's segments are copied in so the language
+keeps playing instead of being dropped. The explicit `opts.expectedAudioLanguages` list
+and the languages carried over from previous VODs both feed into this persisted set.
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
