@@ -36,6 +36,7 @@
     * [._copyAudioGroupsFromPrevious()](#HLSVod+_copyAudioGroupsFromPrevious)
     * [._copySubtitleGroupsFromPrevious()](#HLSVod+_copySubtitleGroupsFromPrevious)
     * [._persistMissingAudioLanguages()](#HLSVod+_persistMissingAudioLanguages)
+    * [._persistMissingAudioCodecs()](#HLSVod+_persistMissingAudioCodecs)
 
 <a name="new_HLSVod_new"></a>
 
@@ -52,6 +53,7 @@ Create an HLS VOD instance
 | header | <code>string</code> | prepend the m3u8 playlist with this text |
 | opts | <code>Object</code> | other options |
 | opts.expectedAudioLanguages | <code>Array</code> | explicit list of audio language codes that must always   be present in the generated live output, regardless of what any individual VOD contains. When a   loaded VOD is missing one of these languages, the default (first available) language's audio   segments are injected for it. When omitted, the set of audio languages is determined by the first   VOD loaded and is then persisted across all following VODs (it is never shrunk when a later VOD   exposes fewer languages). |
+| opts.expectedAudioCodecs | <code>Array</code> | explicit list of audio codecs (e.g. ["mp4a.40.2", "ec-3"])   that the generated live output must contain exactly. Audio groups whose codec is not in this list   are dropped, and when a loaded VOD is missing one of the listed codecs the default (first available)   codec's audio segments are reused for that codec's track so it keeps playing. When omitted, the set   of audio codecs is determined by the first VOD loaded and is then persisted across all following   VODs (it is never shrunk when a later VOD exposes fewer codecs). |
 
 <a name="HLSVod+defaultAudioGroupAndLang"></a>
 
@@ -309,5 +311,18 @@ have loaded. For any expected language that the currently loaded VOD does not ac
 provide, the default (first available) language's segments are copied in so the language
 keeps playing instead of being dropped. The explicit `opts.expectedAudioLanguages` list
 and the languages carried over from previous VODs both feed into this persisted set.
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+_persistMissingAudioCodecs"></a>
+
+### hlsVod.\_persistMissingAudioCodecs()
+Ensures every persisted/expected audio codec is present after all audio manifests have loaded.
+Audio codecs map to distinct audio groups, so persistence is handled at the group level here:
+for any audio group that the currently loaded VOD does not actually provide (i.e. a group that
+only exists because it was carried over from a previous VOD, belonging to a codec this VOD is
+missing), the segments of a default group that the current VOD DID provide are reused so the
+codec keeps playing instead of starving the whole audio track. When `opts.expectedAudioCodecs`
+is configured, the live output is additionally restricted to exactly those codecs: any audio
+group whose codec is not in the list (and its codec -> group mapping) is dropped.
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
