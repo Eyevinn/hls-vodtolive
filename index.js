@@ -120,6 +120,62 @@ class HLSVod {
     // # exposes) that is not in this list is "missing" from the current VOD and must fall
     // # back to a default group's segments so the codec is not lost across the transition.
     this._audioGroupsInCurrentVod = [];
+    // # Pass-through model for HLS tags/attributes the library does not natively interpret.
+    // # This is the FOUNDATION scaffolding defined in issue #146: the shape exists and is
+    // # stable and round-trips through toJSON/fromJSON, but nothing populates it yet.
+    // # Parse-time capture from @eyevinn/m3u8 is #147, output re-emission in segToM3u8 is
+    // # #148, and master-level wiring is #149. See the "Pass-through model for unknown HLS
+    // # tags/attributes" section in API.md for the full contract.
+    // #
+    // # Master-playlist-level pass-through container. `tags` holds raw, uninterpreted
+    // # master-level tag lines in source order; `streams` is keyed by bandwidth (string)
+    // # and `media` by `${type}-${groupId}-${language}`, each entry carrying an
+    // # `unknownAttributes` map of attribute-name -> raw (uninterpreted, string) value.
+    this.unknownMasterData = HLSVod.emptyUnknownMasterData();
+  }
+
+  /**
+   * @typedef {Object} UnknownSegmentData
+   * @description Per-segment pass-through bag for HLS data the library does not natively
+   *   interpret. Every segment object (video, audio and subtitle) carries these two fields so
+   *   the shape is stable whether or not anything was captured.
+   * @property {string[]} unknownTags - Ordered list of complete, raw tag lines (e.g.
+   *   `"#EXT-X-CUSTOM-MARKER:foo=bar"`) that appeared immediately before this segment's URI in
+   *   the media playlist and that the library does not natively interpret. Source order is
+   *   preserved; on re-emission (#148) they are written verbatim, in array order, immediately
+   *   before the segment's own recognized tags/URI.
+   * @property {Object.<string,string>} unknownAttributes - Map of attribute-name to its raw,
+   *   uninterpreted string value for attributes that live on a tag the library DOES recognize
+   *   structurally but whose specific attribute it does not read (e.g. a vendor attribute on
+   *   `#EXTINF` or `#EXT-X-KEY`). Values are stored verbatim and never parsed.
+   */
+
+  /**
+   * @typedef {Object} UnknownMasterEntry
+   * @description Pass-through bag for a single master-playlist entry (a `#EXT-X-STREAM-INF`
+   *   stream or a `#EXT-X-MEDIA` rendition).
+   * @property {Object.<string,string>} unknownAttributes - Map of attribute-name to its raw,
+   *   uninterpreted string value for attributes on that entry the library does not read.
+   */
+
+  /**
+   * @typedef {Object} UnknownMasterData
+   * @description Master-playlist-level pass-through container held on the VOD instance and
+   *   serialized with it.
+   * @property {string[]} tags - Raw, uninterpreted master-level tag lines, in source order.
+   * @property {Object.<string,UnknownMasterEntry>} streams - Stream entries keyed by bandwidth
+   *   (string), each mirroring a `#EXT-X-STREAM-INF`.
+   * @property {Object.<string,UnknownMasterEntry>} media - Media/rendition entries keyed by
+   *   `${type}-${groupId}-${language}`, each mirroring a `#EXT-X-MEDIA`.
+   */
+
+  /**
+   * The default, empty pass-through container for master-level data. Used to initialise the
+   * field and to backfill it when deserializing a blob produced before the model existed.
+   * @returns {UnknownMasterData} an empty master-level pass-through container
+   */
+  static emptyUnknownMasterData() {
+    return { tags: [], streams: {}, media: {} };
   }
 
   toJSON() {
@@ -168,7 +224,8 @@ class HLSVod {
       alwaysMapBandwidthByNearest: this.alwaysMapBandwidthByNearest,
       skipSerializeMediaSequences: this.skipSerializeMediaSequences,
       cuedHlsInterstitialTag: this.cuedHlsInterstitialTag,
-      calculatePDT: this.calculatePDT
+      calculatePDT: this.calculatePDT,
+      unknownMasterData: this.unknownMasterData
     };
     return JSON.stringify(serialized);
   }
@@ -226,6 +283,9 @@ class HLSVod {
     this.skipSerializeMediaSequences = de.skipSerializeMediaSequences;
     this.cuedHlsInterstitialTag = de.cuedHlsInterstitialTag;
     this.calculatePDT = de.calculatePDT;
+    // Backfill the pass-through container when deserializing a blob serialized before the
+    // model existed (#146), so the shape is always present and stable after fromJSON.
+    this.unknownMasterData = de.unknownMasterData || HLSVod.emptyUnknownMasterData();
   }
 
   /**
@@ -3007,6 +3067,12 @@ class HLSVod {
               let segmentUri;
               let baseUrl;
               let byteRange = undefined;
+              // Capture hook for the pass-through model (#146). These stay empty here; #147
+              // will populate them from the raw @eyevinn/m3u8 PlaylistItem (collecting tag
+              // lines the library does not natively interpret, and attributes it does not
+              // read off tags it otherwise recognizes) before the segment object is built.
+              let unknownSegmentTags = [];
+              let unknownSegmentAttributes = {};
 
               const m = mediaManifestUri.match("^(.*)/.*?$");
               if (m) {
@@ -3126,6 +3192,19 @@ class HLSVod {
                   cue: cue,
                   byteRange: byteRange,
                 };
+                // Pass-through bags (#146) for HLS data the library does not natively
+                // interpret. These are OPTIONAL on a segment and, mirroring the existing
+                // optional fields (initSegment, uri, keys), are attached only when non-empty
+                // so the serialized payload is not inflated with empty objects for every
+                // segment. Absence is equivalent to an empty bag. Parse-time capture that
+                // populates them is #147; re-emission is #148. See the UnknownSegmentData
+                // typedef / API.md for the contract.
+                if (unknownSegmentTags && unknownSegmentTags.length > 0) {
+                  q.unknownTags = unknownSegmentTags;
+                }
+                if (unknownSegmentAttributes && Object.keys(unknownSegmentAttributes).length > 0) {
+                  q.unknownAttributes = unknownSegmentAttributes;
+                }
                 if (initSegment) {
                   q.initSegment = initSegment;
                 }

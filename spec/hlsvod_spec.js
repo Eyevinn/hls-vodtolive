@@ -2238,6 +2238,51 @@ describe("HLSVod serializing", () => {
     });
   });
 
+  it("round-trips the generic pass-through model (unknown HLS tags/attributes) through toJSON/fromJSON", (done) => {
+    mockVod = new HLSVod("http://mock.com/mock.m3u8");
+    mockVod.load(mockMasterManifest, mockMediaManifest).then(() => {
+      // Fresh VOD must expose the master-level pass-through container with the agreed shape.
+      expect(mockVod.unknownMasterData).toEqual({ tags: [], streams: {}, media: {} });
+
+      // Populate the pass-through model as issue #147/#148/#149 eventually would, to prove
+      // the scaffolded shape is stable and survives a serialize/deserialize cycle.
+      const bw = mockVod.getBandwidths()[0];
+      const seg = mockVod.segments[bw].find((s) => s && s.uri);
+      expect(seg).toBeDefined();
+      seg.unknownTags = ["#EXT-X-CUSTOM-MARKER:foo=bar", "#EXT-X-VENDOR-TAG:42"];
+      seg.unknownAttributes = { "X-VENDOR-ATTR": "hello", "X-SCTE35": "0xABCDEF" };
+
+      mockVod.unknownMasterData = {
+        tags: ["#EXT-X-SESSION-DATA:DATA-ID=\"com.example.title\",VALUE=\"Demo\""],
+        streams: { [bw]: { unknownAttributes: { "X-STREAM-VENDOR": "v1" } } },
+        media: { "AUDIO-audio-en": { unknownAttributes: { "X-MEDIA-VENDOR": "m1" } } },
+      };
+
+      const serialized = mockVod.toJSON();
+      const deserializedVod = new HLSVod();
+      deserializedVod.fromJSON(serialized);
+
+      // Segment-level bag round-trips unchanged.
+      const rtSeg = deserializedVod.segments[bw].find((s) => s && s.uri && s.unknownTags);
+      expect(rtSeg).toBeDefined();
+      expect(rtSeg.unknownTags).toEqual(["#EXT-X-CUSTOM-MARKER:foo=bar", "#EXT-X-VENDOR-TAG:42"]);
+      expect(rtSeg.unknownAttributes).toEqual({ "X-VENDOR-ATTR": "hello", "X-SCTE35": "0xABCDEF" });
+
+      // Master/stream/media-level container round-trips unchanged.
+      expect(deserializedVod.unknownMasterData).toEqual(mockVod.unknownMasterData);
+
+      done();
+    });
+  });
+
+  it("backfills the pass-through container when deserializing a blob serialized before the model existed", () => {
+    // Simulate a legacy serialized blob that predates issue #146 (no unknownMasterData key).
+    const legacy = JSON.stringify({ masterManifestUri: "http://mock.com/mock.m3u8", segments: {} });
+    const deserializedVod = new HLSVod();
+    deserializedVod.fromJSON(legacy);
+    expect(deserializedVod.unknownMasterData).toEqual({ tags: [], streams: {}, media: {} });
+  });
+
   it("can handle a sequence of VODs", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8");
     mockVod2 = new HLSVod("http://mock.com/mock2.m3u8");

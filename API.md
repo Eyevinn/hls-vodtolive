@@ -1,3 +1,28 @@
+## Classes
+
+<dl>
+<dt><a href="#HLSVod">HLSVod</a></dt>
+<dd></dd>
+</dl>
+
+## Typedefs
+
+<dl>
+<dt><a href="#UnknownSegmentData">UnknownSegmentData</a> : <code>Object</code></dt>
+<dd><p>Per-segment pass-through bag for HLS data the library does not natively
+  interpret. Every segment object (video, audio and subtitle) carries these two fields so
+  the shape is stable whether or not anything was captured.</p>
+</dd>
+<dt><a href="#UnknownMasterEntry">UnknownMasterEntry</a> : <code>Object</code></dt>
+<dd><p>Pass-through bag for a single master-playlist entry (a <code>#EXT-X-STREAM-INF</code>
+  stream or a <code>#EXT-X-MEDIA</code> rendition).</p>
+</dd>
+<dt><a href="#UnknownMasterData">UnknownMasterData</a> : <code>Object</code></dt>
+<dd><p>Master-playlist-level pass-through container held on the VOD instance and
+  serialized with it.</p>
+</dd>
+</dl>
+
 <a name="HLSVod"></a>
 
 ## HLSVod
@@ -5,38 +30,41 @@
 
 * [HLSVod](#HLSVod)
     * [new HLSVod(vodManifestUri, splices, timeOffset, startTimeOffset, header, opts)](#new_HLSVod_new)
-    * [.defaultAudioGroupAndLang](#HLSVod+defaultAudioGroupAndLang)
-    * [.load()](#HLSVod+load)
-    * [.loadAfter(previousVod, _injectMasterManifest, _injectMediaManifest, _injectAudioManifest, _injectSubtitleManifest)](#HLSVod+loadAfter)
-    * [.reload(mediaSeqNo, additionalSegments, additionalAudioSegments, insertAfter)](#HLSVod+reload) ⇒
-    * [.addMetadata(key, value)](#HLSVod+addMetadata)
-    * [.getVodUri()](#HLSVod+getVodUri)
-    * [.getLiveMediaSequenceSegments(seqIdx)](#HLSVod+getLiveMediaSequenceSegments)
-    * [.getLiveAudioSequenceSegments(seqIdx)](#HLSVod+getLiveAudioSequenceSegments)
-    * [.getMediaSegments()](#HLSVod+getMediaSegments)
-    * [.getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx)](#HLSVod+getLiveMediaSequenceAudioSegments)
-    * [.getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage, seqIdx)](#HLSVod+getLiveMediaSequenceSubtitleSegments)
-    * [.getBandwidths()](#HLSVod+getBandwidths)
-    * [.getLiveMediaSequencesCount()](#HLSVod+getLiveMediaSequencesCount)
-    * [.getLastSequenceMediaSequenceValue()](#HLSVod+getLastSequenceMediaSequenceValue)
-    * [.getLastSequenceMediaSequenceValueAudio()](#HLSVod+getLastSequenceMediaSequenceValueAudio)
-    * [.getLastSequenceMediaSequenceValueSubtitle()](#HLSVod+getLastSequenceMediaSequenceValueSubtitle)
-    * [.getLiveMediaSequences(offset, bandwidth, seqIdx, discOffset, padding, forceTargetDuration)](#HLSVod+getLiveMediaSequences)
-    * [.getLiveMediaAudioSequences()](#HLSVod+getLiveMediaAudioSequences)
-    * [.getLiveMediaSubtitleSequences()](#HLSVod+getLiveMediaSubtitleSequences)
-    * [.getUsageProfiles()](#HLSVod+getUsageProfiles)
-    * [.getLastDiscontinuity()](#HLSVod+getLastDiscontinuity)
-    * [.getLastDiscontinuityAudio()](#HLSVod+getLastDiscontinuityAudio)
-    * [.getDeltaTimes()](#HLSVod+getDeltaTimes)
-    * [.getPlayheadPositions()](#HLSVod+getPlayheadPositions)
-    * [.releasePreviousVod()](#HLSVod+releasePreviousVod)
-    * [.getDuration()](#HLSVod+getDuration)
-    * [.getNextVodDuration()](#HLSVod+getNextVodDuration)
-    * [.getLastUsedDiscSeq()](#HLSVod+getLastUsedDiscSeq)
-    * [._copyAudioGroupsFromPrevious()](#HLSVod+_copyAudioGroupsFromPrevious)
-    * [._copySubtitleGroupsFromPrevious()](#HLSVod+_copySubtitleGroupsFromPrevious)
-    * [._persistMissingAudioLanguages()](#HLSVod+_persistMissingAudioLanguages)
-    * [._persistMissingAudioCodecs()](#HLSVod+_persistMissingAudioCodecs)
+    * _instance_
+        * [.defaultAudioGroupAndLang](#HLSVod+defaultAudioGroupAndLang)
+        * [.load()](#HLSVod+load)
+        * [.loadAfter(previousVod, _injectMasterManifest, _injectMediaManifest, _injectAudioManifest, _injectSubtitleManifest)](#HLSVod+loadAfter)
+        * [.reload(mediaSeqNo, additionalSegments, additionalAudioSegments, insertAfter)](#HLSVod+reload) ⇒
+        * [.addMetadata(key, value)](#HLSVod+addMetadata)
+        * [.getVodUri()](#HLSVod+getVodUri)
+        * [.getLiveMediaSequenceSegments(seqIdx)](#HLSVod+getLiveMediaSequenceSegments)
+        * [.getLiveAudioSequenceSegments(seqIdx)](#HLSVod+getLiveAudioSequenceSegments)
+        * [.getMediaSegments()](#HLSVod+getMediaSegments)
+        * [.getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx)](#HLSVod+getLiveMediaSequenceAudioSegments)
+        * [.getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage, seqIdx)](#HLSVod+getLiveMediaSequenceSubtitleSegments)
+        * [.getBandwidths()](#HLSVod+getBandwidths)
+        * [.getLiveMediaSequencesCount()](#HLSVod+getLiveMediaSequencesCount)
+        * [.getLastSequenceMediaSequenceValue()](#HLSVod+getLastSequenceMediaSequenceValue)
+        * [.getLastSequenceMediaSequenceValueAudio()](#HLSVod+getLastSequenceMediaSequenceValueAudio)
+        * [.getLastSequenceMediaSequenceValueSubtitle()](#HLSVod+getLastSequenceMediaSequenceValueSubtitle)
+        * [.getLiveMediaSequences(offset, bandwidth, seqIdx, discOffset, padding, forceTargetDuration)](#HLSVod+getLiveMediaSequences)
+        * [.getLiveMediaAudioSequences()](#HLSVod+getLiveMediaAudioSequences)
+        * [.getLiveMediaSubtitleSequences()](#HLSVod+getLiveMediaSubtitleSequences)
+        * [.getUsageProfiles()](#HLSVod+getUsageProfiles)
+        * [.getLastDiscontinuity()](#HLSVod+getLastDiscontinuity)
+        * [.getLastDiscontinuityAudio()](#HLSVod+getLastDiscontinuityAudio)
+        * [.getDeltaTimes()](#HLSVod+getDeltaTimes)
+        * [.getPlayheadPositions()](#HLSVod+getPlayheadPositions)
+        * [.releasePreviousVod()](#HLSVod+releasePreviousVod)
+        * [.getDuration()](#HLSVod+getDuration)
+        * [.getNextVodDuration()](#HLSVod+getNextVodDuration)
+        * [.getLastUsedDiscSeq()](#HLSVod+getLastUsedDiscSeq)
+        * [._copyAudioGroupsFromPrevious()](#HLSVod+_copyAudioGroupsFromPrevious)
+        * [._copySubtitleGroupsFromPrevious()](#HLSVod+_copySubtitleGroupsFromPrevious)
+        * [._persistMissingAudioLanguages()](#HLSVod+_persistMissingAudioLanguages)
+        * [._persistMissingAudioCodecs()](#HLSVod+_persistMissingAudioCodecs)
+    * _static_
+        * [.emptyUnknownMasterData()](#HLSVod.emptyUnknownMasterData) ⇒ [<code>UnknownMasterData</code>](#UnknownMasterData)
 
 <a name="new_HLSVod_new"></a>
 
@@ -326,3 +354,54 @@ is configured, the live output is additionally restricted to exactly those codec
 group whose codec is not in the list (and its codec -> group mapping) is dropped.
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod.emptyUnknownMasterData"></a>
+
+### HLSVod.emptyUnknownMasterData() ⇒ [<code>UnknownMasterData</code>](#UnknownMasterData)
+The default, empty pass-through container for master-level data. Used to initialise the
+field and to backfill it when deserializing a blob produced before the model existed.
+
+**Kind**: static method of [<code>HLSVod</code>](#HLSVod)  
+**Returns**: [<code>UnknownMasterData</code>](#UnknownMasterData) - an empty master-level pass-through container  
+<a name="UnknownSegmentData"></a>
+
+## UnknownSegmentData : <code>Object</code>
+Per-segment pass-through bag for HLS data the library does not natively
+  interpret. Every segment object (video, audio and subtitle) carries these two fields so
+  the shape is stable whether or not anything was captured.
+
+**Kind**: global typedef  
+**Properties**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| unknownTags | <code>Array.&lt;string&gt;</code> | Ordered list of complete, raw tag lines (e.g.   `"#EXT-X-CUSTOM-MARKER:foo=bar"`) that appeared immediately before this segment's URI in   the media playlist and that the library does not natively interpret. Source order is   preserved; on re-emission (#148) they are written verbatim, in array order, immediately   before the segment's own recognized tags/URI. |
+| unknownAttributes | <code>Object.&lt;string, string&gt;</code> | Map of attribute-name to its raw,   uninterpreted string value for attributes that live on a tag the library DOES recognize   structurally but whose specific attribute it does not read (e.g. a vendor attribute on   `#EXTINF` or `#EXT-X-KEY`). Values are stored verbatim and never parsed. |
+
+<a name="UnknownMasterEntry"></a>
+
+## UnknownMasterEntry : <code>Object</code>
+Pass-through bag for a single master-playlist entry (a `#EXT-X-STREAM-INF`
+  stream or a `#EXT-X-MEDIA` rendition).
+
+**Kind**: global typedef  
+**Properties**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| unknownAttributes | <code>Object.&lt;string, string&gt;</code> | Map of attribute-name to its raw,   uninterpreted string value for attributes on that entry the library does not read. |
+
+<a name="UnknownMasterData"></a>
+
+## UnknownMasterData : <code>Object</code>
+Master-playlist-level pass-through container held on the VOD instance and
+  serialized with it.
+
+**Kind**: global typedef  
+**Properties**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| tags | <code>Array.&lt;string&gt;</code> | Raw, uninterpreted master-level tag lines, in source order. |
+| streams | <code>Object.&lt;string, UnknownMasterEntry&gt;</code> | Stream entries keyed by bandwidth   (string), each mirroring a `#EXT-X-STREAM-INF`. |
+| media | <code>Object.&lt;string, UnknownMasterEntry&gt;</code> | Media/rendition entries keyed by   `${type}-${groupId}-${language}`, each mirroring a `#EXT-X-MEDIA`. |
+
