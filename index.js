@@ -28,6 +28,12 @@ class HLSVod {
    *   segments are injected for it. When omitted, the set of audio languages is determined by the first
    *   VOD loaded and is then persisted across all following VODs (it is never shrunk when a later VOD
    *   exposes fewer languages).
+   * @param {Array} opts.expectedAudioCodecs - explicit list of audio codecs (e.g. ["mp4a.40.2", "ec-3"])
+   *   that the generated live output must contain exactly. Audio groups whose codec is not in this list
+   *   are dropped, and when a loaded VOD is missing one of the listed codecs the default (first available)
+   *   codec's audio segments are reused for that codec's track so it keeps playing. When omitted, the set
+   *   of audio codecs is determined by the first VOD loaded and is then persisted across all following
+   *   VODs (it is never shrunk when a later VOD exposes fewer codecs).
    */
   constructor(vodManifestUri, splices, timeOffset, startTimeOffset, header, opts) {
     this.masterManifestUri = vodManifestUri;
@@ -86,6 +92,9 @@ class HLSVod {
     if (opts && opts.expectedAudioLanguages) {
       this.expectedAudioLanguages = opts.expectedAudioLanguages;
     }
+    if (opts && opts.expectedAudioCodecs) {
+      this.expectedAudioCodecs = opts.expectedAudioCodecs;
+    }
     if (opts && opts.alwaysMapBandwidthByNearest) {
       this.alwaysMapBandwidthByNearest = opts.alwaysMapBandwidthByNearest;
     }
@@ -106,6 +115,11 @@ class HLSVod {
     // # per audio group. Used to decide which persisted/expected languages are
     // # missing from this VOD and must fall back to the default language's segments.
     this._audioLanguagesInCurrentVod = {};
+    // # Tracks which audio groups the currently loading VOD actually provides. A group
+    // # carried over from a previous VOD (i.e. belonging to a codec this VOD no longer
+    // # exposes) that is not in this list is "missing" from the current VOD and must fall
+    // # back to a default group's segments so the codec is not lost across the transition.
+    this._audioGroupsInCurrentVod = [];
   }
 
   toJSON() {
@@ -117,6 +131,7 @@ class HLSVod {
       shouldContainSubtitles: this.shouldContainSubtitles,
       expectedSubtitleTracks: this.expectedSubtitleTracks,
       expectedAudioLanguages: this.expectedAudioLanguages,
+      expectedAudioCodecs: this.expectedAudioCodecs,
       mediaSequences: this.skipSerializeMediaSequences ? null : this.mediaSequences,
       SEQUENCE_DURATION: this.SEQUENCE_DURATION,
       targetDuration: this.targetDuration,
@@ -167,6 +182,7 @@ class HLSVod {
     this.shouldContainSubtitles = de.shouldContainSubtitles;
     this.expectedSubtitleTracks = de.expectedSubtitleTracks;
     this.expectedAudioLanguages = de.expectedAudioLanguages;
+    this.expectedAudioCodecs = de.expectedAudioCodecs;
     this.mediaSequences = de.mediaSequences;
     this.SEQUENCE_DURATION = de.SEQUENCE_DURATION;
     this.targetDuration = de.targetDuration;
@@ -320,6 +336,14 @@ class HLSVod {
               // # persisted/expected language not in this list is "missing" from the current
               // # VOD and will later fall back to the default language's segments.
               this._audioLanguagesInCurrentVod[audioGroupId] = audioLanguages.slice();
+
+              // # Remember that the current VOD actually provides this audio group (and hence the
+              // # codec it maps to). Any group only present because it was carried over from a
+              // # previous VOD is "missing" here and is filled from a default group later in
+              // # _persistMissingAudioCodecs().
+              if (!this._audioGroupsInCurrentVod.includes(audioGroupId)) {
+                this._audioGroupsInCurrentVod.push(audioGroupId);
+              }
 
               // # When an explicit list of expected audio languages is configured, make sure a
               // # track exists for every one of them (even if the first VOD does not contain it),
@@ -527,6 +551,7 @@ class HLSVod {
           return Promise.all(audioManifestPromises.concat(subtitleManifestPromises))
         }).then(this._cleanupUnused.bind(this))
           .then(this._persistMissingAudioLanguages.bind(this))
+          .then(this._persistMissingAudioCodecs.bind(this))
           .then(this._createMediaSequences.bind(this))
           .then(resolve)
           .catch((err) => {
@@ -2167,6 +2192,20 @@ class HLSVod {
    */
   _copyAudioGroupsFromPrevious() {
     const previousVodSeqCount = this.previousVod.getLiveMediaSequencesCount("audio");
+    // # Persist the codec -> audioGroupId mapping from the previous VOD so that codecs a later
+    // # VOD no longer carries are not lost from the live output. The current VOD's own codecs are
+    // # (re)added as its master manifest is parsed in load(); existing entries are never overwritten.
+    const previousCodecsMap = this.previousVod.audioCodecsMap || {};
+    Object.keys(previousCodecsMap).forEach((codec) => {
+      if (!this.audioCodecsMap[codec]) {
+        this.audioCodecsMap[codec] = {};
+      }
+      Object.keys(previousCodecsMap[codec]).forEach((channels) => {
+        if (!this.audioCodecsMap[codec][channels]) {
+          this.audioCodecsMap[codec][channels] = previousCodecsMap[codec][channels];
+        }
+      });
+    });
     const audioGroups = this.previousVod.getAudioGroups();
     if (audioGroups.length > 0) {
       for (let i = 0; i < audioGroups.length; i++) {
@@ -2308,6 +2347,74 @@ class HLSVod {
           // # is missing here - fall back to a copy of the default language's segments.
           if (!currentLangs.includes(lang)) {
             this.audioSegments[groupId][lang] = this.audioSegments[groupId][defaultLang].map((seg) => ({ ...seg }));
+          }
+        }
+      }
+      resolve();
+    });
+  }
+
+  /**
+   * Ensures every persisted/expected audio codec is present after all audio manifests have loaded.
+   * Audio codecs map to distinct audio groups, so persistence is handled at the group level here:
+   * for any audio group that the currently loaded VOD does not actually provide (i.e. a group that
+   * only exists because it was carried over from a previous VOD, belonging to a codec this VOD is
+   * missing), the segments of a default group that the current VOD DID provide are reused so the
+   * codec keeps playing instead of starving the whole audio track. When `opts.expectedAudioCodecs`
+   * is configured, the live output is additionally restricted to exactly those codecs: any audio
+   * group whose codec is not in the list (and its codec -> group mapping) is dropped.
+   */
+  _persistMissingAudioCodecs() {
+    return new Promise((resolve) => {
+      // # The HAS_AUDIO_DEFAULTS path collapses every incoming group onto a single default target
+      // # (see the audio load loop); leave it untouched here.
+      if (this.defaultAudioGroupAndLang) {
+        resolve();
+        return;
+      }
+
+      // # When an explicit codec list is configured the output must contain EXACTLY those codecs:
+      // # drop any audio group whose codec is not in the list, and prune the codec -> group map.
+      if (this.expectedAudioCodecs && this.expectedAudioCodecs.length > 0) {
+        Object.keys(this.audioSegments).forEach((groupId) => {
+          const [codec] = this.getAudioCodecsAndChannelsForGroupId(groupId);
+          if (codec && !this.expectedAudioCodecs.includes(codec)) {
+            delete this.audioSegments[groupId];
+          }
+        });
+        Object.keys(this.audioCodecsMap).forEach((codec) => {
+          if (!this.expectedAudioCodecs.includes(codec)) {
+            delete this.audioCodecsMap[codec];
+          }
+        });
+      }
+
+      // # Pick a default source group that the current VOD actually provides (and that has
+      // # segments), so missing-codec groups fall back to freshly loaded audio rather than the
+      // # short, stale segment list carried over from the previous VOD.
+      let defaultGroupId = this._audioGroupsInCurrentVod.find(
+        (groupId) => this.audioSegments[groupId] && this._getFirstAudioLanguageWithSegments(groupId)
+      );
+      if (!defaultGroupId) {
+        defaultGroupId = this._getFirstAudioGroupWithSegments();
+      }
+      if (!defaultGroupId) {
+        resolve();
+        return;
+      }
+      const defaultLang = this._getFirstAudioLanguageWithSegments(defaultGroupId);
+      const defaultSegments = this.audioSegments[defaultGroupId][defaultLang];
+
+      const groupIds = Object.keys(this.audioSegments);
+      for (let g = 0; g < groupIds.length; g++) {
+        const groupId = groupIds[g];
+        // # A group the current VOD did not provide belongs to a codec that is missing from this
+        // # VOD - reuse the default group's segments for each of its languages so the codec track
+        // # stays the same length as the rest of the audio instead of being dropped.
+        if (!this._audioGroupsInCurrentVod.includes(groupId)) {
+          const langs = Object.keys(this.audioSegments[groupId]);
+          for (let i = 0; i < langs.length; i++) {
+            this.audioSegments[groupId][langs[i]] = defaultSegments.map((seg) => ({ ...seg }));
           }
         }
       }
