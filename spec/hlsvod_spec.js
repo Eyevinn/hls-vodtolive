@@ -2317,7 +2317,7 @@ describe("HLSVod serializing", () => {
           const megabytes = bytes / (1024 * 1024);
           return megabytes.toFixed(2);
         };
-        const expectedJSONSizeInMBFull = "5.26";
+        const expectedJSONSizeInMBFull = "5.25";
         const expectedJSONSizeInMBPartial = "0.38";
         const expectedJSONSizeInMBFullAgain = expectedJSONSizeInMBFull;
         const expectedMseqCountFull = 145;
@@ -3742,14 +3742,21 @@ describe("HLSVod delta time and positions", () => {
         });
         let allsegs = mockVod2.segments[bw_];
         const secondVodDuration = getDur(allsegs) - getDur(mockVod2.mediaSequences[0].segments[bw_]) + 3 + 3;
+        // NOTE: These expected values were corrected as part of the fix for #74.
+        // Previously the type-A delta/position calculation only counted the LAST
+        // segment of each sequence as "newly added", so sequences that added 2+
+        // segments (e.g. after popping a longer segment) under-counted the playhead,
+        // and sequences that added 0 new segments still advanced it. The playhead now
+        // advances by the total duration of all newly-added segments and ends exactly
+        // at the second VOD's real content duration (199s).
         const expectedPlayheadPositions = [
-          0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 49, 49.5, 50, 54, 58, 62, 66, 70, 74, 78, 81, 85, 89, 93, 97, 101,
-          105, 109, 113, 117, 121, 125, 129, 133, 137, 141, 145, 149, 153, 157, 161, 165, 168, 171, 174, 177, 180, 183, 186, 189, 192, 195, 198,
-          201, 204, 204.5,
+          0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 52, 52.5, 52.5, 56.5, 56.5, 60.5, 64.5, 68.5, 68.5, 72.5, 75.5,
+          79.5, 83.5, 83.5, 87.5, 91.5, 95.5, 95.5, 99.5, 103.5, 107.5, 107.5, 111.5, 111.5, 115.5, 119.5, 123.5, 127.5, 131.5, 131.5, 135.5,
+          139.5, 146.5, 149.5, 152.5, 158.5, 161.5, 164.5, 170.5, 173.5, 176.5, 182.5, 185.5, 188.5, 194.5, 199,
         ];
         const expectedDeltaTimes = [
-          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -2, -0.5, 0, 3.5, 0, 0, 0, 0, 0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -2.5,
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -0.5, -0.5, 3.5, -4, 0, 0, 0, -4, 0, -1, 1, 0, -4, 0, 0, 0, -4, 0, 0, 0, -4,
+          0, -4, 0, 0, 0, 0, 0, -4, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 1.5,
         ];
         const expectedSeqcount = 63;
         const expectedVodSegmentsCount = 89;
@@ -3762,6 +3769,93 @@ describe("HLSVod delta time and positions", () => {
         expect(mockVod2.segments[bw_].length).toEqual(expectedVodSegmentsCount);
         expect(secondVodDuration).toEqual(expectedVodDuration);
         expect(seqWithNoNewSegmentCount).toEqual(expectedSeqWithNoNewSegmentCount);
+
+        done();
+      });
+  });
+
+  it("type-A: playhead advances by the total duration of ALL newly-added segments when a sequence adds 2+ segments (regression for #74)", (done) => {
+    // sequenceAlwaysContainNewSegments: false -> exercises the type-A delta path.
+    mockVod = new HLSVod("http://mock.com/mock.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: 0 });
+    mockVod2 = new HLSVod("http://mock.com/mock2.m3u8", null, 0, 0, null, { sequenceAlwaysContainNewSegments: 0 });
+    mockVod
+      .load(mockMasterManifest, mockMediaManifest)
+      .then(() => {
+        return mockVod2.loadAfter(mockVod, mockMasterManifest, mockMediaManifest);
+      })
+      .then(() => {
+        const round2 = (n) => Math.round(n * 100) / 100;
+        const playheadPositions = mockVod2.getPlayheadPositions();
+        const bw = mockVod2.getBandwidths()[0];
+
+        // Independently compute, per media sequence, the total duration of segments
+        // that are NEW relative to the previous sequence's last segment. This is the
+        // definition the fix enforces; the old code only counted the last segment.
+        let prevLast = null;
+        let expectedPosition = 0;
+        const expectedIncrements = [];
+        let maxSegmentsAddedInOneSeq = 0;
+
+        mockVod2.mediaSequences.forEach((mseq, seqNo) => {
+          const segs = mseq.segments[bw];
+          if (!segs || !segs.length) {
+            expectedIncrements.push(0);
+            return;
+          }
+          if (seqNo === 0) {
+            // Seed prevLast with the last real (uri-bearing) segment.
+            for (let i = segs.length - 1; i >= 0; i--) {
+              if (segs[i].uri) {
+                prevLast = segs[i];
+                break;
+              }
+            }
+            expectedIncrements.push(0);
+            return;
+          }
+          // Find previous sequence's last segment inside this window, then sum the
+          // duration of everything added after it.
+          let prevIdx = -1;
+          for (let i = segs.length - 1; i >= 0; i--) {
+            if (prevLast && segs[i].uri && segs[i].uri === prevLast.uri) {
+              prevIdx = i;
+              break;
+            }
+          }
+          let addedDuration = 0;
+          let addedCount = 0;
+          for (let i = prevIdx + 1; i < segs.length; i++) {
+            if (segs[i] && segs[i].duration) {
+              addedDuration += segs[i].duration;
+              addedCount++;
+            }
+          }
+          maxSegmentsAddedInOneSeq = Math.max(maxSegmentsAddedInOneSeq, addedCount);
+          expectedIncrements.push(addedDuration);
+          expectedPosition = round2(expectedPosition + addedDuration);
+          // Update prevLast to this sequence's last real segment.
+          for (let i = segs.length - 1; i >= 0; i--) {
+            if (segs[i].uri) {
+              prevLast = segs[i];
+              break;
+            }
+          }
+        });
+
+        // The vector must actually exercise the 2+-segments-added case, otherwise
+        // this test would not guard the bug at all.
+        expect(maxSegmentsAddedInOneSeq).toBeGreaterThan(1);
+
+        // Every reported playhead step must equal the total newly-added duration.
+        for (let i = 1; i < playheadPositions.length; i++) {
+          const reportedIncrement = round2(playheadPositions[i] - playheadPositions[i - 1]);
+          expect(reportedIncrement).toEqual(round2(expectedIncrements[i]));
+        }
+
+        // And the final playhead must land exactly on the real new content total
+        // (199s for this vector) rather than the pre-fix under-count.
+        expect(round2(playheadPositions[playheadPositions.length - 1])).toEqual(expectedPosition);
+        expect(round2(playheadPositions[playheadPositions.length - 1])).toEqual(199);
 
         done();
       });
