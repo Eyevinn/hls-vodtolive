@@ -2091,30 +2091,59 @@ class HLSVod {
         }
       } else {
         if (seqNo > 0) {
-          const positionIncrement = segments[segments.length - 1].discontinuity
-            ? segments[segments.length - 2].duration
-            : segments[segments.length - 1].duration;
-          const interval = positionIncrement - lastPositionIncrement;
+          // Sum the duration of EVERY segment newly added after the previous
+          // sequence's last segment, not only the last one (see video branch /
+          // type-B tpi logic). A sequence may add 2+ segments at once.
+          let tpi = 0; // Total Position Increment (total newly added content in seconds)
+          const prevLastSegIdx = findIndexReversed(segments, (seg) => {
+            if (seg.byteRange) {
+              if (seg.uri) {
+                return seg.uri === prevLastSegment.uri && seg.byteRange === prevLastSegment.byteRange;
+              }
+            } else {
+              if (seg.uri) {
+                return seg.uri === prevLastSegment.uri;
+              }
+            }
+            return false;
+          });
+          for (let i = prevLastSegIdx + 1; i < segments.length; i++) {
+            const seg = segments[i];
+            if (seg && seg.duration) {
+              tpi += seg.duration;
+            }
+          }
+          let lastSegment = segments[segments.length - 1];
+          if (lastSegment && lastSegment.discontinuity) {
+            lastSegment = segments[segments.length - 2];
+          }
+          const positionIncrement = lastSegment.duration;
+          const interval = tpi - lastPositionIncrement;
           if (type === "audio") {
             this.deltaTimesAudio.push({
               interval: interval,
-              position: positionIncrement ? lastPosition + positionIncrement : lastPosition,
+              position: positionIncrement ? fixedNumber(lastPosition + tpi) : lastPosition,
             });
           } else if (type === "subtitle") {
             this.deltaTimesSubtitle.push({
               interval: interval,
-              position: positionIncrement ? lastPosition + positionIncrement : lastPosition,
+              position: positionIncrement ? fixedNumber(lastPosition + tpi) : lastPosition,
             });
           }
           if (positionIncrement) {
-            lastPosition += positionIncrement;
+            lastPosition += tpi;
             lastPositionIncrement = positionIncrement;
+          }
+          if (lastSegment && lastSegment.uri) {
+            prevLastSegment = lastSegment;
           }
         } else {
           if (segments) {
-            lastPositionIncrement = segments[segments.length - 1].discontinuity
-              ? segments[segments.length - 2].duration
-              : segments[segments.length - 1].duration;
+            let lastSegment = findBottomSegItem(segments);
+            if (lastSegment && lastSegment.uri) {
+              prevLastSegment = lastSegment;
+            }
+            lastPositionIncrement = lastSegment.duration;
           }
         }
       }
@@ -2730,23 +2759,54 @@ class HLSVod {
             }
           } else {
             if (seqNo > 0) {
-              const positionIncrement = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].discontinuity
-                ? mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2].duration
-                : mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].duration;
-              const interval = positionIncrement - lastPositionIncrement;
+              // Sum the duration of EVERY segment newly added after the previous
+              // sequence's last segment, not only the last one. A sequence may add
+              // 2+ segments when a longer segment is popped from the front (e.g. pop
+              // a 6s segment, add two 3s segments) and all of them must advance the
+              // playhead. Mirrors the type-B tpi logic.
+              let tpi = 0; // Total Position Increment (total newly added content in seconds)
+              const prevLastSegIdx = findIndexReversed(mseq.segments[bwIdx], (seg) => {
+                if (seg.byteRange) {
+                  if (seg.uri) {
+                    return seg.uri === prevLastSegment.uri && seg.byteRange === prevLastSegment.byteRange;
+                  }
+                } else {
+                  if (seg.uri) {
+                    return seg.uri === prevLastSegment.uri;
+                  }
+                }
+                return false;
+              });
+              for (let i = prevLastSegIdx + 1; i < mseq.segments[bwIdx].length; i++) {
+                const seg = mseq.segments[bwIdx][i];
+                if (seg && seg.duration) {
+                  tpi += seg.duration;
+                }
+              }
+              let lastSegment = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1];
+              if (lastSegment && lastSegment.discontinuity) {
+                lastSegment = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2];
+              }
+              const positionIncrement = lastSegment.duration;
+              const interval = tpi - lastPositionIncrement;
               this.deltaTimes.push({
                 interval: interval,
-                position: positionIncrement ? lastPosition + positionIncrement : lastPosition,
+                position: positionIncrement ? lastPosition + tpi : lastPosition,
               });
               if (positionIncrement) {
-                lastPosition += positionIncrement;
+                lastPosition += tpi;
                 lastPositionIncrement = positionIncrement;
+              }
+              if (lastSegment && lastSegment.uri) {
+                prevLastSegment = lastSegment;
               }
             } else {
               if (mseq.segments[bwIdx]) {
-                lastPositionIncrement = mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].discontinuity
-                  ? mseq.segments[bwIdx][mseq.segments[bwIdx].length - 2].duration
-                  : mseq.segments[bwIdx][mseq.segments[bwIdx].length - 1].duration;
+                let lastSegment = findBottomSegItem(mseq.segments[bwIdx]);
+                if (lastSegment && lastSegment.uri) {
+                  prevLastSegment = lastSegment;
+                }
+                lastPositionIncrement = lastSegment.duration;
               }
             }
           }
