@@ -13,6 +13,19 @@ const {
   appendHlsInterstitialLineWithCUE,
 } = require("./utils.js");
 
+import type {
+  HLSVodInstance,
+  HLSVodOptions,
+  HLSVodSplice,
+  Segment,
+  MediaType,
+  UnknownMasterData,
+} from "./lib/types";
+
+// Declaration-merge the full instance shape (including methods composed onto the
+// prototype at runtime from lib/*) onto the class type.
+interface HLSVod extends HLSVodInstance {}
+
 class HLSVod {
   /**
    * Create an HLS VOD instance
@@ -35,8 +48,15 @@ class HLSVod {
    *   of audio codecs is determined by the first VOD loaded and is then persisted across all following
    *   VODs (it is never shrunk when a later VOD exposes fewer codecs).
    */
-  constructor(vodManifestUri, splices, timeOffset, startTimeOffset, header, opts) {
-    this.masterManifestUri = vodManifestUri;
+  constructor(
+    vodManifestUri?: string,
+    splices?: HLSVodSplice[],
+    timeOffset?: number | null,
+    startTimeOffset?: number | null,
+    header?: string,
+    opts?: HLSVodOptions
+  ) {
+    this.masterManifestUri = vodManifestUri as string;
     this.segments = {};
     this.audioSegments = {};
     this.subtitleSegments = {};
@@ -132,6 +152,8 @@ class HLSVod {
     // # and `media` by `${type}-${groupId}-${language}`, each entry carrying an
     // # `unknownAttributes` map of attribute-name -> raw (uninterpreted, string) value.
     this.unknownMasterData = HLSVod.emptyUnknownMasterData();
+    this._removedVideoDuration = 0;
+    this._removedSubtitleDuration = 0;
   }
 
   /**
@@ -174,7 +196,7 @@ class HLSVod {
    * field and to backfill it when deserializing a blob produced before the model existed.
    * @returns {UnknownMasterData} an empty master-level pass-through container
    */
-  static emptyUnknownMasterData() {
+  static emptyUnknownMasterData(): UnknownMasterData {
     return { tags: [], streams: {}, media: {} };
   }
 
@@ -183,7 +205,7 @@ class HLSVod {
    * Load and parse the HLS VOD
    */
   load(_injectMasterManifest, _injectMediaManifest, _injectAudioManifest, _injectSubtitleManifest) {
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       const parser = m3u8.createStream();
 
       parser.on("m3u", (m3u) => {
@@ -199,7 +221,7 @@ class HLSVod {
         const HAS_AUDIO_DEFAULTS = this.defaultAudioGroupAndLang === null ? false : true;
         if (!this.alwaysMapBandwidthByNearest && this.previousVod && this.previousVod.getBandwidths().length === m3u.items.StreamItem.length) {
           debug(`Previous VOD bandwidths matches amount of current. A mapping is possible`);
-          const previousBandwidths = this.previousVod.getBandwidths().sort((a, b) => a - b);
+          const previousBandwidths = this.previousVod.getBandwidths().sort((a: any, b: any) => a - b);
           this.usageProfileMapping = {};
           this.usageProfileMappingRev = {};
           const bandwidths = m3u.items.StreamItem.sort((a, b) => {
@@ -217,7 +239,7 @@ class HLSVod {
           let mediaManifestUrl = urlResolve(baseUrl, streamItem.get("uri"));
 
           if (streamItem.get("bandwidth")) {
-            let usageProfile = {
+            let usageProfile: any = {
               bw: streamItem.get("bandwidth"),
             };
             if (streamItem.get("resolution")) {
@@ -504,7 +526,7 @@ class HLSVod {
           .then(this._persistMissingAudioLanguages.bind(this))
           .then(this._persistMissingAudioCodecs.bind(this))
           .then(this._createMediaSequences.bind(this))
-          .then(resolve)
+          .then(() => resolve())
           .catch((err) => {
             debug("Error loading VOD: Need to cleanup");
             this._cleanupOnFailure();
@@ -546,7 +568,7 @@ class HLSVod {
    */
   loadAfter(previousVod, _injectMasterManifest, _injectMediaManifest, _injectAudioManifest, _injectSubtitleManifest) {
     debug(`Initializing Load VOD After VOD...`);
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       this.previousVod = previousVod;
 
       if (this.calculatePDT) {
@@ -591,7 +613,7 @@ class HLSVod {
    * @returns A promise that new Media Sequences have been made
    */
   reload(mediaSeqNo, additionalSegments, additionalAudioSegments, insertAfter) {
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
 
       const allBandwidths = this.getBandwidths();
 
@@ -842,7 +864,7 @@ class HLSVod {
    * @param {key} key - EXT-X-DATERANGE attribute key
    * @param {*} value
    */
-  addMetadata(key, value) {
+  addMetadata(key: string, value: any): void {
     if (this.rangeMetadata === null) {
       this.rangeMetadata = {};
     }
@@ -852,7 +874,7 @@ class HLSVod {
   /**
    * Retrieve master manifest Uri for this VOD
    */
-  getVodUri() {
+  getVodUri(): string {
     return this.masterManifestUri;
   }
 
@@ -861,7 +883,7 @@ class HLSVod {
    *
    * @param {number} seqIdx - media sequence index (first is 0)
    */
-  getLiveMediaSequenceSegments(seqIdx) {
+  getLiveMediaSequenceSegments(seqIdx: number): { [bandwidth: string]: Segment[] } {
     return this.mediaSequences[seqIdx].segments;
   }
 
@@ -870,7 +892,7 @@ class HLSVod {
    *
    * @param {number} seqIdx - media sequence index (first is 0)
    */
-  getLiveAudioSequenceSegments(seqIdx) {
+  getLiveAudioSequenceSegments(seqIdx: number): { [groupId: string]: { [language: string]: Segment[] } } {
     return this.mediaSequences[seqIdx].audioSegments;
   }
 
@@ -878,11 +900,11 @@ class HLSVod {
    * Get all segments (duration, uri)
    *
    */
-  getMediaSegments() {
+  getMediaSegments(): { [bandwidth: string]: Segment[] } {
     return this.segments;
   }
 
-  getAudioSegments() {
+  getAudioSegments(): { [groupId: string]: { [language: string]: Segment[] } } {
     return this.audioSegments;
   }
 
@@ -893,7 +915,7 @@ class HLSVod {
    * @param {string} audioLanguage - audio language
    * @param {number} seqIdx - media sequence index (first is 0)
    */
-  getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx) {
+  getLiveMediaSequenceAudioSegments(audioGroupId: string, audioLanguage: string, seqIdx: number): Segment[] {
     try {
       // # When language not found, return segments from first language.
       if (!this.mediaSequences[seqIdx].audioSegments[audioGroupId]) {
@@ -920,7 +942,7 @@ class HLSVod {
    * @param {string} subtitleLanguage - subtitle language
    * @param {number} seqIdx - media sequence index (first is 0)
    */
-  getLiveMediaSequenceSubtitleSegments(subtitleGroupId, subtitleLanguage, seqIdx) {
+  getLiveMediaSequenceSubtitleSegments(subtitleGroupId: string, subtitleLanguage: string, seqIdx: number): Segment[] {
     try {
       // # When language not found, return segments from default language.
       if (!this.mediaSequences[seqIdx].subtitleSegments[subtitleGroupId]) {
@@ -942,19 +964,19 @@ class HLSVod {
   /**
    * Get the available bandwidths for this VOD
    */
-  getBandwidths() {
+  getBandwidths(): string[] {
     return Object.keys(this.segments);
   }
 
-  getAudioGroups() {
+  getAudioGroups(): string[] {
     return Object.keys(this.audioSegments);
   }
 
-  getAudioLangsForAudioGroup(groupId) {
+  getAudioLangsForAudioGroup(groupId: string): string[] {
     return Object.keys(this.audioSegments[groupId]);
   }
 
-  getAudioGroupIdForCodecs(audioCodecs, channels) {
+  getAudioGroupIdForCodecs(audioCodecs: string, channels: string): string | undefined {
     // {
     //   "ec-3": [
     //     { "6": "audio1" }
@@ -972,9 +994,9 @@ class HLSVod {
     return audioGroupId;
   }
 
-  getAudioCodecsAndChannelsForGroupId(groupId) {
-    let audioCodecs;
-    let channels;
+  getAudioCodecsAndChannelsForGroupId(groupId: string): [string | undefined, string | undefined] {
+    let audioCodecs: string | undefined;
+    let channels: string | undefined;
     Object.keys(this.audioCodecsMap).map((codecKey) => {
       Object.keys(this.audioCodecsMap[codecKey]).map((channelsKey) => {
         if (this.audioCodecsMap[codecKey][channelsKey] === groupId) {
@@ -986,18 +1008,18 @@ class HLSVod {
     return [audioCodecs, channels];
   }
 
-  getSubtitleGroups(all = false) {
+  getSubtitleGroups(all: boolean = false): string[] {
     return Object.keys(this.subtitleSegments).filter((groupId) => groupId !== this.DUMMY_DEFAULT_SUBTITLE_GROUP_ID || all);
   }
 
-  getSubtitleLangsForSubtitleGroup(groupId) {
+  getSubtitleLangsForSubtitleGroup(groupId: string): string[] {
     return Object.keys(this.subtitleSegments[groupId]);
   }
 
   /**
    * Get the number of media sequences for this VOD
    */
-  getLiveMediaSequencesCount(media = "video") {
+  getLiveMediaSequencesCount(media: MediaType = "video"): number {
     if (media === "audio") {
       return this.audioSequencesCount;
     } else if (media === "subtitle") {
@@ -1009,7 +1031,7 @@ class HLSVod {
   /**
    * Get the media-sequence value for the last media sequence of this VOD
    */
-  getLastSequenceMediaSequenceValue() {
+  getLastSequenceMediaSequenceValue(): number {
     const end = Object.keys(this.mediaSequenceValues).length - 1;
     return this.mediaSequenceValues[end];
   }
@@ -1017,7 +1039,7 @@ class HLSVod {
   /**
    * Get the media-sequence value for the last audio media sequence of this VOD
    */
-  getLastSequenceMediaSequenceValueAudio() {
+  getLastSequenceMediaSequenceValueAudio(): number {
     const end = Object.keys(this.mediaSequenceValuesAudio).length - 1;
     return this.mediaSequenceValuesAudio[end];
   }
@@ -1025,7 +1047,7 @@ class HLSVod {
   /**
    * Get the media-sequence value for the last subtitle media sequence of this VOD
    */
-  getLastSequenceMediaSequenceValueSubtitle() {
+  getLastSequenceMediaSequenceValueSubtitle(): number {
     const end = Object.keys(this.mediaSequenceValuesSubtitle).length - 1;
     return this.mediaSequenceValuesSubtitle[end];
   }
@@ -1040,7 +1062,14 @@ class HLSVod {
    * @param {number} padding - add extra seconds on the EXT-X-TARGETDURATION
    * @param {number} forceTargetDuration - enforce a fixed EXT-X-TARGETDURATION
    */
-  getLiveMediaSequences(offset, bandwidth, seqIdx, discOffset, padding, forceTargetDuration) {
+  getLiveMediaSequences(
+    offset: number,
+    bandwidth: string,
+    seqIdx: number,
+    discOffset?: number,
+    padding?: number,
+    forceTargetDuration?: number
+  ): string {
     const bw = this._getNearestBandwidthWithInitiatedSegments(bandwidth);
     let targetDuration = this._determineTargetDuration(this.mediaSequences[seqIdx].segments[bw]);
     if (padding) {
@@ -1103,7 +1132,15 @@ class HLSVod {
    * Gets a hls/makes m3u8-file with all of the correct audio segments
    * belonging to a given groupID & language for a particular sequence.
    */
-  getLiveMediaAudioSequences(offset, audioGroupId, audioLanguage, seqIdx, discOffset, padding, forceTargetDuration) {
+  getLiveMediaAudioSequences(
+    offset: number,
+    audioGroupId: string,
+    audioLanguage: string,
+    seqIdx: number,
+    discOffset?: number,
+    padding?: number,
+    forceTargetDuration?: number
+  ): string | null {
     debug(`Get live audio media sequence [${seqIdx}] for audioGroupId=${audioGroupId}`);
     const mediaSeqAudioSegments = this.getLiveMediaSequenceAudioSegments(audioGroupId, audioLanguage, seqIdx);
     // # If failed to find segments for given language,
@@ -1154,7 +1191,15 @@ class HLSVod {
    * Gets a hls/makes m3u8-file with all of the correct subtitle segments
    * belonging to a given groupID & language for a particular sequence.
    */
-  getLiveMediaSubtitleSequences(offset, subtitleGroupId, subtitleLanguage, seqIdx, discOffset, padding, forceTargetDuration) {
+  getLiveMediaSubtitleSequences(
+    offset: number,
+    subtitleGroupId: string,
+    subtitleLanguage: string,
+    seqIdx: number,
+    discOffset?: number,
+    padding?: number,
+    forceTargetDuration?: number
+  ): string {
     debug(`Get live subtitle media sequence [${seqIdx}] for subtitleGroupId=${subtitleGroupId}`);
     const mediaSeqSubtitleSegments = this.getLiveMediaSequenceSubtitleSegments(this.DEFAULT_SUBTITLE_GROUP_ID, subtitleLanguage, seqIdx);
 
@@ -1199,32 +1244,32 @@ class HLSVod {
   /**
    * Get the usage profile for this VOD
    */
-  getUsageProfiles() {
+  getUsageProfiles(): any[] {
     return this.usageProfile;
   }
 
   /**
    * Get the last discontinuity sequence number
    */
-  getLastDiscontinuity() {
+  getLastDiscontinuity(): number {
     return this.discontinuities[this.videoSequencesCount - 1];
   }
 
   /**
    * Get the last audio discontinuity sequence number
    */
-  getLastDiscontinuityAudio() {
+  getLastDiscontinuityAudio(): number {
     return this.discontinuitiesAudio[this.audioSequencesCount - 1];
   }
 
-  getLastDiscontinuitySubtitle() {
+  getLastDiscontinuitySubtitle(): number {
     return this.discontinuitiesSubtitle[this.subtitleSequencesCount - 1];
   }
 
   /**
    * Get the delta times for each media sequence.
    */
-  getDeltaTimes(media = "video") {
+  getDeltaTimes(media: MediaType = "video"): number[] {
     if (media === "audio") {
       return this.deltaTimesAudio.map((o) => o.interval);
     } else if (media === "subtitle") {
@@ -1236,7 +1281,7 @@ class HLSVod {
   /**
    * Returns the playhead position for each media sequence
    */
-  getPlayheadPositions(media = "video") {
+  getPlayheadPositions(media: MediaType = "video"): number[] {
     if (media === "audio") {
       return this.deltaTimesAudio.map((o) => o.position);
     } else if (media === "subtitle") {
@@ -1248,14 +1293,14 @@ class HLSVod {
   /**
    * Remove pointers to previous VOD and release to garbage collector
    */
-  releasePreviousVod() {
+  releasePreviousVod(): void {
     this.previousVod = null;
   }
 
   /**
    * Returns the current duration calculated from the sum of the duration of all segments
    */
-  getDuration() {
+  getDuration(): number | null {
     if (!this.segments) {
       return null;
     }
@@ -1271,7 +1316,7 @@ class HLSVod {
    * Returns the current duration calculated from the sum of the duration of all segments
    * belonging to the next VOD, excludeing the copied segments from previous VOD, if any.
    */
-  getNextVodDuration() {
+  getNextVodDuration(): number | null {
     if (!this.segments) {
       return null;
     }
@@ -1296,15 +1341,12 @@ class HLSVod {
   /**
    * Returns the last added Discontinuity sequence count from getLiveMediaSequences()
    */
-  getLastUsedDiscSeq() {
+  getLastUsedDiscSeq(): number | null {
     return this.lastUsedDiscSeq;
   }
 
 
   // ----- PRIVATE METHODS BELOW ----
-  _removedVideoDuration = 0;
-  _removedSubtitleDuration = 0;
-
   _loadPrevious() {
     const bandwidths = this.previousVod.getBandwidths();
     for (let i = 0; i < bandwidths.length; i++) {
@@ -1321,7 +1363,7 @@ class HLSVod {
     return lastMediaSequence && lastMediaSequence !== undefined;
   }
 
-  _copyFromPrevious(destBw, sourceBw) {
+  _copyFromPrevious(destBw, sourceBw?) {
     const previousVodSeqCount = this.previousVod.getLiveMediaSequencesCount();
     if (!sourceBw) {
       sourceBw = destBw;
@@ -1495,7 +1537,7 @@ class HLSVod {
    * and the languages carried over from previous VODs both feed into this persisted set.
    */
   _persistMissingAudioLanguages() {
-    return new Promise((resolve) => {
+    return new Promise<void>((resolve) => {
       // # The HAS_AUDIO_DEFAULTS path collapses every incoming language onto a single default
       // # target (see the audio load loop); leave it untouched here.
       if (this.defaultAudioGroupAndLang) {
@@ -1545,7 +1587,7 @@ class HLSVod {
    * group whose codec is not in the list (and its codec -> group mapping) is dropped.
    */
   _persistMissingAudioCodecs() {
-    return new Promise((resolve) => {
+    return new Promise<void>((resolve) => {
       // # The HAS_AUDIO_DEFAULTS path collapses every incoming group onto a single default target
       // # (see the audio load loop); leave it untouched here.
       if (this.defaultAudioGroupAndLang) {
@@ -1603,7 +1645,7 @@ class HLSVod {
   }
 
   _cleanupUnused() {
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       // Remove all bandwidths that are remaining from previous VOD and has not been initiated
       let toRemove = [];
       Object.keys(this.segments).map((bw) => {
@@ -1837,4 +1879,4 @@ Object.assign(HLSVod.prototype, require("./lib/manifest-loading.js"));
 Object.assign(HLSVod.prototype, require("./lib/bandwidth-helpers.js"));
 Object.assign(HLSVod.prototype, require("./lib/serialization.js"));
 
-module.exports = HLSVod;
+export = HLSVod;

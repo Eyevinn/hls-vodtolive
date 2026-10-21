@@ -6,7 +6,15 @@ const {
   inspectForVodTransition,
 } = require("../utils.js");
 
-module.exports = {
+import type { HLSVodInstance } from "./types";
+
+// `reject` is referenced in `generateSequencesTypeAVideo`'s "should not happen"
+// guard but was never in scope in the original JavaScript (that method is not a
+// Promise executor). Declared ambient so the faithful 1:1 port type-checks;
+// runtime behavior (a ReferenceError if that guard is ever hit) is unchanged.
+declare const reject: (reason?: any) => void;
+
+const methods: Record<string, (...args: any[]) => any> & ThisType<HLSVodInstance> = {
   generateSmallerSubtitleSegments(segment, offset, leftover, useDummyUrl, first, elapsedTime) {
     if (leftover === null) {
       leftover = {};
@@ -84,11 +92,11 @@ module.exports = {
         if (leftover.previousSegmentUri) {
           params.append("previousvtturi", leftover.previousSegmentUri);
         }
-        params.append("starttime", startTime)
-        params.append("endtime", endTime)
+        params.append("starttime", startTime as any)
+        params.append("endtime", endTime as any)
         params.append("elapsedtime", elapsedTime)
       } else {
-        params.append("p", index)
+        params.append("p", index as any)
       }
 
       const base = useDummyUrl ? this.dummySubtitleEndpoint : this.subtitleSliceEndpoint;
@@ -648,7 +656,7 @@ module.exports = {
 
   generateMediaSequences() {
     this.mediaSequences = [];
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       this._createMediaSequences(1).then(resolve).catch(reject);
     });
   },
@@ -808,3 +816,4 @@ module.exports = {
     }
   },
 };
+module.exports = methods;

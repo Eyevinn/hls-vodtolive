@@ -5,7 +5,9 @@ const {
   inspectForVodTransition,
 } = require("../utils.js");
 
-module.exports = {
+import type { HLSVodInstance } from "./types";
+
+const methods: Record<string, (...args: any[]) => any> & ThisType<HLSVodInstance> = {
   toJSON() {
     const serialized = {
       masterManifestUri: this.masterManifestUri,
@@ -73,7 +75,7 @@ module.exports = {
     this.targetDuration = de.targetDuration;
     this.targetAudioDuration = de.targetAudioDuration;
     this.targetSubtitleDuration = de.targetSubtitleDuration;
-    const prevVod = new this.constructor();
+    const prevVod: any = new (this as any).constructor();
     this.previousVod = null;
     if (de.previousVod) {
       this.previousVod = prevVod.fromJSON(de.previousVod);
@@ -113,10 +115,10 @@ module.exports = {
     this.calculatePDT = de.calculatePDT;
     // Backfill the pass-through container when deserializing a blob serialized before the
     // model existed (#146), so the shape is always present and stable after fromJSON.
-    this.unknownMasterData = de.unknownMasterData || this.constructor.emptyUnknownMasterData();
+    this.unknownMasterData = de.unknownMasterData || (this.constructor as any).emptyUnknownMasterData();
   },
   _createMediaSequences(mode = false) {
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       const bw = this._getFirstBwWithSegments();
       const audioGroupId = this._getFirstAudioGroupWithSegments();
       const firstAudioLanguage = audioGroupId ? this._getFirstAudioLanguageWithSegments(audioGroupId) : null;
@@ -446,3 +448,4 @@ module.exports = {
     });
   },
 };
+module.exports = methods;

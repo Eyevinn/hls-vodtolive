@@ -1,6 +1,12 @@
-const fetch = require("node-fetch");
+import fetch = require("node-fetch");
 const { AbortController } = require("abort-controller");
 const debug = require("debug")("hls-vodtolive");
+
+// `timer` was referenced but never defined in the original JavaScript (a latent
+// no-op that throws if the 4xx/5xx retry path is ever taken). Declared ambient
+// here purely so the faithful 1:1 port type-checks; runtime behavior (a
+// ReferenceError if that branch is reached) is intentionally unchanged.
+declare const timer: (ms: number) => Promise<void>;
 
 function keysToM3u8(keys) {
   let m3u8 = "";
@@ -174,7 +180,7 @@ function segToM3u8(vin, i, len, nextSegment, previousSegment) {
 
 async function fetchWithRetry(uri, opts, maxRetries, retryDelayMs, timeoutMs, debug) {
   if (!debug) {
-    var debug = (msg) => {
+    debug = (msg: any) => {
       if (process.env.ENVIRONMENT === "development") {
         console.log(msg);
       }

@@ -8,8 +8,8 @@
     "dist"
   ],
   "scripts": {
-    "test": "jasmine",
-    "doc": "jsdoc2md index.js > API.md",
+    "test": "npm run build && jasmine",
+    "doc": "npm run build && jsdoc2md dist/index.js > API.md",
     "clean": "rm -rf dist",
     "build": "tsc",
     "prepublishOnly": "npm run build",

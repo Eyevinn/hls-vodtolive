@@ -15,6 +15,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["index.js", "utils.js", "lib/**/*.js"],
+  "include": ["index.ts", "utils.ts", "lib/**/*.ts"],
   "exclude": ["node_modules", "dist", "spec", "testvectors"]
 }
