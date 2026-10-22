@@ -1,4 +1,4 @@
-const HLSVod = require("../index.js");
+const HLSVod = require("../dist/index.js");
 const fs = require("fs");
 const Readable = require("stream").Readable;
 

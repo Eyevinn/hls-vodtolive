@@ -7,7 +7,7 @@ const {
   playlistItemWithInterstitialsMetadata,
   appendHlsInterstitialLineWithCUE,
   findIndexReversed,
-} = require("../utils.js");
+} = require("../dist/utils.js");
 
 describe("utils", () => {
   describe("urlResolve", () => {

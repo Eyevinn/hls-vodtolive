@@ -7,9 +7,11 @@ const {
   playlistItemWithInterstitialsMetadata,
 } = require("../utils.js");
 
-module.exports = {
+import type { HLSVodInstance } from "./types";
+
+const methods: Record<string, (...args: any[]) => any> & ThisType<HLSVodInstance> = {
   _loadMediaManifest(mediaManifestUri, bandwidth, _injectMediaManifest) {
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       const parser = m3u8.createStream();
       let bw = bandwidth;
       let spliceBw = bandwidth;
@@ -25,7 +27,7 @@ module.exports = {
           }
           const bandwidthsWithSequences = Object.keys(this.segments).filter((a) => this._hasMediaSequences(a));
           debug(`Bandwidths with sequences: ${bandwidthsWithSequences}`);
-          const sourceBw = Number(bandwidthsWithSequences.sort((a, b) => b - a)[0]);
+          const sourceBw = Number(bandwidthsWithSequences.sort((a: any, b: any) => b - a)[0]);
           debug(`Was not able to match ${bandwidth}, will create and copy from previous ${sourceBw}`);
           this._copyFromPrevious(bandwidth, sourceBw);
           bw = bandwidth;
@@ -158,7 +160,7 @@ module.exports = {
                 if (this.splices[spliceIdx].segments[spliceBw]) {
                   debug(`Inserting ${this.splices[spliceIdx].segments[spliceBw].length} ad segments`);
                   this.splices[spliceIdx].segments[spliceBw].forEach((v) => {
-                    let q = {
+                    let q: any = {
                       duration: v[0],
                       uri: v[1],
                       timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
@@ -214,7 +216,7 @@ module.exports = {
                       assetData: typeof assetData !== "undefined" ? assetData : null,
                     }
                     : null;
-                let q = {
+                let q: any = {
                   duration: playlistItem.get("duration"),
                   timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                   cue: cue,
@@ -338,7 +340,7 @@ module.exports = {
   _loadAudioManifest(audioManifestUri, groupId, language, _injectAudioManifest) {
     // # Updated so that segment objects are pushed to Language array instead.
     // # Updated input args for _injectAudioManifest().
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       const parser = m3u8.createStream();
       const [audioCodecs, _] = this.getAudioCodecsAndChannelsForGroupId(groupId);
       debug(`Loading audio manifest for lang=${language} of group=${groupId} (codecs=${audioCodecs})`);
@@ -457,7 +459,7 @@ module.exports = {
                     assetData: typeof assetData !== "undefined" ? assetData : null,
                   }
                   : null;
-              let q = {
+              let q: any = {
                 duration: playlistItem.get("duration"),
                 timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                 cue: cue,
@@ -528,7 +530,7 @@ module.exports = {
   _loadSubtitleManifest(subtitleManifestUri, groupId, language, _injectSubtitleManifest) {
     // # Updated so that segment objects are pushed to Language array instead.
     // # Updated input args for _injectSubtitleManifest().
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       const parser = m3u8.createStream();
       debug(`Loading subtitle manifest for lang=${language} of group=${groupId}`);
       debug(`Subtitle manifest URI: ${subtitleManifestUri}`);
@@ -646,7 +648,7 @@ module.exports = {
                     assetData: typeof assetData !== "undefined" ? assetData : null,
                   }
                   : null;
-              let q = {
+              let q: any = {
                 duration: playlistItem.get("duration"),
                 timelinePosition: this.timeOffset != null ? this.timeOffset + timelinePosition : null,
                 cue: cue,
@@ -720,3 +722,4 @@ module.exports = {
     });
   },
 };
+module.exports = methods;
