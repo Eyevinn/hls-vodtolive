@@ -9,6 +9,53 @@ const {
 
 import type { HLSVodInstance } from "./types";
 
+// #147: Pass-through capture of unknown media-playlist/segment-level tags & attributes.
+//
+// The @eyevinn/m3u8 parser routes any `#`-prefixed line it has no dedicated handler
+// for into the media-playlist-level `m3u.properties` bag (keyed by the raw tag name).
+// Everything there that is NOT one of the standard structural tags the VOD2Live engine
+// regenerates on its own is a genuinely-unknown tag we must preserve verbatim. The keys
+// below are the "friendly" property keys the parser's propertyMap maps those handled
+// structural tags to (see @eyevinn/m3u8 m3u.js propertyMap / dataTypes).
+const HANDLED_PLAYLIST_PROPERTY_KEYS = new Set<string>([
+  "allowCache",
+  "iframesOnly",
+  "mediaSequence",
+  "discontinuitySequence",
+  "playlistType",
+  "targetDuration",
+  "version",
+  "independentSegments",
+]);
+
+// Attribute keys the parser surfaces on a PlaylistItem's AttributeList that the library
+// DOES read/interpret structurally (EXTINF title/duration, cue markers, SCTE data, keys,
+// map, byterange, daterange, start offset). Any attribute on a recognized segment tag that
+// is NOT in this set is a vendor/unknown attribute captured verbatim (never parsed).
+const HANDLED_SEGMENT_ATTRIBUTE_KEYS = new Set<string>([
+  "duration",
+  "title",
+  "uri",
+  "byterange",
+  "daterange",
+  "cueout",
+  "cuein",
+  "cont-offset",
+  "cont-dur",
+  "sctedata",
+  "assetdata",
+  "map-uri",
+  "map-byterange",
+  "key-method",
+  "key-uri",
+  "key-iv",
+  "key-id",
+  "key-keyformat",
+  "key-keyformatversions",
+  "start-timeoffset",
+  "start-precise",
+]);
+
 const methods: Record<string, (...args: any[]) => any> & ThisType<HLSVodInstance> = {
   _loadMediaManifest(mediaManifestUri, bandwidth, _injectMediaManifest) {
     return new Promise<void>((resolve, reject) => {
@@ -76,6 +123,24 @@ const methods: Record<string, (...args: any[]) => any> & ThisType<HLSVodInstance
               this.mediaStartExcessTime = Math.abs(remain);
             }
 
+            // #147: Collect the media-playlist-level tags the library does not natively
+            // interpret. The parser has already funnelled every unhandled `#`-tag into
+            // `m3u.properties`; we reconstruct each as a complete raw tag line, in source
+            // (insertion) order, and preserve it verbatim without parsing the value. These
+            // playlist-level unknowns are attached to the first media segment's pass-through
+            // bag (the agreed model carries unknowns per-segment); re-emission is #148.
+            let playlistUnknownTags = [];
+            if (m3u.properties) {
+              for (const propKey of Object.keys(m3u.properties)) {
+                if (HANDLED_PLAYLIST_PROPERTY_KEYS.has(propKey)) {
+                  continue;
+                }
+                const rawValue = m3u.properties[propKey];
+                playlistUnknownTags.push(rawValue === undefined || rawValue === null ? `#${propKey}` : `#${propKey}:${rawValue}`);
+              }
+            }
+            let playlistUnknownsAttached = false;
+
             let byteRangeOffset = 0;
             for (let i = 0; i < m3u.items.PlaylistItem.length; i++) {
               if (this.splices[spliceIdx]) {
@@ -97,12 +162,25 @@ const methods: Record<string, (...args: any[]) => any> & ThisType<HLSVodInstance
               let segmentUri;
               let baseUrl;
               let byteRange = undefined;
-              // Capture hook for the pass-through model (#146). These stay empty here; #147
-              // will populate them from the raw @eyevinn/m3u8 PlaylistItem (collecting tag
-              // lines the library does not natively interpret, and attributes it does not
-              // read off tags it otherwise recognizes) before the segment object is built.
+              // #147: per-segment pass-through capture. `unknownSegmentTags` holds raw tag
+              // lines tied to this specific segment (the parser does not associate unhandled
+              // tag lines with a particular PlaylistItem, so segment-scoped tags are not
+              // distinguishable here and remain empty; playlist-level unknowns are attached
+              // to the first segment below). `unknownSegmentAttributes` captures any attribute
+              // the parser surfaced on this recognized segment tag that the library does not
+              // read, preserving its raw string value verbatim (no interpretation).
               let unknownSegmentTags = [];
-              let unknownSegmentAttributes = {};
+              let unknownSegmentAttributes: { [name: string]: string } = {};
+              if (playlistItem.attributes && playlistItem.attributes.attributes) {
+                const itemAttributes = playlistItem.attributes.attributes;
+                for (const attrKey of Object.keys(itemAttributes)) {
+                  if (HANDLED_SEGMENT_ATTRIBUTE_KEYS.has(attrKey)) {
+                    continue;
+                  }
+                  const attrVal = itemAttributes[attrKey];
+                  unknownSegmentAttributes[attrKey] = typeof attrVal === "string" ? attrVal : String(attrVal);
+                }
+              }
 
               const m = mediaManifestUri.match("^(.*)/.*?$");
               if (m) {
@@ -222,18 +300,27 @@ const methods: Record<string, (...args: any[]) => any> & ThisType<HLSVodInstance
                   cue: cue,
                   byteRange: byteRange,
                 };
-                // Pass-through bags (#146) for HLS data the library does not natively
-                // interpret. These are OPTIONAL on a segment and, mirroring the existing
-                // optional fields (initSegment, uri, keys), are attached only when non-empty
-                // so the serialized payload is not inflated with empty objects for every
-                // segment. Absence is equivalent to an empty bag. Parse-time capture that
-                // populates them is #147; re-emission is #148. See the UnknownSegmentData
-                // typedef / API.md for the contract.
-                if (unknownSegmentTags && unknownSegmentTags.length > 0) {
-                  q.unknownTags = unknownSegmentTags;
+                // Pass-through bag (#146/#147) for HLS data the library does not natively
+                // interpret, stored in the agreed `unknownData` shape (UnknownSegmentData:
+                // `unknownTags` raw lines in source order, `unknownAttributes` raw values).
+                // Mirroring the existing optional fields (initSegment, uri, keys) it is
+                // attached only when something was captured, so the serialized payload is not
+                // inflated with empty bags for every segment. Absence == empty bag. The
+                // playlist-level unknown tags are flushed onto the first real segment.
+                // Re-emission in segToM3u8 is #148. See UnknownSegmentData / API.md.
+                const segUnknownTags: string[] = [];
+                if (!playlistUnknownsAttached && playlistUnknownTags.length > 0) {
+                  segUnknownTags.push(...playlistUnknownTags);
+                  playlistUnknownsAttached = true;
                 }
-                if (unknownSegmentAttributes && Object.keys(unknownSegmentAttributes).length > 0) {
-                  q.unknownAttributes = unknownSegmentAttributes;
+                if (unknownSegmentTags && unknownSegmentTags.length > 0) {
+                  segUnknownTags.push(...unknownSegmentTags);
+                }
+                if (segUnknownTags.length > 0 || Object.keys(unknownSegmentAttributes).length > 0) {
+                  q.unknownData = {
+                    unknownTags: segUnknownTags,
+                    unknownAttributes: unknownSegmentAttributes,
+                  };
                 }
                 if (initSegment) {
                   q.initSegment = initSegment;
