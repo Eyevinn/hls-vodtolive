@@ -1,4 +1,4 @@
-const HLSVod = require("../dist/index.js");
+const HLSVod = require("../dist/index.js") as typeof import("../dist/index");
 const fs = require("fs");
 
 describe("HLSVod with demuxed audio", () => {

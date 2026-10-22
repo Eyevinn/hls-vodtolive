@@ -39,6 +39,7 @@
   "license": "MIT",
   "devDependencies": {
     "@types/debug": "^4.1.13",
+    "@types/jasmine": "^7.0.0",
     "@types/node": "^26.6.5",
     "@types/node-fetch": "^2.6.13",
     "coveralls": "^3.0.11",
@@ -46,6 +47,7 @@
     "jsdoc-to-markdown": "^7.1.1",
     "minimist": ">=0.2.1",
     "nyc": "^15.0.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },
   "dependencies": {
