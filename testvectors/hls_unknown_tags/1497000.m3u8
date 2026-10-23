@@ -1,0 +1,13 @@
+#EXTM3U
+#EXT-X-TARGETDURATION:9
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXT-X-VERSION:3
+#EXT-X-MEDIA-SEQUENCE:1
+#EXT-X-CUSTOM-MARKER:FOO=bar
+#EXTINF:9.000,
+https://example.com/segment1.ts
+#EXTINF:9.000,
+https://example.com/segment2.ts
+#EXTINF:9.000,
+https://example.com/segment3.ts
+#EXT-X-ENDLIST

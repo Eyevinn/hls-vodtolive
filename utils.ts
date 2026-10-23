@@ -112,6 +112,23 @@ function segToM3u8(vin, i, len, nextSegment, previousSegment) {
   }
 
   if (!v.discontinuity) {
+    // #148: Re-emit preserved unknown segment-level tags verbatim, in array order,
+    // immediately before the segment's own recognized tags/URI. These were captured on
+    // parse into the per-segment pass-through bag (UnknownSegmentData.unknownTags) and are
+    // written back untouched so a parse -> generate round-trip reproduces them. Known-tag
+    // output below is unchanged.
+    //
+    // Only genuine HLS tag lines are re-emitted. Per RFC 8216 §4.1 a Playlist line is a tag
+    // only when it begins with `#EXT`; any other `#`-line (e.g. a `## packager` banner or a
+    // `# commented-out` segment) is a comment that the spec says to ignore, so it is not
+    // resurrected into the generated output.
+    if (v.unknownData && Array.isArray(v.unknownData.unknownTags)) {
+      for (const unknownTag of v.unknownData.unknownTags) {
+        if (typeof unknownTag === "string" && unknownTag.startsWith("#EXT")) {
+          m3u8 += unknownTag + "\n";
+        }
+      }
+    }
     if (v.daterange) {
       const dateRangeAttributes = Object.keys(v.daterange)
         .map((key) => daterangeAttribute(key, v.daterange[key]))
