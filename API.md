@@ -51,6 +51,7 @@
         * [.getLiveMediaAudioSequences()](#HLSVod+getLiveMediaAudioSequences)
         * [.getLiveMediaSubtitleSequences()](#HLSVod+getLiveMediaSubtitleSequences)
         * [.getUsageProfiles()](#HLSVod+getUsageProfiles)
+        * [.getUnknownMasterData()](#HLSVod+getUnknownMasterData) ⇒ [<code>UnknownMasterData</code>](#UnknownMasterData)
         * [.getLastDiscontinuity()](#HLSVod+getLastDiscontinuity)
         * [.getLastDiscontinuityAudio()](#HLSVod+getLastDiscontinuityAudio)
         * [.getDeltaTimes()](#HLSVod+getDeltaTimes)
@@ -268,6 +269,15 @@ belonging to a given groupID & language for a particular sequence.
 Get the usage profile for this VOD
 
 **Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+<a name="HLSVod+getUnknownMasterData"></a>
+
+### hlsVod.getUnknownMasterData() ⇒ [<code>UnknownMasterData</code>](#UnknownMasterData)
+Get the master-level pass-through container: EXT-X-STREAM-INF / EXT-X-MEDIA attributes the
+library does not natively interpret, preserved verbatim at parse time so a consumer (e.g.
+channel-engine) can re-emit them. See the UnknownMasterData typedef for the exact shape.
+
+**Kind**: instance method of [<code>HLSVod</code>](#HLSVod)  
+**Returns**: [<code>UnknownMasterData</code>](#UnknownMasterData) - the captured master-level unknown tags/attributes  
 <a name="HLSVod+getLastDiscontinuity"></a>
 
 ### hlsVod.getLastDiscontinuity()

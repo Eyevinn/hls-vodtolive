@@ -22,6 +22,53 @@ import type {
   UnknownMasterData,
 } from "./lib/types";
 
+// #149: Pass-through capture of unknown master-playlist attributes.
+//
+// Attribute keys the parser surfaces (lowercased) on a master-level EXT-X-STREAM-INF
+// (StreamItem) that the VOD2Live engine DOES read/interpret structurally. Any attribute on a
+// StreamItem that is NOT in this set is a vendor/unknown attribute captured verbatim so a
+// consumer (e.g. channel-engine) can re-emit it. Mirrors the segment-level set in
+// lib/manifest-loading.ts (#147).
+const HANDLED_STREAM_ATTRIBUTE_KEYS = new Set<string>([
+  "bandwidth",
+  "audio",
+  "codecs",
+  "resolution",
+  "subtitles",
+  "subtitle",
+  "uri",
+]);
+
+// Attribute keys the parser surfaces (lowercased) on a master-level EXT-X-MEDIA (MediaItem)
+// that the engine DOES read/interpret structurally. Any other attribute (e.g. INSTREAM-ID,
+// CHARACTERISTICS) is captured verbatim.
+const HANDLED_MEDIA_ATTRIBUTE_KEYS = new Set<string>([
+  "type",
+  "group-id",
+  "name",
+  "language",
+  "uri",
+  "channels",
+]);
+
+// Collect the attributes on a master-level item (StreamItem / MediaItem) that the library does
+// not natively interpret. Values are stored exactly as the parser surfaced them (raw string,
+// including surrounding quotes where the source was a quoted-string) and are never parsed.
+function collectUnknownMasterAttributes(item: any, handledKeys: Set<string>): { [name: string]: string } {
+  const unknownAttributes: { [name: string]: string } = {};
+  if (item && item.attributes && item.attributes.attributes) {
+    const itemAttributes = item.attributes.attributes;
+    for (const attrKey of Object.keys(itemAttributes)) {
+      if (handledKeys.has(attrKey)) {
+        continue;
+      }
+      const attrVal = itemAttributes[attrKey];
+      unknownAttributes[attrKey] = typeof attrVal === "string" ? attrVal : String(attrVal);
+    }
+  }
+  return unknownAttributes;
+}
+
 // Declaration-merge the full instance shape (including methods composed onto the
 // prototype at runtime from lib/*) onto the class type.
 interface HLSVod extends HLSVodInstance {}
@@ -219,6 +266,10 @@ class HLSVod {
           baseUrl = m[1] + "/";
         }
         const HAS_AUDIO_DEFAULTS = this.defaultAudioGroupAndLang === null ? false : true;
+        // #149: Preserve any master-level EXT-X-STREAM-INF / EXT-X-MEDIA attributes the engine
+        // does not natively interpret (e.g. REQ-VIDEO-LAYOUT, INSTREAM-ID, CHARACTERISTICS) so a
+        // consumer can re-emit them. Exposed via getUnknownMasterData().
+        this._captureUnknownMasterData(m3u);
         if (!this.alwaysMapBandwidthByNearest && this.previousVod && this.previousVod.getBandwidths().length === m3u.items.StreamItem.length) {
           debug(`Previous VOD bandwidths matches amount of current. A mapping is possible`);
           const previousBandwidths = this.previousVod.getBandwidths().sort((a: any, b: any) => a - b);
@@ -1246,6 +1297,48 @@ class HLSVod {
    */
   getUsageProfiles(): any[] {
     return this.usageProfile;
+  }
+
+  // Capture master-playlist (EXT-X-STREAM-INF / EXT-X-MEDIA) attributes the library does not
+  // natively interpret into the master-level pass-through container, so a consumer can re-emit
+  // them. Stream entries are keyed by bandwidth; media/rendition entries by
+  // `${type}-${groupId}-${language}` (language falls back to name when absent). Values are
+  // stored verbatim and never parsed. Internal helper for load() (#149).
+  _captureUnknownMasterData(m3u: any): void {
+    const streamItems = (m3u && m3u.items && m3u.items.StreamItem) || [];
+    for (let i = 0; i < streamItems.length; i++) {
+      const streamItem = streamItems[i];
+      const bandwidth = streamItem.get("bandwidth");
+      if (bandwidth === undefined || bandwidth === null) {
+        continue;
+      }
+      const unknownAttributes = collectUnknownMasterAttributes(streamItem, HANDLED_STREAM_ATTRIBUTE_KEYS);
+      if (Object.keys(unknownAttributes).length > 0) {
+        this.unknownMasterData.streams[bandwidth + ""] = { unknownAttributes };
+      }
+    }
+    const mediaItems = (m3u && m3u.items && m3u.items.MediaItem) || [];
+    for (let i = 0; i < mediaItems.length; i++) {
+      const mediaItem = mediaItems[i];
+      const type = mediaItem.get("type");
+      const groupId = mediaItem.get("group-id");
+      const language = mediaItem.get("language") || mediaItem.get("name");
+      const key = `${type}-${groupId}-${language}`;
+      const unknownAttributes = collectUnknownMasterAttributes(mediaItem, HANDLED_MEDIA_ATTRIBUTE_KEYS);
+      if (Object.keys(unknownAttributes).length > 0) {
+        this.unknownMasterData.media[key] = { unknownAttributes };
+      }
+    }
+  }
+
+  /**
+   * Get the master-level pass-through container: EXT-X-STREAM-INF / EXT-X-MEDIA attributes the
+   * library does not natively interpret, preserved verbatim at parse time so a consumer (e.g.
+   * channel-engine) can re-emit them. See the UnknownMasterData typedef for the exact shape.
+   * @returns {UnknownMasterData} the captured master-level unknown tags/attributes
+   */
+  getUnknownMasterData(): UnknownMasterData {
+    return this.unknownMasterData;
   }
 
   /**
