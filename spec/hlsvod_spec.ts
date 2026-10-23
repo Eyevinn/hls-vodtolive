@@ -2241,11 +2241,23 @@ describe("HLSVod serializing", () => {
   it("round-trips the generic pass-through model (unknown HLS tags/attributes) through toJSON/fromJSON", (done) => {
     mockVod = new HLSVod("http://mock.com/mock.m3u8");
     mockVod.load(mockMasterManifest, mockMediaManifest).then(() => {
-      // Fresh VOD must expose the master-level pass-through container with the agreed shape.
-      expect(mockVod.unknownMasterData).toEqual({ tags: [], streams: {}, media: {} });
+      // #149 populates the master-level container at parse time with any EXT-X-STREAM-INF /
+      // EXT-X-MEDIA attribute the engine does not interpret. The hls1 master carries PROGRAM-ID
+      // and CLOSED-CAPTIONS on every stream (and no EXT-X-MEDIA), so they are captured per
+      // bandwidth with media left empty.
+      expect(mockVod.unknownMasterData).toEqual({
+        tags: [],
+        streams: {
+          "4497000": { unknownAttributes: { "program-id": "1", "closed-captions": "NONE" } },
+          "3496000": { unknownAttributes: { "program-id": "1", "closed-captions": "NONE" } },
+          "2497000": { unknownAttributes: { "program-id": "1", "closed-captions": "NONE" } },
+          "1497000": { unknownAttributes: { "program-id": "1", "closed-captions": "NONE" } },
+        },
+        media: {},
+      });
 
-      // Populate the pass-through model as issue #147/#148/#149 eventually would, to prove
-      // the scaffolded shape is stable and survives a serialize/deserialize cycle.
+      // Overwrite with a hand-built container to prove the shape is stable and survives a
+      // serialize/deserialize cycle regardless of what was captured.
       const bw = mockVod.getBandwidths()[0];
       const seg = mockVod.segments[bw].find((s) => s && s.uri);
       expect(seg).toBeDefined();

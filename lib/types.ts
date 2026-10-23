@@ -299,6 +299,7 @@ export interface HLSVodInstance {
     forceTargetDuration?: number
   ): string;
   getUsageProfiles(): any[];
+  getUnknownMasterData(): UnknownMasterData;
   getLastDiscontinuity(): number;
   getLastDiscontinuityAudio(): number;
   getLastDiscontinuitySubtitle(): number;
@@ -352,4 +353,5 @@ export interface HLSVodInstance {
   _getSubtitleSegmentsLength(...args: any[]): any;
   _getLastTimelinePositionVideo(...args: any[]): any;
   _getLastTimelinePositionAudio(...args: any[]): any;
+  _captureUnknownMasterData(m3u: any): void;
 }
